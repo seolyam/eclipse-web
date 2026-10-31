@@ -1,0 +1,37 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { OutfitDetail } from "@/components/outfit-detail";
+import { resolveOutfit } from "@/lib/catalog";
+import { decodeOutfit } from "@/lib/codec/outfit";
+import { getOutfit } from "@/lib/data";
+import { OPEN_GRAPH } from "@/lib/site";
+
+type Props = { params: Promise<{ id: string }> };
+
+// A link pasted in Discord should say what the look is made of.
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const post = await getOutfit((await params).id);
+  if (!post) return { title: "Outfit" };
+  const decoded = decodeOutfit(post.code);
+  const names = decoded.ok ? resolveOutfit(decoded.outfit).slots.flatMap((s) => s.name ?? []) : [];
+  const description = names.length
+    ? `${names.length} pieces, including ${names.slice(0, 3).join(", ")}. Copy the code and wear it with Eclipse.`
+    : "An Eclipse look. Copy the code and wear it in game.";
+  const url = `/wardrobe/${post.id}`;
+  return {
+    title: post.title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { ...OPEN_GRAPH, title: post.title, description, url },
+  };
+}
+
+export default async function OutfitPage({ params }: Props) {
+  const post = await getOutfit((await params).id);
+  if (!post) notFound();
+  return (
+    <main id="main" className="wrap py-10">
+      <OutfitDetail post={post} />
+    </main>
+  );
+}
