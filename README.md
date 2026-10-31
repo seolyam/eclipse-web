@@ -10,7 +10,7 @@ Landing page, setup guide, and a community Wardrobe and Showcase for sharing loo
 
 </div>
 
-> **Unofficial fan project.** Not affiliated with, endorsed by, or sponsored by Blizzard Entertainment. See [Legal](#legal-and-disclaimer).
+> This is the official Eclipse website. Eclipse is an independent community project and is **not affiliated with, endorsed by, or sponsored by Blizzard Entertainment**. See [Legal](#legal-and-disclaimer).
 
 ## Features
 
@@ -36,6 +36,10 @@ Optional settings are listed in `.env.example`.
 
 `src/lib/codec` encodes and decodes the `ECA1:` (loadout) and `ECW1:` (world look) code formats.
 
+## Team
+
+Eclipse was founded by [Kirazul](https://github.com/Kirazul) and is developed together with [seolyam](https://github.com/seolyam).
+
 ## Tech stack
 
 Next.js (App Router), React, strict TypeScript, Tailwind CSS, Vitest.
@@ -44,7 +48,7 @@ Next.js (App Router), React, strict TypeScript, Tailwind CSS, Vitest.
 
 *This is a good-faith summary, not legal advice.*
 
-**Not affiliated.** Eclipse and this website are an independent, free, non-commercial fan project. They are not made, endorsed, sponsored or approved by Blizzard Entertainment, Inc. or Microsoft.
+**Not affiliated with Blizzard.** Eclipse and this website are the official home of an independent, free, non-commercial community project. They are not made, endorsed, sponsored or approved by Blizzard Entertainment, Inc. or Microsoft.
 
 **Trademarks and game content.** World of Warcraft, Warcraft, Blizzard and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries. Game names, item names, icons, race, class and slot art, and other game imagery shown here are the property of Blizzard Entertainment, Inc. They appear only to identify game content for fans, and no ownership is claimed. They are not covered by any license for this repository and must not be reused commercially.
 
