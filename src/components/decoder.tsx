@@ -1,0 +1,327 @@
+"use client";
+
+import { ClipboardPaste, Loader2, X } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { inspectCode, publishOutfit, uploadScreenshot, type InspectResult } from "@/app/actions";
+import { CopyButton } from "@/components/copy-button";
+import { LoadoutFacts, SlotList } from "@/components/outfit-breakdown";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { encodeOutfit } from "@/lib/codec/outfit";
+import { MAX_SCREENSHOTS, SCREENSHOT_TYPES } from "@/lib/codec/schema";
+import { WORLD_MODES, WORLD_ROWS } from "@/lib/codec/world";
+import { ARMOR_LABEL, ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL, toCss, type ArmorType, type Category, type ClassName } from "@/lib/domain";
+
+type OutfitResult = Extract<InspectResult, { kind: "outfit" }>;
+type WorldResult = Extract<InspectResult, { kind: "world" }>;
+
+const NONE = "__none";
+
+function Choice<T extends string>({
+  id, label, value, options, format = (v) => v, onChange, required = false,
+}: {
+  id: string;
+  label: string;
+  value: T | null;
+  options: readonly T[];
+  format?: (v: T) => string;
+  onChange: (v: T | null) => void;
+  required?: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-xs text-ink-dim">{label}</label>
+      <Select value={value ?? NONE} onValueChange={(v) => onChange(v === NONE ? null : (v as T))}>
+        <SelectTrigger id={id} size="sm" className="w-full bg-surface"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {!required && <SelectItem value={NONE}>Not set</SelectItem>}
+          {options.map((o) => <SelectItem key={o} value={o}>{format(o)}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** The captures a post will carry, the cover first: pasted links, or uploads. */
+function Screenshots({
+  images, onChange,
+}: {
+  images: string[];
+  onChange: (images: string[]) => void;
+}) {
+  const [link, setLink] = useState("");
+  const [uploading, startUpload] = useTransition();
+  const full = images.length >= MAX_SCREENSHOTS;
+
+  function addLink() {
+    const url = link.trim();
+    if (!url.startsWith("https://")) {
+      toast.error("Use an https image link.");
+      return;
+    }
+    if (!images.includes(url)) onChange([...images, url]);
+    setLink("");
+  }
+
+  function upload(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])].slice(0, MAX_SCREENSHOTS - images.length);
+    event.target.value = "";
+    startUpload(async () => {
+      const added: string[] = [];
+      for (const file of files) {
+        const form = new FormData();
+        form.set("file", file);
+        const r = await uploadScreenshot(form);
+        if (r.ok) added.push(r.value);
+        else toast.error(r.error);
+      }
+      onChange([...images, ...added]);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor="outfit-screenshot" className="text-xs text-ink-dim">
+        Screenshots from the Showcase studio, up to {MAX_SCREENSHOTS}. The first is the cover.
+      </label>
+      {images.length > 0 && (
+        <ul className="flex flex-wrap gap-2">
+          {images.map((src, i) => (
+            <li key={src} className="relative size-16 overflow-hidden rounded-md border border-line">
+              <Image src={src} alt={`Screenshot ${i + 1}`} fill unoptimized sizes="4rem" className="object-cover" />
+              <button
+                type="button"
+                aria-label={`Remove screenshot ${i + 1}`}
+                onClick={() => onChange(images.filter((x) => x !== src))}
+                className="absolute top-0.5 right-0.5 rounded-full bg-black/70 p-0.5 text-ink"
+              >
+                <X className="size-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex gap-2">
+        <Input
+          id="outfit-screenshot"
+          type="url"
+          value={link}
+          disabled={full}
+          placeholder="https://"
+          onChange={(e) => setLink(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
+            addLink();
+          }}
+          className="bg-surface"
+        />
+        <Button type="button" variant="outline" disabled={full || !link.trim()} onClick={addLink}>Add</Button>
+      </div>
+      <label className="pill self-start">
+        {uploading && <Loader2 className="size-3.5 animate-spin" />}
+        Upload from this computer
+        <input
+          type="file"
+          multiple
+          accept={SCREENSHOT_TYPES.join(",")}
+          disabled={full || uploading}
+          onChange={upload}
+          className="sr-only"
+        />
+      </label>
+    </div>
+  );
+}
+
+function PublishForm({ code }: { code: string }) {
+  const [title, setTitle] = useState("");
+  const [className, setClassName] = useState<ClassName | null>(null);
+  const [armor, setArmor] = useState<ArmorType | null>(null);
+  const [race, setRace] = useState<string | null>(null);
+  const [category, setCategory] = useState<Category>("Armor");
+  const [tags, setTags] = useState("");
+  const [gallery, setGallery] = useState<string[]>([]);
+  const [published, setPublished] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    start(async () => {
+      const r = await publishOutfit({
+        title,
+        code,
+        className: className ?? undefined,
+        armor: armor ?? undefined,
+        race: race ?? undefined,
+        category,
+        tags: tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6),
+        gallery,
+      });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setPublished(r.id);
+      toast.success("Published to the Wardrobe");
+    });
+  }
+
+  if (published) {
+    return (
+      <p className="text-sm text-ink-dim">
+        Published. <Link href={`/wardrobe/${published}`} className="text-amber underline-offset-2 hover:underline">Open it in the Wardrobe</Link>
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor="outfit-title" className="text-xs text-ink-dim">Title</label>
+        <Input id="outfit-title" value={title} maxLength={80} required onChange={(e) => setTitle(e.target.value)} className="bg-surface" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Choice id="outfit-class" label="Class" value={className} options={CLASSES} onChange={setClassName} />
+        <Choice id="outfit-armor" label="Armor" value={armor} options={ARMOR_TYPES} format={(a) => ARMOR_LABEL[a]} onChange={setArmor} />
+        <Choice id="outfit-race" label="Race" value={race} options={Object.keys(RACE_LABEL)} format={(k) => RACE_LABEL[k]} onChange={setRace} />
+        <Choice id="outfit-category" label="Category" value={category} options={CATEGORIES} required onChange={(c) => c && setCategory(c)} />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="outfit-tags" className="text-xs text-ink-dim">Tags, separated by commas</label>
+        <Input id="outfit-tags" value={tags} onChange={(e) => setTags(e.target.value)} className="bg-surface" />
+      </div>
+      <Screenshots images={gallery} onChange={setGallery} />
+      {error && <p role="alert" className="text-sm text-bad">{error}</p>}
+      <Button type="submit" size="sm" disabled={pending} className="self-start">
+        {pending && <Loader2 className="size-4 animate-spin" />}
+        Publish to the Wardrobe
+      </Button>
+    </form>
+  );
+}
+
+function OutfitResultView({ result, canPublish }: { result: OutfitResult; canPublish: boolean }) {
+  // Hand a slot back to the wearer's gear, as the game's own slot clear does.
+  const [removed, setRemoved] = useState<number[]>([]);
+  const code = useMemo(() => {
+    const slots = Object.fromEntries(
+      Object.entries(result.outfit.slots).filter(([s]) => !removed.includes(Number(s))),
+    );
+    return encodeOutfit({ ...result.outfit, slots });
+  }, [result, removed]);
+  const shown = result.resolved.slots.filter((s) => !removed.includes(s.slot));
+
+  return (
+    <div className={canPublish ? "grid gap-4 lg:grid-cols-2" : "grid gap-4"}>
+      <section className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4" aria-label="What the code holds">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-base">{shown.length} {shown.length === 1 ? "piece" : "pieces"}</h2>
+          <CopyButton code={code} label={removed.length ? "Copy edited code" : "Copy code"} />
+        </div>
+        <SlotList slots={shown} onRemove={(s) => setRemoved((r) => [...r, s])} />
+        <LoadoutFacts resolved={result.resolved} />
+        {result.warnings.map((w) => <p key={w} className="text-xs text-info">{w}</p>)}
+      </section>
+      {canPublish && (
+        <section className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4" aria-label="Publish">
+          <h2 className="text-base">Publish it</h2>
+          <PublishForm key={code} code={code} />
+        </section>
+      )}
+    </div>
+  );
+}
+
+function WorldResultView({ result, code }: { result: WorldResult; code: string }) {
+  return (
+    <section className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4" aria-label="What the code holds">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-base">{result.places.length} {result.places.length === 1 ? "place" : "places"}</h2>
+        <CopyButton code={code} toastHint="Paste it with Import on Colors > World." />
+      </div>
+      <ul className="divide-y divide-line">
+        {result.places.map((p) => (
+          <li key={p.tag} className="py-2">
+            <p className="text-sm">{p.info?.name ?? `Unknown place ${p.tag}`}</p>
+            <p className="text-xs text-ink-faint">
+              {p.info ? p.info.path || p.info.group : "Not in the catalogue: the game skips this one."}
+            </p>
+            <ul className="mt-1.5 flex flex-wrap gap-3">
+              {WORLD_ROWS.map((row) => {
+                const r = p.rows[row];
+                if (!r) return null;
+                return (
+                  <li key={row} className="flex items-center gap-1.5 text-xs text-ink-dim capitalize">
+                    <span aria-hidden className="size-3 rounded-full border border-line" style={{ background: r.colour ? toCss(r.colour) : undefined }} />
+                    {row}
+                    {r.mode !== null && <span className="text-ink-faint normal-case">{WORLD_MODES[r.mode]}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+export function Decoder({ initial = "", canPublish = false }: { initial?: string; canPublish?: boolean }) {
+  const [text, setText] = useState(initial);
+  const [result, setResult] = useState<InspectResult | null>(null);
+  const [pending, start] = useTransition();
+
+  useEffect(() => {
+    if (!text.trim()) {
+      setResult(null);
+      return;
+    }
+    const handle = setTimeout(() => start(async () => setResult(await inspectCode(text))), 150);
+    return () => clearTimeout(handle);
+  }, [text]);
+
+  async function paste() {
+    try {
+      setText(await navigator.clipboard.readText());
+    } catch {
+      toast.error("The browser refused the clipboard. Paste into the box instead.");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="corona-rim rounded-md">
+        <Textarea
+          id="code"
+          value={text}
+          autoFocus
+          spellCheck={false}
+          aria-label="Eclipse code"
+          aria-invalid={result?.kind === "error"}
+          placeholder="ECA1:c2xvdCAwIDI1OTMwNgpzbG90IDIgMTAwMTczMw..."
+          onChange={(e) => setText(e.target.value)}
+          className="min-h-28 bg-surface font-mono text-xs leading-[18px] break-all"
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <Button type="button" size="sm" variant="outline" onClick={paste} className="gap-1.5">
+          <ClipboardPaste className="size-4" strokeWidth={1.5} />
+          Paste from clipboard
+        </Button>
+        {pending && <Loader2 className="size-4 animate-spin text-ink-faint" aria-label="Reading the code" />}
+        {result?.kind === "error" && <p role="alert" className="text-sm text-bad">{result.error}</p>}
+        {result && result.kind !== "error" && <p className="text-sm text-good">Valid {result.kind === "world" ? "world" : "loadout"} code</p>}
+      </div>
+      {result?.kind === "outfit" && <OutfitResultView key={text} result={result} canPublish={canPublish} />}
+      {result?.kind === "world" && <WorldResultView result={result} code={text.trim()} />}
+    </div>
+  );
+}
