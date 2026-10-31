@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
 
-## Getting Started
+# Eclipse Web
 
-First, run the development server:
+**The official website for Eclipse, a free overlay for World of Warcraft 3.3.5a.**
+
+Landing page, setup guide, and a community Wardrobe and Showcase for sharing looks.
+
+![Next.js](https://img.shields.io/badge/Next.js-App_Router-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6) ![Non-commercial](https://img.shields.io/badge/use-non--commercial-orange)
+
+</div>
+
+> **Unofficial fan project.** Not affiliated with, endorsed by, or sponsored by Blizzard Entertainment. See [Legal](#legal-and-disclaimer).
+
+## Features
+
+- **Wardrobe:** browse looks and copy their share codes.
+- **Showcase:** a picture-first gallery of community captures.
+- **Inspector:** decode and edit share codes.
+- **World presets** and a **setup guide**.
+
+## Getting started
+
+Requires Node.js and [pnpm](https://pnpm.io).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Other scripts: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Optional settings are listed in `.env.example`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Share codes
 
-## Learn More
+`src/lib/codec` encodes and decodes the `ECA1:` (loadout) and `ECW1:` (world look) code formats.
 
-To learn more about Next.js, take a look at the following resources:
+## Tech stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Next.js (App Router), React, strict TypeScript, Tailwind CSS, Vitest.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Legal and disclaimer
 
-## Deploy on Vercel
+*This is a good-faith summary, not legal advice.*
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Not affiliated.** Eclipse and this website are an independent, free, non-commercial fan project. They are not made, endorsed, sponsored or approved by Blizzard Entertainment, Inc. or Microsoft.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Trademarks and game content.** World of Warcraft, Warcraft, Blizzard and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries. Game names, item names, icons, race, class and slot art, and other game imagery shown here are the property of Blizzard Entertainment, Inc. They appear only to identify game content for fans, and no ownership is claimed. They are not covered by any license for this repository and must not be reused commercially.
+
+**Third-party art.** Rings and studio backdrops are from [Narcissus](https://www.curseforge.com/wow/addons/narcissus) by Peterodox, licensed [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) and used with the author's agreement. Credit must be kept wherever they appear, and use must stay non-commercial.
+
+**Use at your own risk.** Eclipse modifies the game client, and Blizzard's [Terms of Use and EULA](https://www.blizzard.com/en-us/legal) restrict third-party software that modifies the client. It targets the 3.3.5a client. Blizzard has not approved it, and users are responsible for the rules of the realm or server they play on. This repository contains the website only, with no game client files.
+
+**Non-commercial.** Nothing here sells game content or is gated behind payment. Voluntary support links only help cover running costs.
+
+**Takedown requests.** Rights holders who want something changed or removed can open an issue, and it will be handled promptly.
+
+**License.** No license has been granted yet. All rights in the original code are reserved by the author.
