@@ -316,7 +316,7 @@ def main() -> int:
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
     if not a.eclipse:
-        raise SystemExit("pass --eclipse <Eclipse-DEV folder> or set ECLIPSE_DEV")
+        raise SystemExit("pass --eclipse <Eclipse source folder> or set ECLIPSE_DEV")
     base = Path(a.eclipse)
     data = base / "Eclipse" / "data"
     sources = [data / "wardrobe" / "names.edb", data / "wardrobe" / "items.edb",

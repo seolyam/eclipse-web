@@ -55,7 +55,7 @@ function setLook(set: SetRow): OutfitPost {
   };
 }
 
-// The one real saved look (Eclipse-DEV/Eclipse/profiles/morph.cfg), slot for slot.
+// The one real saved look (overlay profiles/morph.cfg), slot for slot.
 function crystalScholar(): OutfitPost {
   const outfit = emptyOutfit();
   outfit.slots = { 0: 259306, 2: 1001733, 4: 1001735, 5: 1001729, 6: 1001732, 8: 1001736, 9: 1001731, 14: 1001728 };

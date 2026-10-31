@@ -9,7 +9,7 @@
 /* Eclipse tokens (GOALS.md), under the names this app already used, so the
    landing page and the Wardrobe are one product. Surfaces, ink and the emblem's
    colours are the official page's values; the accent and status colours are the
-   overlay's (Eclipse-DEV UiTheme.cpp). The site has one theme, as the overlay does. */
+   overlay's (the overlay's UiTheme.cpp). The site has one theme, as the overlay does. */
 :root {
   color-scheme: dark;
 
