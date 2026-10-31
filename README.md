@@ -46,8 +46,6 @@ Next.js (App Router), React, strict TypeScript, Tailwind CSS, Vitest.
 
 ## Legal and disclaimer
 
-*This is a good-faith summary, not legal advice.*
-
 **Not affiliated with Blizzard.** Eclipse and this website are the official home of an independent, free, non-commercial community project. They are not made, endorsed, sponsored or approved by Blizzard Entertainment, Inc. or Microsoft.
 
 **Trademarks and game content.** World of Warcraft, Warcraft, Blizzard and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries. Game names, item names, icons, race, class and slot art, and other game imagery shown here are the property of Blizzard Entertainment, Inc. They appear only to identify game content for fans, and no ownership is claimed. They are not covered by any license for this repository and must not be reused commercially.
