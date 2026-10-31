@@ -43,3 +43,8 @@ next-env.d.ts
 
 # python
 __pycache__/
+
+# internal planning notes
+/GOALS.md
+/TASKS.md
+/documentations/
