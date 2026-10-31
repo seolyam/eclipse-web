@@ -19,19 +19,6 @@ Landing page, setup guide, and a community Wardrobe and Showcase for sharing loo
 - **Inspector:** decode and edit share codes.
 - **World presets** and a **setup guide**.
 
-## Getting started
-
-Requires Node.js and [pnpm](https://pnpm.io).
-
-```bash
-pnpm install
-pnpm dev        # http://localhost:3000
-```
-
-Other scripts: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`.
-
-Optional settings are listed in `.env.example`.
-
 ## Share codes
 
 `src/lib/codec` encodes and decodes the `ECA1:` (loadout) and `ECW1:` (world look) code formats.
