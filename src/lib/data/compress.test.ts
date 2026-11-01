@@ -57,6 +57,7 @@ describe("a stored screenshot", () => {
   });
 
   it("refuses bytes that are not an image", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     expect(await compressScreenshot(Buffer.from("not an image"))).toBeNull();
   });
 });

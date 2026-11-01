@@ -1,5 +1,4 @@
 import "server-only";
-import sharp from "sharp";
 
 // Every stored screenshot comes through here, so a capture's size, format and
 // metadata are the site's choice and not the uploader's. Measured on game art
@@ -17,7 +16,10 @@ const THUMB = { edge: 960, quality: 50 };
 // Just above 8K, which is 33 million: a small file can decode to a huge image.
 const MAX_INPUT_PIXELS = 40_000_000;
 
-function encode(input: Buffer, { edge, quality }: { edge: number; quality: number }) {
+async function encode(input: Buffer, { edge, quality }: { edge: number; quality: number }) {
+  // Loaded here, not at the top: every page reads through the file that imports this
+  // one, and a native binary that fails to load should only cost uploads.
+  const { default: sharp } = await import("sharp");
   return sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
     .rotate() // Applies the file's orientation, which is about to be dropped.
     .resize({ width: edge, height: edge, fit: "inside", withoutEnlargement: true })
@@ -30,7 +32,8 @@ export async function compressScreenshot(input: Buffer) {
   try {
     const [full, thumb] = await Promise.all([encode(input, FULL), encode(input, THUMB)]);
     return { full, thumb };
-  } catch {
+  } catch (error) {
+    console.error("Screenshot compression failed:", error);
     return null;
   }
 }
