@@ -14,9 +14,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { DISCORD_URL, GITHUB_URL } from "@/lib/site";
 import { useAccount } from "@/lib/use-account";
 
-// The logo is the way home, and the hub's tabs reach Showcase and World.
+// The logo is the way home, and the hub's tabs reach Showcase and the Dressing room.
 const NAV = [
-  { href: "/wardrobe", label: "Wardrobe", routes: ["/wardrobe", "/showcase", "/world"] },
+  { href: "/wardrobe", label: "Wardrobe", routes: ["/wardrobe", "/showcase", "/dressing-room"] },
   { href: "/inspector", label: "Inspector", routes: ["/inspector"] },
   { href: "/#download", label: "Download", section: "download" },
   { href: "/#support", label: "Support", section: "support" },

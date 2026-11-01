@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { createSerializer, type SearchParams } from "nuqs/server";
 import { repository } from "@/lib/data";
-import { LOOKS_PER_PAGE, WORLD_PRESETS_CATEGORY } from "@/lib/domain";
+import { LOOKS_PER_PAGE } from "@/lib/domain";
 import { wardrobeCache, wardrobeParsers } from "@/lib/search-params";
 
 export function HubTitle({ title, blurb }: { title: string; blurb: string }) {
@@ -17,7 +17,7 @@ export function HubTitle({ title, blurb }: { title: string; blurb: string }) {
 const TABS = [
   { href: "/wardrobe", label: "Wardrobe" },
   { href: "/showcase", label: "Showcase" },
-  { href: "/world", label: WORLD_PRESETS_CATEGORY },
+  { href: "/dressing-room", label: "Dressing room" },
 ];
 
 /** The filters both post views read from the URL. */
@@ -106,7 +106,7 @@ export function Pager({ base, filters, total }: { base: string; filters: Filters
   );
 }
 
-/** The hub's views: the same posts by code or by picture, and the world's presets. */
+/** The hub's views: the same posts by code or by picture, and the dressing room. */
 export function HubTabs({ current }: { current: string }) {
   return (
     <nav aria-label="Wardrobe views" className="flex flex-wrap gap-1.5">

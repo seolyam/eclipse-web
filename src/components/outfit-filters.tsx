@@ -2,12 +2,11 @@
 
 import { Search, X } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { debounce, useQueryStates } from "nuqs";
 import { useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ARMOR_LABEL, ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL, SORT_LABEL, SORTS, WORLD_PRESETS_CATEGORY } from "@/lib/domain";
+import { ARMOR_LABEL, ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL, SORT_LABEL, SORTS } from "@/lib/domain";
 import { wardrobeParsers } from "@/lib/search-params";
 import { classArt, raceArt } from "@/lib/wow-assets";
 
@@ -111,7 +110,6 @@ export function OutfitFilters({ count, live }: { count: number; live: boolean })
               {c}
             </button>
           ))}
-          <Link href="/world" className="pill">{WORLD_PRESETS_CATEGORY}</Link>
           {f.tag && (
             <button type="button" className="pill" aria-pressed onClick={() => set({ tag: null })}>
               {f.tag}

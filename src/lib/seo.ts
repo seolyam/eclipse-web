@@ -18,10 +18,10 @@ export const PAGES = {
     description:
       "Paste an Eclipse loadout or world code to see what it holds, edit it, or publish it with your screenshots. Use Share in the game to get one.",
   },
-  "/world": {
-    title: "World presets for WoW 3.3.5a",
+  "/dressing-room": {
+    title: "Dressing room: build a WoW 3.3.5a look",
     description:
-      "Colour presets for places in World of Warcraft 3.3.5a, with rows for Ground, Buildings, Objects and Grass. Copy a code and import it with Eclipse.",
+      "Choose World of Warcraft items slot by slot, hide what you like, and copy the code to wear the look in game with Eclipse.",
   },
   "/guide": {
     title: "Setup guide for WoW 3.3.5a",

@@ -13,7 +13,6 @@ export function SiteFooter() {
         </Link>
         <nav aria-label="Footer">
           <Link href="/#features">Features</Link>
-          <Link href="/world">World presets</Link>
           <Link href="/guide">Setup guide</Link>
           <a href={GITHUB_URL} target="_blank" rel="noopener">GitHub</a>
           <a href={DISCORD_URL} target="_blank" rel="noopener">Discord</a>

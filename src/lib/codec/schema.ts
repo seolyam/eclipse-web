@@ -3,16 +3,10 @@ import { NAME_MAX } from "@/lib/account";
 import { ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL } from "@/lib/domain";
 import { UPLOAD_PATH } from "@/lib/screenshots";
 import { decodeOutfit } from "./outfit";
-import { decodeWorld } from "./world";
 
 /** A loadout code the game would read, or the game's reason it would not. */
 export const outfitCodeSchema = z.string().superRefine((text, ctx) => {
   const r = decodeOutfit(text);
-  if (!r.ok) ctx.addIssue({ code: "custom", message: r.error });
-});
-
-export const worldCodeSchema = z.string().superRefine((text, ctx) => {
-  const r = decodeWorld(text);
   if (!r.ok) ctx.addIssue({ code: "custom", message: r.error });
 });
 

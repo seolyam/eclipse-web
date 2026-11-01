@@ -7,7 +7,7 @@ import {
   OUTFIT_TAG,
   serializeOutfit,
 } from "./outfit";
-import { decodeWorld, encodeLook, OUTFIT_WORLD_TAG } from "./world";
+import { decodeWorld, OUTFIT_WORLD_TAG } from "./world";
 
 // The real block from Eclipse/profiles/morph.cfg: what Serialize wrote, unedited.
 const REAL_BODY = `slot 0 259306
@@ -208,18 +208,5 @@ describe("world codes", () => {
     for (const text of ["", "not a code", "ECA1:c2xvdCAwIDE5MDE5Cg==", "ECW1:%%%", `ECW1:${"A".repeat(200_000)}`]) {
       expect(decodeWorld(text).ok).toBe(false);
     }
-  });
-
-  it("builds a look the game's quick looks would make", () => {
-    const code = encodeLook(["a1519"], {
-      ground: [0.45, 0.3, 0.85, 0.35],
-      objects: [0.65, 0.5, 1, 1],
-    });
-    const r = decodeWorld(code);
-    expect(r.ok).toBe(true);
-    if (!r.ok) return;
-    expect(r.places[0].rows.ground).toMatchObject({ on: true, stops: 1 });
-    expect(r.places[0].rows.objects?.colour).toEqual([0.65, 0.5, 1, 1]);
-    expect(base64Decode(code.slice(5))).toContain("wstyle.a1519.obj.on 1\n");
   });
 });

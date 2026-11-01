@@ -25,11 +25,22 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      // The game's CDN sends no CORS headers, so a browser can only read it from this
+      // address. Only content-addressed data files match: this is no general proxy.
+      {
+        source: "/game-cdn/data/:a([0-9a-f]{2})/:b([0-9a-f]{2})/:file([0-9a-f]{32})",
+        destination: "https://level3.ssl.blizzard.com/tpr/wow/data/:a/:b/:file",
+      },
+    ];
+  },
   async redirects() {
     return [
       { source: "/armory", destination: "/wardrobe", permanent: true },
       { source: "/armory/:id", destination: "/wardrobe/:id", permanent: true },
       { source: "/decode", destination: "/inspector", permanent: true },
+      { source: "/world", destination: "/wardrobe", permanent: true },
     ];
   },
 };

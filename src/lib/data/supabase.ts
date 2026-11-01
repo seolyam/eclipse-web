@@ -1,5 +1,5 @@
 import "server-only";
-import { LOOKS_PER_PAGE, type ArmorType, type Category, type ClassName, type WorldGroup, type WorldLookName } from "@/lib/domain";
+import { LOOKS_PER_PAGE, type ArmorType, type Category, type ClassName } from "@/lib/domain";
 import { hashSecret, newLinkCode } from "@/lib/game-sync/secrets";
 import { cleanSetName } from "@/lib/game-sync/wire";
 import { SCREENSHOT_BUCKET, screenshotUrl, thumbOf } from "@/lib/screenshots";
@@ -7,7 +7,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { builtinRepository } from "./builtin";
 import { compressScreenshot, SCREENSHOT_EXTENSION, SCREENSHOT_TYPE } from "./compress";
 import type {
-  GameLink, GameSet, OutfitFilters, OutfitList, OutfitPost, Repository, WorldFilters, WorldPreset, WriteResult,
+  GameLink, GameSet, OutfitFilters, OutfitList, OutfitPost, Repository, WriteResult,
 } from "./types";
 
 // The same seam as builtin.ts, over supabase/migrations. RLS is what protects the
@@ -44,17 +44,6 @@ interface GameSetRow {
 }
 
 const toGameSet = (r: GameSetRow): GameSet => ({ id: r.id, name: r.name, code: r.code, updatedAt: r.updated_at });
-
-interface PresetRow {
-  id: string;
-  title: string;
-  look: WorldLookName;
-  blurb: string;
-  code: string;
-  places: string[];
-  place_group: WorldGroup;
-  profiles: { display_name: string | null } | null;
-}
 
 // The hint is required: outfit_votes also joins outfits to profiles, and PostgREST
 // refuses a bare profiles(...) embed as ambiguous.
@@ -317,30 +306,5 @@ export const supabaseRepository: Repository = {
     const { error } = await db.rpc("game_set_remove", { p_id: id });
     if (error) return { ok: false, error: "That set could not be removed. Try again." };
     return { ok: true, value: id };
-  },
-  async listWorldPresets(f: WorldFilters) {
-    const db = await createServerSupabase();
-    let query = db
-      .from("world_presets")
-      .select("id,title,look,blurb,code,places,place_group,profiles(display_name)")
-      .order("created_at", { ascending: false })
-      .limit(60);
-    if (f.group) query = query.eq("place_group", f.group);
-    if (f.look) query = query.eq("look", f.look);
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    // Nothing on the site publishes a preset yet, so the table starts empty and
-    // the overlay's own looks stay listed after it.
-    const published = (data as unknown as PresetRow[]).map((r) => ({
-      id: r.id,
-      title: r.title,
-      look: r.look,
-      blurb: r.blurb,
-      code: r.code,
-      places: r.places,
-      group: r.place_group,
-      author: r.profiles?.display_name ?? null,
-    })) satisfies WorldPreset[];
-    return [...published, ...(await builtinRepository.listWorldPresets(f))];
   },
 };

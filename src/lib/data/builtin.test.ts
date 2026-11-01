@@ -2,14 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import setsJson from "@/data/catalog/sets.json";
 import { decodeOutfit } from "@/lib/codec/outfit";
 import { submitOutfitSchema } from "@/lib/codec/schema";
-import { decodeWorld } from "@/lib/codec/world";
-import { LOOKS_PER_PAGE, WORLD_LOOKS } from "@/lib/domain";
+import { LOOKS_PER_PAGE } from "@/lib/domain";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 
 const { builtinRepository: repo } = await import("./builtin");
-const { resolvePlace, resolveOutfit } = await import("@/lib/catalog");
+const { resolveOutfit } = await import("@/lib/catalog");
 
 type SetRow = { id: number; name: string; pieces: Record<string, number> };
 const everything = async () => (await repo.listOutfits({ sort: "top", pageSize: 10_000 })).posts;
@@ -125,27 +124,6 @@ describe("the built-in looks", () => {
     expect((await repo.upvote("crystal-scholar")).ok).toBe(false);
     expect((await repo.uploadScreenshot(new File([], "a.png"))).ok).toBe(false);
     expect((await repo.listOutfits({ sort: "top" })).total).toBe(before);
-  });
-});
-
-describe("the built-in world presets", () => {
-  it("pair the overlay's own looks with real places, under no invented name", async () => {
-    const presets = await repo.listWorldPresets({});
-    expect(presets.length).toBeGreaterThan(0);
-    for (const p of presets) {
-      expect(Object.keys(WORLD_LOOKS)).toContain(p.look);
-      expect(p.title).toBe(p.look);
-      expect(p.blurb).toBe("");
-      expect(p.author).toBeNull();
-      const r = decodeWorld(p.code);
-      expect(r.ok, p.title).toBe(true);
-      if (!r.ok) continue;
-      expect(r.places.map((x) => x.tag)).toEqual(p.places);
-      for (const place of r.places) {
-        expect(resolvePlace(place.tag), place.tag).not.toBeNull();
-        expect(Object.keys(place.rows)).toHaveLength(4);
-      }
-    }
   });
 });
 

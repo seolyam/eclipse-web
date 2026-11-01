@@ -1,7 +1,7 @@
 // ECW1: the world code. A port of place::EncodeCode and place::ImportCode
 // (world/Places.cpp): base64 of the wstyle.* lines settings.cfg holds, for the
 // rows that are on. Change them together.
-import { base64Decode, base64Encode } from "./base64";
+import { base64Decode } from "./base64";
 
 export const OUTFIT_WORLD_TAG = "ECW1:";
 
@@ -96,27 +96,4 @@ export function decodeWorld(text: string): WorldDecodeResult {
   }
   if (!places.size) return { ok: false, error: NOT_ONE };
   return { ok: true, places: [...places.values()] };
-}
-
-const f2 = (n: number) => n.toFixed(2);
-
-/**
- * A whole-place look, as the page's quick looks make one: each row on, one
- * colour, one stop. Everything unwritten stays at the row's own default,
- * because ImportCode starts every place from place::NewStyle.
- */
-export function encodeLook(
-  tags: string[],
-  colours: Partial<Record<WorldRowName, readonly number[]>>,
-): string {
-  const lines: string[] = [];
-  for (const tag of tags) {
-    for (const row of WORLD_ROWS) {
-      const c = colours[row];
-      if (!c) continue;
-      const p = `wstyle.${tag}.${ROW_TAG[row]}.`;
-      lines.push(`${p}on 1`, `${p}stops 1`, `${p}vis ${c.map(f2).join(" ")}`);
-    }
-  }
-  return OUTFIT_WORLD_TAG + base64Encode(`${lines.join("\n")}\n`);
 }

@@ -293,10 +293,4 @@ describe("the Supabase adapter", () => {
     expect(set?.title).toBe(posts[0].title);
     expect(requests).toEqual([]);
   });
-
-  it("keeps the built-in world presets, since nothing here publishes one yet", async () => {
-    const presets = await repo.listWorldPresets({});
-    expect(presets.length).toBeGreaterThan(0);
-    expect(presets.every((p) => p.author === null)).toBe(true);
-  });
 });

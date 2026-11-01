@@ -4,7 +4,7 @@ import itemsJson from "@/data/catalog/items.json";
 import mountsJson from "@/data/catalog/mounts.json";
 import placesJson from "@/data/catalog/places.json";
 import qualityJson from "@/data/catalog/quality.json";
-import { COLOUR_AXES, RACE_BY_ID, RACE_LABEL, SLOT_NAMES, VISIBLE_SLOTS, WORLD_GROUPS, type WorldGroup } from "@/lib/domain";
+import { COLOUR_AXES, RACE_BY_ID, RACE_LABEL, SLOT_INV_TYPES, SLOT_NAMES, VISIBLE_SLOTS, WORLD_GROUPS, type WorldGroup } from "@/lib/domain";
 import type { Outfit } from "@/lib/codec/outfit";
 import type { WorldPlace } from "@/lib/codec/world";
 
@@ -50,21 +50,25 @@ function placeInfo(tag: string): PlaceInfo | null {
 
 export const resolvePlace = placeInfo;
 
-export function placeTagByName(name: string): string | null {
-  const row = placeRows.find((r) => r[1] === name);
-  return row ? row[0] : null;
+export interface ItemHit {
+  id: number;
+  name: string;
+  icon: string | null;
+  /** 0 poor .. 7 heirloom, or null when no source names it. */
+  quality: number | null;
 }
 
-export function searchPlaces(query: string, limit = 12): PlaceInfo[] {
+/** Items a slot can wear, by name. An empty query lists the slot's first few. */
+export function searchItems(query: string, slot: number, limit = 24): ItemHit[] {
+  const fits = SLOT_INV_TYPES[slot];
+  if (!fits) return [];
   const q = query.trim().toLowerCase();
-  if (!q) return [];
-  const hits: PlaceInfo[] = [];
-  for (const row of placeRows) {
-    if (row[1].toLowerCase().includes(q)) {
-      const info = placeInfo(row[0]);
-      if (info) hits.push(info);
+  const hits: ItemHit[] = [];
+  for (const [id, name, invType, , icon] of itemsJson as ItemRow[]) {
+    if (fits.includes(invType) && name.toLowerCase().includes(q)) {
+      hits.push({ id, name, icon: icon || null, quality: qualityById[String(id)] ?? null });
+      if (hits.length >= limit) break;
     }
-    if (hits.length >= limit) break;
   }
   return hits;
 }

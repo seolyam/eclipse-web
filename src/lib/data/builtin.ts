@@ -1,18 +1,15 @@
 import "server-only";
 import setsJson from "@/data/catalog/sets.json";
-import { itemIcon, placeTagByName, resolvePlace } from "@/lib/catalog";
+import { itemIcon } from "@/lib/catalog";
 import { emptyOutfit, encodeOutfit } from "@/lib/codec/outfit";
-import { encodeLook } from "@/lib/codec/world";
-import {
-  ARMOR_CLASSES, ARMOR_TYPES, LOOKS_PER_PAGE, WORLD_LOOKS, type ArmorType, type WorldLookName,
-} from "@/lib/domain";
-import type { OutfitFilters, OutfitPost, Repository, WorldFilters, WorldPreset } from "./types";
+import { ARMOR_CLASSES, ARMOR_TYPES, LOOKS_PER_PAGE, type ArmorType } from "@/lib/domain";
+import type { OutfitFilters, OutfitPost, Repository } from "./types";
 
 // What the site can show with no database, and every word of it is real: the
-// game's own item sets, the one saved look in the Eclipse repo, and the overlay's
-// world looks on real places. Nobody published these, so they carry no author,
-// votes or date, and nothing here is dressed up with a race, mount or enchant the
-// set does not hold. Writes are refused rather than pretended.
+// game's own item sets and the one saved look in the Eclipse repo. Nobody
+// published these, so they carry no author, votes or date, and nothing here is
+// dressed up with a race, mount or enchant the set does not hold. Writes are
+// refused rather than pretended.
 
 interface SetRow {
   id: number;
@@ -112,44 +109,6 @@ function matches(o: OutfitPost, f: OutfitFilters): boolean {
   return true;
 }
 
-// The overlay's looks (UiColorWorld.cpp kLooks) on places from the catalogue.
-const PRESETS: { look: WorldLookName; places: string[] }[] = [
-  { look: "Autumn", places: ["Elwynn Forest"] },
-  { look: "Winter", places: ["Dun Morogh"] },
-  { look: "Twilight", places: ["Duskwood"] },
-  { look: "Fel", places: ["Hellfire Peninsula"] },
-  { look: "Blood", places: ["Icecrown Citadel"] },
-  { look: "Gilded", places: ["Stormwind City", "Orgrimmar"] },
-  { look: "Ghostly", places: ["Eastern Plaguelands"] },
-  { look: "Twilight", places: ["Dalaran"] },
-  { look: "Winter", places: ["The Storm Peaks"] },
-  { look: "Autumn", places: ["Teldrassil"] },
-  { look: "Fel", places: ["Felwood"] },
-  { look: "Gilded", places: ["Silvermoon City"] },
-];
-
-let presets: WorldPreset[] | null = null;
-function allPresets(): WorldPreset[] {
-  presets ??= PRESETS.map((p, i) => {
-    const tags = p.places.map((name) => {
-      const tag = placeTagByName(name);
-      if (!tag) throw new Error(`no such place in the catalogue: ${name}`);
-      return tag;
-    });
-    return {
-      id: `w${i + 1}`,
-      title: p.look,
-      look: p.look,
-      blurb: "",
-      code: encodeLook(tags, WORLD_LOOKS[p.look]),
-      places: tags,
-      group: resolvePlace(tags[0])?.group ?? "Other",
-      author: null,
-    };
-  });
-  return presets;
-}
-
 export const builtinRepository: Repository = {
   live: false,
   async listOutfits(f) {
@@ -205,10 +164,5 @@ export const builtinRepository: Repository = {
   },
   async removeGameSet() {
     return { ok: false, error: NOT_LIVE };
-  },
-  async listWorldPresets(f: WorldFilters) {
-    return allPresets().filter(
-      (p) => (!f.group || p.group === f.group) && (!f.look || p.look === f.look),
-    );
   },
 };

@@ -19,7 +19,7 @@ const STEPS = [
   },
   {
     title: "Color a place",
-    body: "Copy a world code, open Colors > World, and press Import. The game jumps to the place the code names.",
+    body: "Copy a world code from another player, open Colors > World, and press Import. The game jumps to the place the code names.",
   },
   {
     title: "Share yours",

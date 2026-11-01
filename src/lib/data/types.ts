@@ -1,4 +1,4 @@
-import type { ArmorType, Category, ClassName, Sort, WorldGroup, WorldLookName } from "@/lib/domain";
+import type { ArmorType, Category, ClassName, Sort } from "@/lib/domain";
 import type { ParsedOutfit } from "@/lib/codec/schema";
 
 export interface OutfitPost {
@@ -45,24 +45,6 @@ export interface OutfitList {
   posts: OutfitPost[];
   /** Everything the filters match, across all pages. */
   total: number;
-}
-
-export interface WorldPreset {
-  id: string;
-  title: string;
-  look: WorldLookName;
-  blurb: string;
-  /** The ECW1: code. */
-  code: string;
-  /** Settings tags, "a1519" or "m631". */
-  places: string[];
-  group: WorldGroup;
-  author: string | null;
-}
-
-export interface WorldFilters {
-  group?: WorldGroup | null;
-  look?: WorldLookName | null;
 }
 
 export interface SearchEntry {
@@ -115,7 +97,6 @@ export interface Repository {
   removeScreenshot(path: string): Promise<WriteResult<string>>;
   /** Removes a look and its screenshots: the author's own, or any for a moderator. */
   deleteOutfit(id: string): Promise<WriteResult<string>>;
-  listWorldPresets(filters: WorldFilters): Promise<WorldPreset[]>;
   /** Who is signed in, or null for a visitor. */
   getAccount(): Promise<Account | null>;
   setDisplayName(name: string): Promise<WriteResult<string>>;

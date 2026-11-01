@@ -1,7 +1,5 @@
 import { createParser, createSearchParamsCache, parseAsInteger, parseAsString, parseAsStringLiteral } from "nuqs/server";
-import {
-  ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL, SORTS, WORLD_GROUPS, WORLD_LOOK_NAMES,
-} from "@/lib/domain";
+import { ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL, SORTS } from "@/lib/domain";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // An author comes from a shareable link, and Postgres rejects a malformed uuid.
@@ -22,9 +20,3 @@ export const wardrobeParsers = {
   page: parseAsInteger.withDefault(1),
 };
 export const wardrobeCache = createSearchParamsCache(wardrobeParsers);
-
-export const worldParsers = {
-  group: parseAsStringLiteral(WORLD_GROUPS),
-  look: parseAsStringLiteral(WORLD_LOOK_NAMES),
-};
-export const worldCache = createSearchParamsCache(worldParsers);
