@@ -5,7 +5,7 @@ import { LOOKS_PER_PAGE } from "@/lib/domain";
 vi.mock("server-only", () => ({}));
 
 // The real client over a stubbed network, so these read what really goes to
-// PostgREST. No project exists yet: this is the adapter's only coverage.
+// PostgREST, without needing a live project.
 const requests: URL[] = [];
 let reply: () => Response = () => Response.json([]);
 
@@ -42,6 +42,17 @@ beforeEach(() => {
 });
 
 describe("the Supabase adapter", () => {
+  // outfit_votes is a second path from outfits to profiles, and a bare
+  // profiles(...) embed makes PostgREST refuse the query as ambiguous.
+  it("names the author relationship when it embeds a profile", async () => {
+    await repo.listOutfits({ sort: "top" });
+    await repo.getOutfit(row.id);
+    for (const request of requests) {
+      expect(request.searchParams.get("select")).toContain("profiles!outfits_author_id_fkey(");
+    }
+    expect(requests).toHaveLength(2);
+  });
+
   it("asks for one page and reports the whole count", async () => {
     reply = () => Response.json([row], { headers: { "Content-Range": `24-24/25` } });
     const r = await repo.listOutfits({ sort: "top", page: 2 });

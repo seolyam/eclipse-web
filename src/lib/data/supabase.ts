@@ -33,8 +33,10 @@ interface PresetRow {
   profiles: { display_name: string } | null;
 }
 
+// The hint is required: outfit_votes also joins outfits to profiles, and PostgREST
+// refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,gallery,profiles(display_name,verified)";
+  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,gallery,profiles!outfits_author_id_fkey(display_name,verified)";
 
 const toPost = (r: OutfitRow): OutfitPost => ({
   id: r.id,
