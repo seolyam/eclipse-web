@@ -85,6 +85,9 @@ const uploadError = (message: string): WriteResult<string> => ({
 });
 const SEARCH_INDEX_SIZE = 200;
 
+/** People can edit their own user metadata, so this is only a suggestion. */
+const safeAvatar = (url: unknown) => (typeof url === "string" && url.startsWith("https://") ? url : null);
+
 async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
   const db = await createServerSupabase();
   const size = f.pageSize ?? LOOKS_PER_PAGE;
@@ -209,7 +212,13 @@ export const supabaseRepository: Repository = {
       .select("display_name,moderators(user_id)")
       .eq("id", auth.user.id)
       .maybeSingle();
-    return { id: auth.user.id, name: data?.display_name ?? null, moderator: Boolean(data?.moderators) };
+    return {
+      id: auth.user.id,
+      name: data?.display_name ?? null,
+      avatar: safeAvatar(auth.user.user_metadata?.avatar_url),
+      provider: auth.user.app_metadata?.provider ?? null,
+      moderator: Boolean(data?.moderators),
+    };
   },
   async setDisplayName(name) {
     const db = await createServerSupabase();

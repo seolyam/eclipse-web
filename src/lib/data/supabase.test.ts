@@ -21,7 +21,11 @@ const stubFetch: typeof fetch = async (input, init) => {
   return reply(url);
 };
 
-let user: { id: string } | null = null;
+let user: {
+  id: string;
+  user_metadata?: Record<string, unknown>;
+  app_metadata?: Record<string, unknown>;
+} | null = null;
 
 vi.mock("@/lib/supabase/server", () => ({
   createServerSupabase: async () => {
@@ -72,20 +76,40 @@ describe("the signed-in account", () => {
   it("reads the public name", async () => {
     user = { id: row.id };
     reply = () => Response.json([{ display_name: "Kira", moderators: null }]);
-    expect(await repo.getAccount()).toEqual({ id: row.id, name: "Kira", moderator: false });
+    expect(await repo.getAccount()).toEqual({ id: row.id, name: "Kira", avatar: null, provider: null, moderator: false });
     expect(requests[0].searchParams.get("id")).toBe(`eq.${row.id}`);
   });
 
   it("has no name until one is chosen", async () => {
     user = { id: row.id };
     reply = () => Response.json([{ display_name: null, moderators: null }]);
-    expect(await repo.getAccount()).toEqual({ id: row.id, name: null, moderator: false });
+    expect(await repo.getAccount()).toEqual({ id: row.id, name: null, avatar: null, provider: null, moderator: false });
+  });
+
+  it("carries the picture and provider from the sign-in", async () => {
+    user = {
+      id: row.id,
+      user_metadata: { avatar_url: "https://cdn.discordapp.com/avatars/1/a.png" },
+      app_metadata: { provider: "discord" },
+    };
+    reply = () => Response.json([{ display_name: "Kira", moderators: null }]);
+    expect(await repo.getAccount()).toMatchObject({
+      avatar: "https://cdn.discordapp.com/avatars/1/a.png",
+      provider: "discord",
+    });
+  });
+
+  it("ignores a picture that is not an https address", async () => {
+    // Anyone can write their own user metadata, so this value is not the provider's word.
+    user = { id: row.id, user_metadata: { avatar_url: "http://example.test/a.png" } };
+    reply = () => Response.json([{ display_name: "Kira", moderators: null }]);
+    expect(await repo.getAccount()).toMatchObject({ avatar: null });
   });
 
   it("knows a moderator", async () => {
     user = { id: row.id };
     reply = () => Response.json([{ display_name: "Kira", moderators: { user_id: row.id } }]);
-    expect(await repo.getAccount()).toEqual({ id: row.id, name: "Kira", moderator: true });
+    expect(await repo.getAccount()).toMatchObject({ id: row.id, name: "Kira", moderator: true });
   });
 
   it("saves a name to the signed-in profile only", async () => {

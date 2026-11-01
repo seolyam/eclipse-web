@@ -75,6 +75,9 @@ export interface Account {
   id: string;
   /** Null until they choose one: Google's profile name is a real name. */
   name: string | null;
+  /** From Discord or Google. Shown to the account's owner only. */
+  avatar: string | null;
+  provider: string | null;
   /** May delete any look, not only their own. */
   moderator: boolean;
 }
