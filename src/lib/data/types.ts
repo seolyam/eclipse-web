@@ -32,6 +32,8 @@ export interface OutfitFilters {
   tag?: string | null;
   /** Only looks with a real studio capture: what the Showcase lists. */
   captured?: boolean;
+  /** Only looks this account published. */
+  authorId?: string | null;
   sort: Sort;
   /** From 1. */
   page?: number;

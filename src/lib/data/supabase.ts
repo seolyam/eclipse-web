@@ -91,6 +91,7 @@ async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
   const from = (Math.max(1, f.page ?? 1) - 1) * size;
   let query = db.from("outfits").select(OUTFIT_COLUMNS, { count: "exact" }).range(from, from + size - 1);
   if (f.captured) query = query.neq("gallery", "{}");
+  if (f.authorId) query = query.eq("author_id", f.authorId);
   if (f.className) query = query.eq("class_name", f.className);
   if (f.race) query = query.eq("race", f.race);
   if (f.armor) query = query.eq("armor", f.armor);

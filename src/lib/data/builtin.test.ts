@@ -55,6 +55,11 @@ describe("the built-in looks", () => {
     expect(found.length).toBeGreaterThan(0);
   });
 
+  it("has no looks by any account", async () => {
+    const { posts: found } = await repo.listOutfits({ sort: "top", authorId: "00000000-0000-4000-8000-000000000000" });
+    expect(found).toEqual([]);
+  });
+
   it("carries no invented person, vote or date", async () => {
     for (const post of await everything()) {
       expect(post.upvotes, post.title).toBeNull();

@@ -245,6 +245,11 @@ describe("the Supabase adapter", () => {
     expect(requests[0].searchParams.get("gallery")).toBe("neq.{}");
   });
 
+  it("filters to one author", async () => {
+    await repo.listOutfits({ sort: "top", authorId: row.id });
+    expect(requests[0].searchParams.get("author_id")).toBe(`eq.${row.id}`);
+  });
+
   it("treats a page past the end as empty, not as a crash", async () => {
     reply = () => Response.json({ code: "PGRST103", message: "Requested range not satisfiable" }, { status: 416 });
     await expect(repo.listOutfits({ sort: "top", page: 99 })).resolves.toEqual({ posts: [], total: 0 });
