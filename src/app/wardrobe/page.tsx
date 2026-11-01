@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { SearchParams } from "nuqs/server";
 import { BuiltinNotice, HubTabs, HubTitle, listFromSearch, NoLooks, Pager, PublishButton } from "@/components/hub";
 import { OutfitCard } from "@/components/outfit-card";
@@ -18,6 +19,12 @@ export default async function WardrobePage({ searchParams }: { searchParams: Pro
       </div>
       <HubTabs current="/wardrobe" />
       <BuiltinNotice />
+      {filters.author && (
+        <p className="text-sm text-ink-dim">
+          Showing one person&apos;s looks.{" "}
+          <Link href="/wardrobe" className="text-amber underline-offset-2 hover:underline">Show everyone&apos;s</Link>
+        </p>
+      )}
       <OutfitFilters count={total} live={repository.live} />
       {posts.length ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -30,6 +30,7 @@ export async function listFromSearch(searchParams: Promise<SearchParams>, { capt
     armor: f.armor,
     category: f.category,
     tag: f.tag,
+    authorId: f.author,
     captured,
     sort: f.sort,
     page: f.page,
