@@ -44,10 +44,11 @@ export function SignInOptions() {
   );
 }
 
-export function SignInDialog() {
+/** `pending` keeps its place in the bar until we know who is here. */
+export function SignInDialog({ pending = false }: { pending?: boolean }) {
   return (
     <Dialog>
-      <DialogTrigger className="btn btn--ghost btn--sm bar__sign-in">Sign in</DialogTrigger>
+      <DialogTrigger className={`btn btn--ghost btn--sm bar__sign-in ${pending ? "invisible" : ""}`}>Sign in</DialogTrigger>
       <DialogContent className="gap-5 border-line bg-surface p-6">
         <DialogHeader>
           <DialogTitle>Sign in to Eclipse</DialogTitle>

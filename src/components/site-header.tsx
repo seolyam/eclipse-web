@@ -77,7 +77,7 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
   const scrolled = useScrolled();
   const section = useCurrentSection(home);
   const [menu, setMenu] = useState(false);
-  const [account, setAccount] = useAccount(signIn);
+  const [account, setAccount, checking] = useAccount(signIn);
   useAuthNotice();
 
   const isActive = (n: (typeof NAV)[number]) =>
@@ -99,7 +99,7 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
         </nav>
         <div className="bar__actions">
           <SearchTrigger />
-          {account ? <AccountDialog account={account} onNamed={(name) => setAccount({ ...account, name })} /> : signIn && <SignInDialog />}
+          {account ? <AccountDialog account={account} onNamed={(name) => setAccount({ ...account, name })} /> : signIn && <SignInDialog pending={checking} />}
           <a className="btn btn--primary btn--sm" href={DISCORD_URL} target="_blank" rel="noopener" aria-label="Join the Discord">
             <Icon id="i-discord" /><span>Discord</span>
           </a>
@@ -122,7 +122,7 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
                   GitHub
                 </a>
               </nav>
-              {signIn && !account && (
+              {signIn && !account && !checking && (
                 <div className="mx-4 mt-2 border-t border-line pt-4">
                   <SignInOptions />
                 </div>
