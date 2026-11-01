@@ -20,8 +20,6 @@ export function Hero() {
 
   return (
     <section className="hero" id="top">
-      {/* The art fades in from script; without one it should simply be there. */}
-      <noscript><style>{".hero__art { opacity: 1; }"}</style></noscript>
       <HeroStage />
       <div className="wrap hero__text">
         <h1>

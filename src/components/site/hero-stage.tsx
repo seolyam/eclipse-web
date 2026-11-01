@@ -248,18 +248,10 @@ function startLightning(bg: HTMLElement) {
 export function HeroStage() {
   const bg = useRef<HTMLDivElement>(null);
   const plate = useRef<HTMLDivElement>(null);
-  const art = useRef<HTMLImageElement>(null);
   const ash = useRef<HTMLCanvasElement>(null);
   const fx = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const img = art.current!;
-    const show = () => img.classList.add("is-loaded");
-    if (img.complete && img.naturalWidth) show();
-    else {
-      img.addEventListener("load", () => void img.decode().then(show, show), { once: true });
-      img.addEventListener("error", show, { once: true });
-    }
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const stopFx = startFx(bg.current!, ash.current!, fx.current!, plate.current!);
     const stopLightning = startLightning(bg.current!);
@@ -277,7 +269,7 @@ export function HeroStage() {
           <source media={TALL_MEDIA} type="image/webp" sizes={TALL_SIZES} srcSet={tallArt("webp")} />
           <source type="image/avif" sizes={WIDE_SIZES} srcSet={wideArt("avif")} />
           <source type="image/webp" sizes={WIDE_SIZES} srcSet={wideArt("webp")} />
-          <img ref={art} className="hero__art" src="/assets/img/bg-wide-1920.webp" width={1920} height={1080} alt="" fetchPriority="high" decoding="async" />
+          <img className="hero__art" src="/assets/img/bg-wide-1920.webp" width={1920} height={1080} alt="" fetchPriority="high" decoding="async" />
         </picture>
         <div className="hero__rays" />
         <div className="hero__glow" />

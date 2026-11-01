@@ -199,8 +199,12 @@
 }
 .hero__plate picture,
 .hero__art { position: absolute; inset: 0; width: 100%; height: 100%; }
-.hero__art { object-fit: cover; opacity: 0; transition: opacity 1.2s var(--ease); }
-.hero__art.is-loaded { opacity: 1; }
+/* CSS and not script: a fade that waited for hydration held back the page's largest
+   paint. It starts at 0.01 because the browser does not count a paint at opacity 0. */
+.hero__art { object-fit: cover; animation: art-in 1.2s var(--ease) both; }
+@keyframes art-in {
+  from { opacity: 0.01; }
+}
 @keyframes sway {
   from { translate: -0.8% 0; rotate: -0.12deg; }
   to   { translate: 0.8% 0;  rotate: 0.12deg; }
