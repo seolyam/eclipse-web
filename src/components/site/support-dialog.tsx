@@ -13,8 +13,8 @@ const OPEN_DELAY_MS = 1400;
 export const openSupportDialog = () => window.dispatchEvent(new Event(OPEN_EVENT));
 
 /**
- * The official page opens this on every load. There a load is a visit; here the
- * home page is reloaded by every Back from the Wardrobe, so it opens once a session.
+ * The official page opens this on every load. Here it opens by itself once per
+ * browser, and the footer's Donate brings it back for anyone who wants it.
  */
 export function SupportDialog() {
   const ref = useRef<HTMLDialogElement>(null);
@@ -34,9 +34,9 @@ export function SupportDialog() {
   }, []);
 
   useEffect(() => {
-    if (pathname !== "/" || sessionStorage.getItem(SEEN_KEY)) return;
+    if (pathname !== "/" || localStorage.getItem(SEEN_KEY)) return;
     const timer = setTimeout(() => {
-      sessionStorage.setItem(SEEN_KEY, "1");
+      localStorage.setItem(SEEN_KEY, "1");
       window.dispatchEvent(new Event(OPEN_EVENT));
     }, OPEN_DELAY_MS);
     return () => clearTimeout(timer);
