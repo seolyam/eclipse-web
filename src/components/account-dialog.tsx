@@ -1,25 +1,32 @@
 "use client";
 
-import { UserRound } from "lucide-react";
 import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import { saveDisplayName } from "@/app/actions";
+import { Avatar } from "@/components/avatar";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { NAME_MAX } from "@/lib/account";
+import { NAME_MAX, PROVIDER_NAMES } from "@/lib/account";
 import type { Account } from "@/lib/data/types";
+import { DISCORD_URL } from "@/lib/site";
 
-/** The header's signed-in button. Opens by itself until a name is chosen. */
-export function AccountDialog({ account, onNamed }: { account: Account; onNamed: (name: string) => void }) {
+interface AccountDialogProps {
+  account: Account;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onNamed: (name: string) => void;
+}
+
+/** Account settings, opened from the account menu. */
+export function AccountDialog({ account, open, onOpenChange, onNamed }: AccountDialogProps) {
   const unnamed = account.name === null;
-  const [open, setOpen] = useState(unnamed);
+  const provider = account.provider ? PROVIDER_NAMES[account.provider] : null;
   const [name, setName] = useState(account.name ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
@@ -35,26 +42,29 @@ export function AccountDialog({ account, onNamed }: { account: Account; onNamed:
       setError(null);
       setName(r.value);
       onNamed(r.value);
-      setOpen(false);
+      onOpenChange(false);
       toast.success("Name saved");
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="btn btn--ghost btn--sm bar__account" aria-label="Your account">
-        <UserRound className="ico" />
-        <span>{account.name ?? "Choose a name"}</span>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-5 border-line bg-surface p-6">
         <DialogHeader>
-          <DialogTitle>{unnamed ? "Choose your public name" : "Your account"}</DialogTitle>
+          <DialogTitle>{unnamed ? "Choose your public name" : "Settings"}</DialogTitle>
           <DialogDescription>
             {unnamed
               ? "It appears on the looks you publish. Use your Discord name if you have one, so people recognize you."
               : "This name appears on the looks you publish."}
           </DialogDescription>
         </DialogHeader>
+        <div className="flex items-center gap-3">
+          <Avatar account={account} size={44} />
+          <div className="min-w-0 text-sm">
+            <p className="truncate text-ink">{account.name ?? "No name yet"}</p>
+            {provider && <p className="text-ink-faint">Signed in with {provider}</p>}
+          </div>
+        </div>
         <form onSubmit={save} className="flex flex-col gap-3">
           <label htmlFor="account-name" className="text-sm text-ink-dim">Public name</label>
           <Input
@@ -76,6 +86,10 @@ export function AccountDialog({ account, onNamed }: { account: Account; onNamed:
         <form action="/auth/logout" method="post">
           <button type="submit" className="btn btn--ghost btn--block">Sign out</button>
         </form>
+        <p className="text-xs text-ink-faint">
+          To delete your account, ask us on{" "}
+          <a href={DISCORD_URL} target="_blank" rel="noopener" className="text-amber underline-offset-2 hover:underline">Discord</a>.
+        </p>
       </DialogContent>
     </Dialog>
   );

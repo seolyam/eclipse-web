@@ -6,6 +6,8 @@ export const AUTH_COOKIE_PATH = "/auth";
 
 export const NAME_MAX = 32;
 
+export const PROVIDER_NAMES: Record<string, string> = { discord: "Discord", google: "Google" };
+
 const WARDROBE = "/wardrobe";
 const THIS_SITE = "https://this.site.invalid";
 

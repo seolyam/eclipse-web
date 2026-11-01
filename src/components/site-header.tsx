@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AccountDialog } from "@/components/account-dialog";
+import { AccountMenu } from "@/components/account-menu";
 import { SearchTrigger } from "@/components/command-menu";
 import { SignInDialog, SignInOptions } from "@/components/sign-in-dialog";
 import { Icon } from "@/components/site/icons";
@@ -99,7 +99,7 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
         </nav>
         <div className="bar__actions">
           <SearchTrigger />
-          {account ? <AccountDialog account={account} onNamed={(name) => setAccount({ ...account, name })} /> : signIn && <SignInDialog pending={checking} />}
+          {account ? <AccountMenu account={account} onNamed={(name) => setAccount({ ...account, name })} /> : signIn && <SignInDialog pending={checking} />}
           <a className="btn btn--primary btn--sm" href={DISCORD_URL} target="_blank" rel="noopener" aria-label="Join the Discord">
             <Icon id="i-discord" /><span>Discord</span>
           </a>
