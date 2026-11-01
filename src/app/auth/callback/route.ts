@@ -15,7 +15,7 @@ async function finishSignIn(params: URLSearchParams): Promise<"failed" | "cancel
   return "failed";
 }
 
-// Where a Discord or Google sign-in lands. The page to return to is checked again
+// Where a Discord sign-in lands. The page to return to is checked again
 // here: a cookie can be set by hand, and this must not become an open redirect.
 export async function GET(request: NextRequest) {
   const target = new URL(safeNext(request.cookies.get(AUTH_NEXT_COOKIE)?.value), request.nextUrl.origin);

@@ -1,11 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_COOKIE_PATH, AUTH_NEXT_COOKIE, safeNext } from "@/lib/account";
-import {
-  GOOGLE_NONCE_COOKIE,
-  GOOGLE_STATE_COOKIE,
-  googleAuthorizeUrl,
-  googleSignInConfigured,
-} from "@/lib/google-sign-in";
 import { isOAuthProvider, supabaseConfigured } from "@/lib/supabase/config";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -22,16 +16,6 @@ export async function GET(request: NextRequest) {
     path: AUTH_COOKIE_PATH,
     maxAge: TEN_MINUTES,
   } as const;
-
-  if (provider === "google" && googleSignInConfigured()) {
-    const state = crypto.randomUUID();
-    const nonce = crypto.randomUUID();
-    const response = NextResponse.redirect(await googleAuthorizeUrl(origin, state, nonce));
-    response.cookies.set(AUTH_NEXT_COOKIE, safeNext(searchParams.get("next")), remembered);
-    response.cookies.set(GOOGLE_STATE_COOKIE, state, remembered);
-    response.cookies.set(GOOGLE_NONCE_COOKIE, nonce, remembered);
-    return response;
-  }
 
   const db = await createServerSupabase();
   const { data, error } = await db.auth.signInWithOAuth({
