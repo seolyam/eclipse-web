@@ -39,6 +39,21 @@
 .bar__menu { display: none; }
 .bar__account { gap: 0.45rem; }
 .bar__account span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--surface-high);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar svg { width: 60%; height: 60%; }
 @media (max-width: 900px) {
   .bar__inner { grid-template-columns: 1fr auto; }
   .bar__nav { display: none; }
