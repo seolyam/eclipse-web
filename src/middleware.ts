@@ -6,6 +6,15 @@ import { supabaseConfigured, supabaseKey, supabaseUrl } from "@/lib/supabase/con
 // would throw the new token away and sign the visitor out. This runs first and
 // keeps it. A visitor with no Supabase cookie has no session to refresh.
 export async function middleware(request: NextRequest) {
+  // Supabase uses its Site URL, this page, when it does not recognise the address it
+  // was given. Nothing here reads a sign-in's result, so pass it to the page that does.
+  const { pathname, searchParams } = request.nextUrl;
+  if (pathname === "/" && (searchParams.has("code") || searchParams.has("error"))) {
+    const callback = request.nextUrl.clone();
+    callback.pathname = "/auth/callback";
+    return NextResponse.redirect(callback);
+  }
+
   const hasSession = request.cookies.getAll().some(({ name }) => name.startsWith("sb-"));
   if (!supabaseConfigured() || !hasSession) return NextResponse.next({ request });
 
