@@ -1,17 +1,24 @@
 import { createClient } from "@supabase/supabase-js";
+import sharp from "sharp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LOOKS_PER_PAGE } from "@/lib/domain";
 
 vi.mock("server-only", () => ({}));
+vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://stub.supabase.co");
 
 // The real client over a stubbed network, so these read what really goes to
 // PostgREST, without needing a live project.
 const requests: URL[] = [];
-let reply: () => Response = () => Response.json([]);
+const removed: string[] = [];
+let reply: (url: URL) => Response = () => Response.json([]);
 
-const stubFetch: typeof fetch = async (input) => {
-  requests.push(new URL(input instanceof Request ? input.url : String(input)));
-  return reply();
+const stubFetch: typeof fetch = async (input, init) => {
+  const url = new URL(input instanceof Request ? input.url : String(input));
+  requests.push(url);
+  if (init?.method === "DELETE" && url.pathname.startsWith("/storage/")) {
+    removed.push(...(JSON.parse(String(init.body)) as { prefixes: string[] }).prefixes);
+  }
+  return reply(url);
 };
 
 let user: { id: string } | null = null;
@@ -27,6 +34,9 @@ vi.mock("@/lib/supabase/server", () => ({
 const { supabaseRepository: repo } = await import("./supabase");
 const { builtinRepository } = await import("./builtin");
 
+const SHOT = "33333333-3333-4333-8333-333333333333/44444444-4444-4444-8444-444444444444.avif";
+const THUMB = SHOT.replace(".avif", "-thumb.avif");
+
 const row = {
   id: "11111111-1111-4111-8111-111111111111",
   title: "A real post",
@@ -38,12 +48,14 @@ const row = {
   tags: [],
   upvotes: 3,
   created_at: "2026-11-01T00:00:00.000Z",
-  gallery: ["https://x.test/a.png"],
+  author_id: "33333333-3333-4333-8333-333333333333",
+  gallery: [SHOT],
   profiles: { display_name: "Kira", verified: true },
 };
 
 beforeEach(() => {
   requests.length = 0;
+  removed.length = 0;
   reply = () => Response.json([]);
   user = null;
 });
@@ -59,15 +71,21 @@ describe("the signed-in account", () => {
 
   it("reads the public name", async () => {
     user = { id: row.id };
-    reply = () => Response.json([{ display_name: "Kira" }]);
-    expect(await repo.getAccount()).toEqual({ name: "Kira" });
+    reply = () => Response.json([{ display_name: "Kira", moderators: null }]);
+    expect(await repo.getAccount()).toEqual({ id: row.id, name: "Kira", moderator: false });
     expect(requests[0].searchParams.get("id")).toBe(`eq.${row.id}`);
   });
 
   it("has no name until one is chosen", async () => {
     user = { id: row.id };
-    reply = () => Response.json([{ display_name: null }]);
-    expect(await repo.getAccount()).toEqual({ name: null });
+    reply = () => Response.json([{ display_name: null, moderators: null }]);
+    expect(await repo.getAccount()).toEqual({ id: row.id, name: null, moderator: false });
+  });
+
+  it("knows a moderator", async () => {
+    user = { id: row.id };
+    reply = () => Response.json([{ display_name: "Kira", moderators: { user_id: row.id } }]);
+    expect(await repo.getAccount()).toEqual({ id: row.id, name: "Kira", moderator: true });
   });
 
   it("saves a name to the signed-in profile only", async () => {
@@ -86,6 +104,104 @@ describe("the signed-in account", () => {
     user = { id: row.id };
     reply = failWith("23505", 409);
     expect(await repo.setDisplayName("Kira")).toEqual({ ok: false, error: "That name is taken. Try another." });
+  });
+});
+
+describe("a post from the database", () => {
+  it("links its screenshots and names its author", async () => {
+    reply = () => Response.json(row);
+    const post = await repo.getOutfit(row.id);
+    expect(post?.gallery).toEqual([`https://stub.supabase.co/storage/v1/object/public/showcase/${SHOT}`]);
+    expect(post?.authorId).toBe(row.author_id);
+  });
+});
+
+describe("screenshots", () => {
+  const stored = () => Response.json({ Key: "showcase/x", Id: "x" });
+  const refused = (message: string) => Response.json({ statusCode: "403", error: "Unauthorized", message }, { status: 400 });
+  const screenshot = async () => {
+    const png = await sharp({ create: { width: 64, height: 36, channels: 3, background: "#403020" } }).png().toBuffer();
+    return new File([new Uint8Array(png)], "capture.png", { type: "image/png" });
+  };
+
+  it("stores a full file and its thumbnail in the person's folder", async () => {
+    user = { id: row.author_id };
+    reply = stored;
+    const result = await repo.uploadScreenshot(await screenshot());
+    if (!result.ok) throw new Error(result.error);
+    expect(result.value).toMatch(new RegExp(`^${row.author_id}/[0-9a-f-]{36}\\.avif$`));
+    expect(requests.map((r) => r.pathname)).toEqual([
+      `/storage/v1/object/showcase/${result.value.replace(".avif", "-thumb.avif")}`,
+      `/storage/v1/object/showcase/${result.value}`,
+    ]);
+  });
+
+  it("needs a session, and does no work without one", async () => {
+    expect(await repo.uploadScreenshot(await screenshot())).toEqual({ ok: false, error: "Sign in to upload." });
+    expect(requests).toHaveLength(0);
+  });
+
+  it("says so when the file is not an image", async () => {
+    user = { id: row.author_id };
+    const result = await repo.uploadScreenshot(new File(["not an image"], "a.png", { type: "image/png" }));
+    expect(result).toEqual({ ok: false, error: "That file could not be read as an image." });
+    expect(requests).toHaveLength(0);
+  });
+
+  it("explains the limit when the database refuses another", async () => {
+    user = { id: row.author_id };
+    reply = () => refused("new row violates row-level security policy");
+    expect(await repo.uploadScreenshot(await screenshot())).toEqual({
+      ok: false,
+      error: "You have 60 screenshots stored. Delete a look to free some up.",
+    });
+  });
+
+  it("leaves no thumbnail behind when the full file is refused", async () => {
+    user = { id: row.author_id };
+    let uploads = 0;
+    reply = (url) => {
+      if (!url.pathname.includes(row.author_id)) return Response.json([]);
+      return ++uploads === 1 ? stored() : refused("new row violates row-level security policy");
+    };
+    const result = await repo.uploadScreenshot(await screenshot());
+    expect(result.ok).toBe(false);
+    expect(removed).toHaveLength(1);
+    expect(removed[0]).toMatch(/-thumb\.avif$/);
+  });
+
+  it("removes a file and its thumbnail together", async () => {
+    user = { id: row.author_id };
+    expect(await repo.removeScreenshot(SHOT)).toEqual({ ok: true, value: SHOT });
+    expect(removed).toEqual([SHOT, THUMB]);
+  });
+});
+
+describe("deleting a look", () => {
+  it("removes the look and every file it held", async () => {
+    user = { id: row.author_id };
+    reply = (url) => Response.json(url.pathname.startsWith("/rest/") ? [{ gallery: [SHOT] }] : []);
+    expect(await repo.deleteOutfit(row.id)).toEqual({ ok: true, value: row.id });
+    expect(requests[0].searchParams.get("id")).toBe(`eq.${row.id}`);
+    expect(removed).toEqual([SHOT, THUMB]);
+  });
+
+  // RLS answers a refused delete with no rows, not an error.
+  it("says so when the database deleted nothing, and keeps the files", async () => {
+    user = { id: "55555555-5555-4555-8555-555555555555" };
+    expect(await repo.deleteOutfit(row.id)).toEqual({ ok: false, error: "You can only delete your own looks." });
+    expect(removed).toEqual([]);
+  });
+
+  it("needs a session", async () => {
+    expect((await repo.deleteOutfit(row.id)).ok).toBe(false);
+    expect(requests).toHaveLength(0);
+  });
+
+  it("cannot delete a built-in set", async () => {
+    user = { id: row.author_id };
+    expect((await repo.deleteOutfit("set-1074")).ok).toBe(false);
+    expect(requests).toHaveLength(0);
   });
 });
 

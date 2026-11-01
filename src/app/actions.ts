@@ -8,6 +8,7 @@ import {
 } from "@/lib/codec/schema";
 import { decodeWorld, OUTFIT_WORLD_TAG } from "@/lib/codec/world";
 import { repository } from "@/lib/data";
+import { UPLOAD_PATH } from "@/lib/screenshots";
 
 export type InspectResult =
   | { kind: "outfit"; outfit: Outfit; resolved: ResolvedOutfit; warnings: string[] }
@@ -65,6 +66,21 @@ export async function uploadScreenshot(form: FormData) {
   }
   if (file.size > MAX_SCREENSHOT_BYTES) return { ok: false as const, error: "Keep each screenshot under 4 MB." };
   return repository.uploadScreenshot(file);
+}
+
+/** A screenshot taken back off the form before publishing. Its slot is freed too. */
+export async function removeScreenshot(path: string) {
+  if (!UPLOAD_PATH.test(path)) return { ok: false as const, error: "That is not an uploaded screenshot." };
+  return repository.removeScreenshot(path);
+}
+
+export async function deleteLook(id: string) {
+  const r = await repository.deleteOutfit(id);
+  if (r.ok) {
+    revalidateHub();
+    revalidatePath(`/wardrobe/${id}`);
+  }
+  return r;
 }
 
 export async function saveDisplayName(name: string) {

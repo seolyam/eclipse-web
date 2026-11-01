@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { thumbOf } from "@/lib/screenshots";
 
 /**
  * The post's studio captures, one at a time. A post with none shows its Narcissus
@@ -67,7 +68,7 @@ export function StudioGallery({ images, backdrop, title }: { images: string[]; b
               aria-current={i === index}
               onClick={() => setIndex(i)}
             >
-              <Image src={src} alt="" fill unoptimized sizes="3rem" className="object-cover" />
+              <Image src={thumbOf(src)} alt="" fill unoptimized sizes="3rem" className="object-cover" />
             </button>
           ))}
         </div>

@@ -8,6 +8,7 @@ import { resolveOutfit, type ResolvedOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
 import type { OutfitPost } from "@/lib/data/types";
 import { ARMOR_LABEL, RACE_LABEL, VISIBLE_SLOTS } from "@/lib/domain";
+import { thumbOf } from "@/lib/screenshots";
 import { backdropFor, classArt, raceArt } from "@/lib/wow-assets";
 
 const resolve = (post: OutfitPost) => {
@@ -77,7 +78,7 @@ export function OutfitPoster({ post }: { post: OutfitPost }) {
   return (
     <article className="relative">
       <Link href={`/wardrobe/${post.id}`} className="poster" aria-label={`Open ${post.title}`}>
-        <Image src={post.gallery[0]} alt="" fill unoptimized sizes="(max-width: 1100px) 72vw, 22vw" className="poster__art" />
+        <Image src={thumbOf(post.gallery[0])} alt="" fill unoptimized sizes="(max-width: 1100px) 72vw, 22vw" className="poster__art" />
         <div className="poster__body">
           <div className="poster__rings">
             {pieces(resolved).slice(0, 5).map((p) => (

@@ -1,8 +1,10 @@
 import "server-only";
 import { LOOKS_PER_PAGE, type ArmorType, type Category, type ClassName, type WorldGroup, type WorldLookName } from "@/lib/domain";
+import { SCREENSHOT_BUCKET, screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { builtinRepository } from "./builtin";
-import type { OutfitFilters, OutfitList, OutfitPost, Repository, WorldFilters, WorldPreset } from "./types";
+import { compressScreenshot, SCREENSHOT_EXTENSION, SCREENSHOT_TYPE } from "./compress";
+import type { OutfitFilters, OutfitList, OutfitPost, Repository, WorldFilters, WorldPreset, WriteResult } from "./types";
 
 // The same seam as builtin.ts, over supabase/migrations. RLS is what protects the
 // rows: this file holds no rule the database does not enforce.
@@ -18,6 +20,7 @@ interface OutfitRow {
   tags: string[];
   upvotes: number;
   created_at: string;
+  author_id: string;
   gallery: string[];
   profiles: { display_name: string | null; verified: boolean } | null;
 }
@@ -36,12 +39,13 @@ interface PresetRow {
 // The hint is required: outfit_votes also joins outfits to profiles, and PostgREST
 // refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,gallery,profiles!outfits_author_id_fkey(display_name,verified)";
+  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)";
 
 const toPost = (r: OutfitRow): OutfitPost => ({
   id: r.id,
   title: r.title,
   author: r.profiles?.display_name ?? null,
+  authorId: r.author_id,
   authorVerified: r.profiles?.verified ?? false,
   code: r.code,
   className: r.class_name,
@@ -51,7 +55,7 @@ const toPost = (r: OutfitRow): OutfitPost => ({
   tags: r.tags,
   upvotes: r.upvotes,
   createdAt: r.created_at,
-  gallery: r.gallery,
+  gallery: r.gallery.map(screenshotUrl),
 });
 
 // A search term goes into PostgREST's filter text, where , ( ) are syntax.
@@ -67,9 +71,18 @@ const RANGE_NOT_SATISFIABLE = "PGRST103";
 const SIGNED_OUT = "28000";
 // What Postgres answers when RLS refuses a row: here, an author with no name yet.
 const REFUSED_BY_POLICY = "42501";
-// The errcode limit_publishing raises (supabase/migrations/0003_names_and_limits.sql).
+// The errcode limit_publishing raises (the names_and_limits migration).
 const PUBLISHING_LIMIT = "EC001";
 const UNIQUE_VIOLATION = "23505";
+
+// Storage reports a refused upload by message. Past the folder check, which the
+// site's own path always passes, the policy's only reason to refuse is the limit.
+const uploadError = (message: string): WriteResult<string> => ({
+  ok: false,
+  error: message.includes("row-level security")
+    ? "You have 60 screenshots stored. Delete a look to free some up."
+    : "That screenshot could not be stored. Try again.",
+});
 const SEARCH_INDEX_SIZE = 200;
 
 async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
@@ -148,18 +161,54 @@ export const supabaseRepository: Repository = {
     const db = await createServerSupabase();
     const { data: auth } = await db.auth.getUser();
     if (!auth.user) return { ok: false, error: "Sign in to upload." };
+    const compressed = await compressScreenshot(Buffer.from(await file.arrayBuffer()));
+    if (!compressed) return { ok: false, error: "That file could not be read as an image." };
     // The first folder is the owner: the bucket's RLS policy checks exactly this.
-    const path = `${auth.user.id}/${crypto.randomUUID()}.${file.type.split("/")[1]}`;
-    const { error } = await db.storage.from("showcase").upload(path, file, { contentType: file.type });
-    if (error) return { ok: false, error: "That screenshot could not be stored. Try again." };
-    return { ok: true, value: db.storage.from("showcase").getPublicUrl(path).data.publicUrl };
+    const path = `${auth.user.id}/${crypto.randomUUID()}.${SCREENSHOT_EXTENSION}`;
+    const files = db.storage.from(SCREENSHOT_BUCKET);
+    // Keeps Storage's one-hour cache. The Free plan cannot purge the CDN, so a longer
+    // one would keep serving an image a moderator had deleted.
+    const store = (to: string, body: Buffer) => files.upload(to, body, { contentType: SCREENSHOT_TYPE });
+    // The thumbnail first: a post can only name the full file, so a failure here
+    // can never leave a post pointing at half a screenshot.
+    const thumb = await store(thumbOf(path), compressed.thumb);
+    if (thumb.error) return uploadError(thumb.error.message);
+    const full = await store(path, compressed.full);
+    if (full.error) {
+      await files.remove([thumbOf(path)]);
+      return uploadError(full.error.message);
+    }
+    return { ok: true, value: path };
+  },
+  async removeScreenshot(path) {
+    const db = await createServerSupabase();
+    const { error } = await db.storage.from(SCREENSHOT_BUCKET).remove([path, thumbOf(path)]);
+    if (error) return { ok: false, error: "That screenshot could not be removed." };
+    return { ok: true, value: path };
+  },
+  async deleteOutfit(id) {
+    if (!UUID.test(id)) return { ok: false, error: "That look cannot be deleted." };
+    const db = await createServerSupabase();
+    const { data: auth } = await db.auth.getUser();
+    if (!auth.user) return { ok: false, error: "Sign in to delete a look." };
+    const { data, error } = await db.from("outfits").delete().eq("id", id).select("gallery");
+    if (error) return { ok: false, error: "That look could not be deleted. Try again." };
+    // RLS answers a delete it refuses with no rows, not with an error.
+    if (!data.length) return { ok: false, error: "You can only delete your own looks." };
+    const paths = (data[0].gallery as string[]).flatMap((path) => [path, thumbOf(path)]);
+    if (paths.length) await db.storage.from(SCREENSHOT_BUCKET).remove(paths);
+    return { ok: true, value: id };
   },
   async getAccount() {
     const db = await createServerSupabase();
     const { data: auth } = await db.auth.getUser();
     if (!auth.user) return null;
-    const { data } = await db.from("profiles").select("display_name").eq("id", auth.user.id).maybeSingle();
-    return { name: data?.display_name ?? null };
+    const { data } = await db
+      .from("profiles")
+      .select("display_name,moderators(user_id)")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+    return { id: auth.user.id, name: data?.display_name ?? null, moderator: Boolean(data?.moderators) };
   },
   async setDisplayName(name) {
     const db = await createServerSupabase();

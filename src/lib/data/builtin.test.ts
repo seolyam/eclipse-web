@@ -150,14 +150,15 @@ describe("submissions", () => {
     expect(submitOutfitSchema.safeParse({ ...base, code: "hello" }).success).toBe(false);
     expect(submitOutfitSchema.safeParse({ ...base, code: "ECA1:c2xvdCAwIDEK" }).success).toBe(true);
     expect(submitOutfitSchema.safeParse({ ...base, title: "a", code: "ECA1:c2xvdCAwIDEK" }).success).toBe(false);
-    expect(
-      submitOutfitSchema.safeParse({ ...base, code: "ECA1:c2xvdCAwIDEK", gallery: ["http://x.test/a.png"] }).success,
-    ).toBe(false);
-    expect(
-      submitOutfitSchema.safeParse({ ...base, code: "ECA1:c2xvdCAwIDEK", gallery: Array(7).fill("https://x.test/a.png") }).success,
-    ).toBe(false);
+    const upload = "11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222.avif";
     expect(
       submitOutfitSchema.safeParse({ ...base, code: "ECA1:c2xvdCAwIDEK", gallery: ["https://x.test/a.png"] }).success,
+    ).toBe(false);
+    expect(
+      submitOutfitSchema.safeParse({ ...base, code: "ECA1:c2xvdCAwIDEK", gallery: Array(7).fill(upload) }).success,
+    ).toBe(false);
+    expect(
+      submitOutfitSchema.safeParse({ ...base, code: "ECA1:c2xvdCAwIDEK", gallery: [upload] }).success,
     ).toBe(true);
   });
 });

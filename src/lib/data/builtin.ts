@@ -39,6 +39,7 @@ function setLook(set: SetRow): OutfitPost {
     id: `set-${set.id}`,
     title: set.name,
     author: null,
+    authorId: null,
     authorVerified: false,
     code: encodeOutfit(outfit),
     className: null,
@@ -64,6 +65,7 @@ function crystalScholar(): OutfitPost {
     id: "crystal-scholar",
     title: "Crystal Scholar on a yellow ottuk",
     author: "Eclipse",
+    authorId: null,
     authorVerified: false,
     code: encodeOutfit(outfit),
     className: null,
@@ -168,6 +170,12 @@ export const builtinRepository: Repository = {
     return { ok: false, error: NOT_LIVE };
   },
   async uploadScreenshot() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async removeScreenshot() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async deleteOutfit() {
     return { ok: false, error: NOT_LIVE };
   },
   async getAccount() {

@@ -48,3 +48,6 @@ __pycache__/
 /GOALS.md
 /TASKS.md
 /documentations/
+
+# Supabase CLI
+supabase/.temp/

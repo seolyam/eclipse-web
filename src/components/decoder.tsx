@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { inspectCode, publishOutfit, uploadScreenshot, type InspectResult } from "@/app/actions";
+import { inspectCode, publishOutfit, removeScreenshot, uploadScreenshot, type InspectResult } from "@/app/actions";
 import { CopyButton } from "@/components/copy-button";
 import { LoadoutFacts, SlotList } from "@/components/outfit-breakdown";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { encodeOutfit } from "@/lib/codec/outfit";
-import { MAX_SCREENSHOTS, SCREENSHOT_TYPES } from "@/lib/codec/schema";
+import { MAX_SCREENSHOT_BYTES, MAX_SCREENSHOTS, SCREENSHOT_TYPES } from "@/lib/codec/schema";
 import { WORLD_MODES, WORLD_ROWS } from "@/lib/codec/world";
 import { ARMOR_LABEL, ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL, toCss, type ArmorType, type Category, type ClassName } from "@/lib/domain";
+import { screenshotUrl, thumbOf } from "@/lib/screenshots";
+import { shrinkForUpload } from "@/lib/shrink-upload";
 
 type OutfitResult = Extract<InspectResult, { kind: "outfit" }>;
 type WorldResult = Extract<InspectResult, { kind: "world" }>;
@@ -47,25 +49,19 @@ function Choice<T extends string>({
   );
 }
 
-/** The captures a post will carry, the cover first: pasted links, or uploads. */
+/** The captures a post will carry, as storage paths, the cover first. */
 function Screenshots({
   images, onChange,
 }: {
   images: string[];
   onChange: (images: string[]) => void;
 }) {
-  const [link, setLink] = useState("");
   const [uploading, startUpload] = useTransition();
   const full = images.length >= MAX_SCREENSHOTS;
 
-  function addLink() {
-    const url = link.trim();
-    if (!url.startsWith("https://")) {
-      toast.error("Use an https image link.");
-      return;
-    }
-    if (!images.includes(url)) onChange([...images, url]);
-    setLink("");
+  function remove(path: string) {
+    onChange(images.filter((x) => x !== path));
+    void removeScreenshot(path);
   }
 
   function upload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -75,7 +71,7 @@ function Screenshots({
       const added: string[] = [];
       for (const file of files) {
         const form = new FormData();
-        form.set("file", file);
+        form.set("file", await shrinkForUpload(file, MAX_SCREENSHOT_BYTES));
         const r = await uploadScreenshot(form);
         if (r.ok) added.push(r.value);
         else toast.error(r.error);
@@ -86,18 +82,18 @@ function Screenshots({
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor="outfit-screenshot" className="text-xs text-ink-dim">
+      <p className="text-xs text-ink-dim">
         Screenshots from the Showcase studio, up to {MAX_SCREENSHOTS}. The first is the cover.
-      </label>
+      </p>
       {images.length > 0 && (
         <ul className="flex flex-wrap gap-2">
-          {images.map((src, i) => (
-            <li key={src} className="relative size-16 overflow-hidden rounded-md border border-line">
-              <Image src={src} alt={`Screenshot ${i + 1}`} fill unoptimized sizes="4rem" className="object-cover" />
+          {images.map((path, i) => (
+            <li key={path} className="relative size-16 overflow-hidden rounded-md border border-line">
+              <Image src={thumbOf(screenshotUrl(path))} alt={`Screenshot ${i + 1}`} fill unoptimized sizes="4rem" className="object-cover" />
               <button
                 type="button"
                 aria-label={`Remove screenshot ${i + 1}`}
-                onClick={() => onChange(images.filter((x) => x !== src))}
+                onClick={() => remove(path)}
                 className="absolute top-0.5 right-0.5 rounded-full bg-black/70 p-0.5 text-ink"
               >
                 <X className="size-3" />
@@ -106,23 +102,6 @@ function Screenshots({
           ))}
         </ul>
       )}
-      <div className="flex gap-2">
-        <Input
-          id="outfit-screenshot"
-          type="url"
-          value={link}
-          disabled={full}
-          placeholder="https://"
-          onChange={(e) => setLink(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
-            e.preventDefault();
-            addLink();
-          }}
-          className="bg-surface"
-        />
-        <Button type="button" variant="outline" disabled={full || !link.trim()} onClick={addLink}>Add</Button>
-      </div>
       <label className="pill self-start">
         {uploading && <Loader2 className="size-3.5 animate-spin" />}
         Upload from this computer

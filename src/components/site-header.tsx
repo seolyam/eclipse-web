@@ -11,8 +11,8 @@ import { SearchTrigger } from "@/components/command-menu";
 import { SignInDialog, SignInOptions } from "@/components/sign-in-dialog";
 import { Icon } from "@/components/site/icons";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import type { Account } from "@/lib/data/types";
 import { DISCORD_URL, GITHUB_URL } from "@/lib/site";
+import { useAccount } from "@/lib/use-account";
 
 // The logo is the way home, and the hub's tabs reach Showcase and World.
 const NAV = [
@@ -49,25 +49,6 @@ function useScrolled() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
   return scrolled;
-}
-
-// The session cookie itself, not the short-lived ones a sign-in leaves on its way out.
-const SESSION_COOKIE = /(?:^|; )sb-[^=]+-auth-token(?:\.0)?=/;
-
-/** Who is signed in. Visitors with no session cookie cost no request. */
-function useAccount(enabled: boolean) {
-  const state = useState<Account | null>(null);
-  const setAccount = state[1];
-  useEffect(() => {
-    if (!enabled || !SESSION_COOKIE.test(document.cookie)) return;
-    const request = new AbortController();
-    fetch("/api/account", { signal: request.signal })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body: { account: Account | null } | null) => setAccount(body?.account ?? null))
-      .catch(() => {});
-    return () => request.abort();
-  }, [enabled, setAccount]);
-  return state;
 }
 
 const AUTH_NOTICES: Record<string, string> = {
@@ -117,7 +98,7 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
         </nav>
         <div className="bar__actions">
           <SearchTrigger />
-          {account ? <AccountDialog account={account} onNamed={(name) => setAccount({ name })} /> : signIn && <SignInDialog />}
+          {account ? <AccountDialog account={account} onNamed={(name) => setAccount({ ...account, name })} /> : signIn && <SignInDialog />}
           <a className="btn btn--primary btn--sm" href={DISCORD_URL} target="_blank" rel="noopener" aria-label="Join the Discord">
             <Icon id="i-discord" /><span>Discord</span>
           </a>

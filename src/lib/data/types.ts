@@ -6,6 +6,7 @@ export interface OutfitPost {
   title: string;
   /** Who published it. Null on a set from the game's catalogue: nobody did. */
   author: string | null;
+  authorId: string | null;
   authorVerified: boolean;
   /** The ECA1: code exactly as published. Everything else is about it. */
   code: string;
@@ -18,7 +19,7 @@ export interface OutfitPost {
   /** Null where nobody can vote: the site never shows a count it did not record. */
   upvotes: number | null;
   createdAt: string | null;
-  /** Studio screenshots, the cover first. The code holds no pictures. */
+  /** Links to studio screenshots, the cover first. The code holds no pictures. */
   gallery: string[];
 }
 
@@ -69,8 +70,11 @@ export interface SearchEntry {
 }
 
 export interface Account {
+  id: string;
   /** Null until they choose one: Google's profile name is a real name. */
   name: string | null;
+  /** May delete any look, not only their own. */
+  moderator: boolean;
 }
 
 export type WriteResult<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -84,8 +88,11 @@ export interface Repository {
   searchIndex(): Promise<SearchEntry[]>;
   createOutfit(input: ParsedOutfit): Promise<WriteResult<OutfitPost>>;
   upvote(id: string): Promise<WriteResult<number>>;
-  /** Stores a screenshot and returns its public https link. */
+  /** Compresses and stores a screenshot, and returns its storage path. */
   uploadScreenshot(file: File): Promise<WriteResult<string>>;
+  removeScreenshot(path: string): Promise<WriteResult<string>>;
+  /** Removes a look and its screenshots: the author's own, or any for a moderator. */
+  deleteOutfit(id: string): Promise<WriteResult<string>>;
   listWorldPresets(filters: WorldFilters): Promise<WorldPreset[]>;
   /** Who is signed in, or null for a visitor. */
   getAccount(): Promise<Account | null>;

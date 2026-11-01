@@ -1,5 +1,6 @@
 import { BadgeCheck } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
+import { DeleteLook } from "@/components/delete-look";
 import { LoadoutFacts } from "@/components/outfit-breakdown";
 import { StudioPane } from "@/components/studio/studio-pane";
 import { UpvoteButton } from "@/components/upvote-button";
@@ -34,6 +35,7 @@ export function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost; headi
           {post.author ?? "Item set"}
           {post.authorVerified && <BadgeCheck className="size-3.5 text-amber" strokeWidth={1.5} aria-label="Verified" />}
         </p>
+        {post.authorId && <DeleteLook id={post.id} authorId={post.authorId} />}
       </div>
 
       <ul className="flex flex-wrap gap-1">

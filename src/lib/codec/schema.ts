@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { NAME_MAX } from "@/lib/account";
 import { ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL } from "@/lib/domain";
+import { UPLOAD_PATH } from "@/lib/screenshots";
 import { decodeOutfit } from "./outfit";
 import { decodeWorld } from "./world";
 
@@ -19,7 +20,9 @@ export const MAX_SCREENSHOTS = 6;
 export const MAX_SCREENSHOT_BYTES = 4 * 1024 * 1024;
 export const SCREENSHOT_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
-const httpsImage = z.url().refine((u) => u.startsWith("https://"), "Use an https image link.");
+// A post only shows files uploaded here: an outside link would show unmoderated
+// images and tell another site's owner who is looking at them.
+const upload = z.string().regex(UPLOAD_PATH, "Upload screenshots from this computer.");
 
 export const submitOutfitSchema = z.object({
   title: z.string().trim().min(3, "Give it a title of at least 3 letters.").max(80),
@@ -29,7 +32,7 @@ export const submitOutfitSchema = z.object({
   race: z.enum(Object.keys(RACE_LABEL) as [string, ...string[]]).optional(),
   category: z.enum(CATEGORIES),
   tags: z.array(z.string().trim().min(1).max(24)).max(6),
-  gallery: z.array(httpsImage).max(MAX_SCREENSHOTS, `Keep it to ${MAX_SCREENSHOTS} screenshots.`).default([]),
+  gallery: z.array(upload).max(MAX_SCREENSHOTS, `Keep it to ${MAX_SCREENSHOTS} screenshots.`).default([]),
 });
 export type SubmitOutfit = z.input<typeof submitOutfitSchema>;
 export type ParsedOutfit = z.output<typeof submitOutfitSchema>;
