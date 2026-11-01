@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NAME_MAX } from "@/lib/account";
 import { ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL } from "@/lib/domain";
 import { decodeOutfit } from "./outfit";
 import { decodeWorld } from "./world";
@@ -32,3 +33,12 @@ export const submitOutfitSchema = z.object({
 });
 export type SubmitOutfit = z.input<typeof submitOutfitSchema>;
 export type ParsedOutfit = z.output<typeof submitOutfitSchema>;
+
+// Letters and numbers from any script, with the marks that combine with them.
+// Invisible characters are out: they make two different names look the same.
+export const displayNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Use at least 2 characters.")
+  .max(NAME_MAX, `Keep it to ${NAME_MAX} characters.`)
+  .regex(/^[\p{L}\p{N}][\p{L}\p{M}\p{N} ._'-]*$/u, "Use letters, numbers, spaces and . _ ' - only.");

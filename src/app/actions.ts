@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { resolveOutfit, resolveWorld, type ResolvedOutfit, type ResolvedWorldPlace } from "@/lib/catalog";
 import { decodeOutfit, OUTFIT_TAG, type Outfit } from "@/lib/codec/outfit";
 import {
-  MAX_SCREENSHOT_BYTES, SCREENSHOT_TYPES, submitOutfitSchema, type SubmitOutfit,
+  displayNameSchema, MAX_SCREENSHOT_BYTES, SCREENSHOT_TYPES, submitOutfitSchema, type SubmitOutfit,
 } from "@/lib/codec/schema";
 import { decodeWorld, OUTFIT_WORLD_TAG } from "@/lib/codec/world";
 import { repository } from "@/lib/data";
@@ -65,6 +65,15 @@ export async function uploadScreenshot(form: FormData) {
   }
   if (file.size > MAX_SCREENSHOT_BYTES) return { ok: false as const, error: "Keep each screenshot under 4 MB." };
   return repository.uploadScreenshot(file);
+}
+
+export async function saveDisplayName(name: string) {
+  const parsed = displayNameSchema.safeParse(name);
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message };
+  const r = await repository.setDisplayName(parsed.data);
+  // Published looks show this name.
+  if (r.ok) revalidateHub();
+  return r;
 }
 
 export async function upvoteOutfit(id: string) {

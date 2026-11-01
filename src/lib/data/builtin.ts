@@ -170,6 +170,12 @@ export const builtinRepository: Repository = {
   async uploadScreenshot() {
     return { ok: false, error: NOT_LIVE };
   },
+  async getAccount() {
+    return null;
+  },
+  async setDisplayName() {
+    return { ok: false, error: NOT_LIVE };
+  },
   async listWorldPresets(f: WorldFilters) {
     return allPresets().filter(
       (p) => (!f.group || p.group === f.group) && (!f.look || p.look === f.look),

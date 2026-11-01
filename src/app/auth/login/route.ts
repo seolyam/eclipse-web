@@ -1,15 +1,28 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { supabaseConfigured } from "@/lib/supabase/config";
+import { AUTH_COOKIE_PATH, AUTH_NEXT_COOKIE, safeNext } from "@/lib/account";
+import { isOAuthProvider, supabaseConfigured } from "@/lib/supabase/config";
 import { createServerSupabase } from "@/lib/supabase/server";
 
+const TEN_MINUTES = 600;
+
 export async function GET(request: NextRequest) {
-  const { origin } = request.nextUrl;
-  if (!supabaseConfigured()) return NextResponse.redirect(new URL("/wardrobe", origin));
+  const { origin, protocol, searchParams } = request.nextUrl;
+  const provider = searchParams.get("provider");
+  if (!supabaseConfigured() || !isOAuthProvider(provider)) return NextResponse.redirect(new URL("/wardrobe", origin));
   const db = await createServerSupabase();
   const { data, error } = await db.auth.signInWithOAuth({
-    provider: "discord",
+    provider,
     options: { redirectTo: `${origin}/auth/callback` },
   });
-  if (error || !data.url) return NextResponse.redirect(new URL("/wardrobe", origin));
-  return NextResponse.redirect(data.url);
+  if (error || !data.url) return NextResponse.redirect(new URL("/wardrobe?auth=failed", origin));
+  const response = NextResponse.redirect(data.url);
+  // Supabase matches redirectTo against an allow list, so the page goes in a cookie.
+  response.cookies.set(AUTH_NEXT_COOKIE, safeNext(searchParams.get("next")), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: protocol === "https:",
+    path: AUTH_COOKIE_PATH,
+    maxAge: TEN_MINUTES,
+  });
+  return response;
 }

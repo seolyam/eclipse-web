@@ -19,7 +19,7 @@ interface OutfitRow {
   upvotes: number;
   created_at: string;
   gallery: string[];
-  profiles: { display_name: string; verified: boolean } | null;
+  profiles: { display_name: string | null; verified: boolean } | null;
 }
 
 interface PresetRow {
@@ -30,7 +30,7 @@ interface PresetRow {
   code: string;
   places: string[];
   place_group: WorldGroup;
-  profiles: { display_name: string } | null;
+  profiles: { display_name: string | null } | null;
 }
 
 // The hint is required: outfit_votes also joins outfits to profiles, and PostgREST
@@ -65,6 +65,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RANGE_NOT_SATISFIABLE = "PGRST103";
 // The errcode upvote_outfit raises for a signed-out caller.
 const SIGNED_OUT = "28000";
+// What Postgres answers when RLS refuses a row: here, an author with no name yet.
+const REFUSED_BY_POLICY = "42501";
+// The errcode limit_publishing raises (supabase/migrations/0003_names_and_limits.sql).
+const PUBLISHING_LIMIT = "EC001";
+const UNIQUE_VIOLATION = "23505";
 const SEARCH_INDEX_SIZE = 200;
 
 async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
@@ -110,7 +115,7 @@ export const supabaseRepository: Repository = {
   async createOutfit(input) {
     const db = await createServerSupabase();
     const { data: auth } = await db.auth.getUser();
-    if (!auth.user) return { ok: false, error: "Sign in with Discord to publish." };
+    if (!auth.user) return { ok: false, error: "Sign in to publish." };
     const { data, error } = await db
       .from("outfits")
       .insert({
@@ -126,6 +131,8 @@ export const supabaseRepository: Repository = {
       })
       .select(OUTFIT_COLUMNS)
       .single();
+    if (error?.code === REFUSED_BY_POLICY) return { ok: false, error: "Choose a public name first, from the account button." };
+    if (error?.code === PUBLISHING_LIMIT) return { ok: false, error: "That is 20 looks this hour. Try again later." };
     if (error) return { ok: false, error: "That outfit could not be saved. Try again." };
     return { ok: true, value: toPost(data as unknown as OutfitRow) };
   },
@@ -133,19 +140,40 @@ export const supabaseRepository: Repository = {
     if (!UUID.test(id)) return { ok: false, error: "That look cannot be voted on." };
     const db = await createServerSupabase();
     const { data, error } = await db.rpc("upvote_outfit", { target: id });
-    if (error?.code === SIGNED_OUT) return { ok: false, error: "Sign in with Discord to vote." };
+    if (error?.code === SIGNED_OUT) return { ok: false, error: "Sign in to vote." };
     if (error) return { ok: false, error: "That vote could not be counted. Try again." };
     return { ok: true, value: data as number };
   },
   async uploadScreenshot(file) {
     const db = await createServerSupabase();
     const { data: auth } = await db.auth.getUser();
-    if (!auth.user) return { ok: false, error: "Sign in with Discord to upload." };
+    if (!auth.user) return { ok: false, error: "Sign in to upload." };
     // The first folder is the owner: the bucket's RLS policy checks exactly this.
     const path = `${auth.user.id}/${crypto.randomUUID()}.${file.type.split("/")[1]}`;
     const { error } = await db.storage.from("showcase").upload(path, file, { contentType: file.type });
     if (error) return { ok: false, error: "That screenshot could not be stored. Try again." };
     return { ok: true, value: db.storage.from("showcase").getPublicUrl(path).data.publicUrl };
+  },
+  async getAccount() {
+    const db = await createServerSupabase();
+    const { data: auth } = await db.auth.getUser();
+    if (!auth.user) return null;
+    const { data } = await db.from("profiles").select("display_name").eq("id", auth.user.id).maybeSingle();
+    return { name: data?.display_name ?? null };
+  },
+  async setDisplayName(name) {
+    const db = await createServerSupabase();
+    const { data: auth } = await db.auth.getUser();
+    if (!auth.user) return { ok: false, error: "Sign in to choose a name." };
+    const { data, error } = await db
+      .from("profiles")
+      .update({ display_name: name })
+      .eq("id", auth.user.id)
+      .select("display_name")
+      .single();
+    if (error?.code === UNIQUE_VIOLATION) return { ok: false, error: "That name is taken. Try another." };
+    if (error) return { ok: false, error: "That name could not be saved. Try again." };
+    return { ok: true, value: data.display_name };
   },
   async listWorldPresets(f: WorldFilters) {
     const db = await createServerSupabase();

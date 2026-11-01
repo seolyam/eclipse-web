@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Braces, Download, Globe2, Images, LayoutGrid, Shirt } from "lucide-react";
+import { BookOpen, Braces, Download, Globe2, Images, LayoutGrid, Search, Shirt } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -97,10 +97,12 @@ export function SearchTrigger() {
     <button
       type="button"
       onClick={() => window.dispatchEvent(new Event("eclipse:search"))}
-      className="bar__search"
+      className="icon-btn"
+      aria-label="Search"
+      aria-keyshortcuts="Control+K"
+      title="Search (Ctrl K)"
     >
-      Search
-      <kbd className="font-sans">Ctrl K</kbd>
+      <Search />
     </button>
   );
 }

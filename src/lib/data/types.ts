@@ -68,6 +68,11 @@ export interface SearchEntry {
   author: string | null;
 }
 
+export interface Account {
+  /** Null until they choose one: Google's profile name is a real name. */
+  name: string | null;
+}
+
 export type WriteResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 /** The seam: pages know this and nothing about where the rows live. */
@@ -82,4 +87,7 @@ export interface Repository {
   /** Stores a screenshot and returns its public https link. */
   uploadScreenshot(file: File): Promise<WriteResult<string>>;
   listWorldPresets(filters: WorldFilters): Promise<WorldPreset[]>;
+  /** Who is signed in, or null for a visitor. */
+  getAccount(): Promise<Account | null>;
+  setDisplayName(name: string): Promise<WriteResult<string>>;
 }

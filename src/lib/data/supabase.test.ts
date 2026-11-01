@@ -14,8 +14,14 @@ const stubFetch: typeof fetch = async (input) => {
   return reply();
 };
 
+let user: { id: string } | null = null;
+
 vi.mock("@/lib/supabase/server", () => ({
-  createServerSupabase: async () => createClient("https://stub.supabase.co", "stub-key", { global: { fetch: stubFetch } }),
+  createServerSupabase: async () => {
+    const client = createClient("https://stub.supabase.co", "stub-key", { global: { fetch: stubFetch } });
+    client.auth.getUser = (async () => ({ data: { user }, error: null })) as never;
+    return client;
+  },
 }));
 
 const { supabaseRepository: repo } = await import("./supabase");
@@ -39,6 +45,62 @@ const row = {
 beforeEach(() => {
   requests.length = 0;
   reply = () => Response.json([]);
+  user = null;
+});
+
+const failWith = (code: string, status: number) => () => Response.json({ code, message: "refused" }, { status });
+const input = { title: "A look", code: "ECA1:c2xvdCAwIDEK", category: "Armor" as const, tags: [], gallery: [] };
+
+describe("the signed-in account", () => {
+  it("is nobody without a session, and asks the database nothing", async () => {
+    expect(await repo.getAccount()).toBeNull();
+    expect(requests).toHaveLength(0);
+  });
+
+  it("reads the public name", async () => {
+    user = { id: row.id };
+    reply = () => Response.json([{ display_name: "Kira" }]);
+    expect(await repo.getAccount()).toEqual({ name: "Kira" });
+    expect(requests[0].searchParams.get("id")).toBe(`eq.${row.id}`);
+  });
+
+  it("has no name until one is chosen", async () => {
+    user = { id: row.id };
+    reply = () => Response.json([{ display_name: null }]);
+    expect(await repo.getAccount()).toEqual({ name: null });
+  });
+
+  it("saves a name to the signed-in profile only", async () => {
+    user = { id: row.id };
+    reply = () => Response.json({ display_name: "Kira" });
+    expect(await repo.setDisplayName("Kira")).toEqual({ ok: true, value: "Kira" });
+    expect(requests[0].searchParams.get("id")).toBe(`eq.${row.id}`);
+  });
+
+  it("needs a session to save a name", async () => {
+    expect((await repo.setDisplayName("Kira")).ok).toBe(false);
+    expect(requests).toHaveLength(0);
+  });
+
+  it("says when a name is taken", async () => {
+    user = { id: row.id };
+    reply = failWith("23505", 409);
+    expect(await repo.setDisplayName("Kira")).toEqual({ ok: false, error: "That name is taken. Try another." });
+  });
+});
+
+describe("publishing", () => {
+  it("asks for a name when the database refuses a nameless author", async () => {
+    user = { id: row.id };
+    reply = failWith("42501", 403);
+    expect(await repo.createOutfit(input)).toEqual({ ok: false, error: "Choose a public name first, from the account button." });
+  });
+
+  it("explains the hourly limit", async () => {
+    user = { id: row.id };
+    reply = failWith("EC001", 400);
+    expect(await repo.createOutfit(input)).toEqual({ ok: false, error: "That is 20 looks this hour. Try again later." });
+  });
 });
 
 describe("the Supabase adapter", () => {

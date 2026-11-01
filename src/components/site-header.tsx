@@ -5,14 +5,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { AccountDialog } from "@/components/account-dialog";
 import { SearchTrigger } from "@/components/command-menu";
+import { SignInDialog, SignInOptions } from "@/components/sign-in-dialog";
 import { Icon } from "@/components/site/icons";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import type { Account } from "@/lib/data/types";
 import { DISCORD_URL, GITHUB_URL } from "@/lib/site";
 
+// The logo is the way home, and the hub's tabs reach Showcase and World.
 const NAV = [
-  { href: "/", label: "Overview", section: "top" },
-  { href: "/wardrobe", label: "Wardrobe & Showcase", routes: ["/wardrobe", "/showcase", "/world"] },
+  { href: "/wardrobe", label: "Wardrobe", routes: ["/wardrobe", "/showcase", "/world"] },
   { href: "/inspector", label: "Inspector", routes: ["/inspector"] },
   { href: "/#download", label: "Download", section: "download" },
   { href: "/#support", label: "Support", section: "support" },
@@ -47,12 +51,52 @@ function useScrolled() {
   return scrolled;
 }
 
+// The session cookie itself, not the short-lived ones a sign-in leaves on its way out.
+const SESSION_COOKIE = /(?:^|; )sb-[^=]+-auth-token(?:\.0)?=/;
+
+/** Who is signed in. Visitors with no session cookie cost no request. */
+function useAccount(enabled: boolean) {
+  const state = useState<Account | null>(null);
+  const setAccount = state[1];
+  useEffect(() => {
+    if (!enabled || !SESSION_COOKIE.test(document.cookie)) return;
+    const request = new AbortController();
+    fetch("/api/account", { signal: request.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { account: Account | null } | null) => setAccount(body?.account ?? null))
+      .catch(() => {});
+    return () => request.abort();
+  }, [enabled, setAccount]);
+  return state;
+}
+
+const AUTH_NOTICES: Record<string, string> = {
+  failed: "Sign-in did not finish. Try again.",
+  cancelled: "Sign-in was cancelled.",
+};
+
+/** Says how a sign-in ended, then takes the note out of the address. */
+function useAuthNotice() {
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const notice = AUTH_NOTICES[url.searchParams.get("auth") ?? ""];
+    if (!notice) return;
+    url.searchParams.delete("auth");
+    window.history.replaceState(null, "", url);
+    // The next task: the Toaster comes later in the layout and is not listening yet.
+    const timer = setTimeout(() => toast.error(notice));
+    return () => clearTimeout(timer);
+  }, []);
+}
+
 export function SiteHeader({ signIn }: { signIn: boolean }) {
   const pathname = usePathname();
   const home = pathname === "/";
   const scrolled = useScrolled();
   const section = useCurrentSection(home);
   const [menu, setMenu] = useState(false);
+  const [account, setAccount] = useAccount(signIn);
+  useAuthNotice();
 
   const isActive = (n: (typeof NAV)[number]) =>
     n.section ? home && section === n.section : Boolean(n.routes?.some((r) => pathname.startsWith(r)));
@@ -73,12 +117,9 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
         </nav>
         <div className="bar__actions">
           <SearchTrigger />
-          {signIn && <a className="btn btn--ghost btn--sm" href="/auth/login">Sign in</a>}
-          <a className="icon-btn" href={GITHUB_URL} target="_blank" rel="noopener" aria-label="Eclipse on GitHub">
-            <Icon id="i-github" />
-          </a>
-          <a className="btn btn--primary btn--sm" href={DISCORD_URL} target="_blank" rel="noopener">
-            <Icon id="i-discord" /><span>Join Discord</span>
+          {account ? <AccountDialog account={account} onNamed={(name) => setAccount({ name })} /> : signIn && <SignInDialog />}
+          <a className="btn btn--primary btn--sm" href={DISCORD_URL} target="_blank" rel="noopener" aria-label="Join the Discord">
+            <Icon id="i-discord" /><span>Discord</span>
           </a>
           <Sheet open={menu} onOpenChange={setMenu}>
             <SheetTrigger className="icon-btn bar__menu" aria-label="Open the menu">
@@ -95,7 +136,15 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
                     {n.label}
                   </Link>
                 ))}
+                <a href={GITHUB_URL} target="_blank" rel="noopener" className="rounded-md px-3 py-2 hover:bg-surface-high hover:text-ink">
+                  GitHub
+                </a>
               </nav>
+              {signIn && !account && (
+                <div className="mx-4 mt-2 border-t border-line pt-4">
+                  <SignInOptions />
+                </div>
+              )}
             </SheetContent>
           </Sheet>
         </div>

@@ -37,29 +37,16 @@
   top: 0;
 }
 .bar__menu { display: none; }
-.bar__search {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  height: 2.4rem;
-  padding: 0 0.9rem;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  font-size: 0.82rem;
-  color: var(--ink-faint);
-  cursor: pointer;
-  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
-}
-.bar__search kbd { white-space: nowrap; }
-.bar__search:hover { color: var(--ink-dim); border-color: var(--line-strong); }
-@media (max-width: 1080px) {
+.bar__account { gap: 0.45rem; }
+.bar__account span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 900px) {
   .bar__inner { grid-template-columns: 1fr auto; }
   .bar__nav { display: none; }
   .bar__menu { display: grid; }
-  .bar__search kbd { display: none; }
 }
+/* A phone's bar has room for icons only: the menu carries the sign-in options. */
 @media (max-width: 560px) {
-  .bar__search { display: none; }
+  .bar .bar__sign-in { display: none; }
 }
 
 /* A linked feature keeps the official look: the title takes the whole card. */

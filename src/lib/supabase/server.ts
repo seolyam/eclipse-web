@@ -9,7 +9,7 @@ export async function createServerSupabase() {
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {
-        // A Server Component cannot set cookies; the auth route refreshes them.
+        // A Server Component cannot set cookies; src/middleware.ts refreshes them.
         try {
           list.forEach(({ name, value, options }) => store.set(name, value, options));
         } catch {}
