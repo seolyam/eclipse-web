@@ -65,7 +65,7 @@ export function NoLooks() {
   return (
     <p className={EMPTY}>
       Nothing here yet. Clear a filter, or{" "}
-      <Link href="/inspector" className="text-amber underline-offset-2 hover:underline">publish the first look</Link>.
+      <Link href="/inspector" className="text-amber underline underline-offset-2">publish the first look</Link>.
     </p>
   );
 }
@@ -74,7 +74,7 @@ export function NoCaptures() {
   return (
     <p className={EMPTY}>
       No studio captures have been published yet. The Showcase lists only real in-game screenshots, and the looks themselves are in the{" "}
-      <Link href="/wardrobe" className="text-amber underline-offset-2 hover:underline">Wardrobe</Link>.
+      <Link href="/wardrobe" className="text-amber underline underline-offset-2">Wardrobe</Link>.
     </p>
   );
 }

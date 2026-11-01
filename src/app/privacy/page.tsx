@@ -85,9 +85,9 @@ export default function PrivacyPage() {
         <h2 id="contact" className="text-xl">Questions</h2>
         <p className="mt-1 max-w-prose text-sm text-ink-dim">
           Eclipse is a free fan project. Ask us anything about this page on{" "}
-          <a href={DISCORD_URL} target="_blank" rel="noopener" className="text-amber underline-offset-2 hover:underline">Discord</a>.
+          <a href={DISCORD_URL} target="_blank" rel="noopener" className="text-amber underline underline-offset-2">Discord</a>.
           If this page changes, the date above changes with it. It covers
-          this website; for the game overlay, see the <Link href="/guide" className="text-amber underline-offset-2 hover:underline">setup guide</Link>.
+          this website; for the game overlay, see the <Link href="/guide" className="text-amber underline underline-offset-2">setup guide</Link>.
         </p>
       </section>
     </main>

@@ -22,7 +22,7 @@ export default async function WardrobePage({ searchParams }: { searchParams: Pro
       {filters.author && (
         <p className="text-sm text-ink-dim">
           Showing one person&apos;s looks.{" "}
-          <Link href="/wardrobe" className="text-amber underline-offset-2 hover:underline">Show everyone&apos;s</Link>
+          <Link href="/wardrobe" className="text-amber underline underline-offset-2">Show everyone&apos;s</Link>
         </p>
       )}
       <OutfitFilters count={total} live={repository.live} />

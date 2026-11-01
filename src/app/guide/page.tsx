@@ -74,7 +74,7 @@ export default function GuidePage() {
           Delete dinput8.dll and the Eclipse folder. The game goes back to how it was.
         </p>
         <p className="mt-3 text-sm">
-          <Link href="/wardrobe" className="text-amber underline-offset-2 hover:underline">Browse the Wardrobe</Link>
+          <Link href="/wardrobe" className="text-amber underline underline-offset-2">Browse the Wardrobe</Link>
         </p>
       </section>
     </main>

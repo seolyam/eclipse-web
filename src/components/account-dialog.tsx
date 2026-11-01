@@ -88,7 +88,7 @@ export function AccountDialog({ account, open, onOpenChange, onNamed }: AccountD
         </form>
         <p className="text-xs text-ink-faint">
           To delete your account, ask us on{" "}
-          <a href={DISCORD_URL} target="_blank" rel="noopener" className="text-amber underline-offset-2 hover:underline">Discord</a>.
+          <a href={DISCORD_URL} target="_blank" rel="noopener" className="text-amber underline underline-offset-2">Discord</a>.
         </p>
       </DialogContent>
     </Dialog>

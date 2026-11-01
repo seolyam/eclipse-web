@@ -156,7 +156,7 @@ function PublishForm({ code }: { code: string }) {
   if (published) {
     return (
       <p className="text-sm text-ink-dim">
-        Published. <Link href={`/wardrobe/${published}`} className="text-amber underline-offset-2 hover:underline">Open it in the Wardrobe</Link>
+        Published. <Link href={`/wardrobe/${published}`} className="text-amber underline underline-offset-2">Open it in the Wardrobe</Link>
       </p>
     );
   }
