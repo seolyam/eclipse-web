@@ -89,7 +89,11 @@ export function OutfitPoster({ post }: { post: OutfitPost }) {
           <p className="truncate text-xs text-ink-dim">{line || post.category}</p>
         </div>
       </Link>
-      <CopyButton code={post.code} className="absolute top-2.5 right-2.5 z-10" />
+      {/* Stacked: side by side they overlap on a phone's two-column grid. */}
+      <div className="absolute top-2.5 right-2.5 z-10 flex flex-col items-end gap-1.5">
+        <CopyButton code={post.code} />
+        {post.upvotes !== null && <UpvoteButton id={post.id} count={post.upvotes} className="bg-surface/85 text-ink backdrop-blur-sm" />}
+      </div>
     </article>
   );
 }
