@@ -1,10 +1,14 @@
 import "server-only";
 import { LOOKS_PER_PAGE, type ArmorType, type Category, type ClassName, type WorldGroup, type WorldLookName } from "@/lib/domain";
+import { hashSecret, newLinkCode } from "@/lib/game-sync/secrets";
+import { cleanSetName } from "@/lib/game-sync/wire";
 import { SCREENSHOT_BUCKET, screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { builtinRepository } from "./builtin";
 import { compressScreenshot, SCREENSHOT_EXTENSION, SCREENSHOT_TYPE } from "./compress";
-import type { OutfitFilters, OutfitList, OutfitPost, Repository, WorldFilters, WorldPreset, WriteResult } from "./types";
+import type {
+  GameLink, GameSet, OutfitFilters, OutfitList, OutfitPost, Repository, WorldFilters, WorldPreset, WriteResult,
+} from "./types";
 
 // The same seam as builtin.ts, over supabase/migrations. RLS is what protects the
 // rows: this file holds no rule the database does not enforce.
@@ -24,6 +28,22 @@ interface OutfitRow {
   gallery: string[];
   profiles: { display_name: string | null; verified: boolean } | null;
 }
+
+interface GameLinkRow {
+  id: string;
+  label: string;
+  created_at: string;
+  last_sync_at: string | null;
+}
+
+interface GameSetRow {
+  id: string;
+  name: string;
+  code: string;
+  updated_at: string;
+}
+
+const toGameSet = (r: GameSetRow): GameSet => ({ id: r.id, name: r.name, code: r.code, updatedAt: r.updated_at });
 
 interface PresetRow {
   id: string;
@@ -233,6 +253,70 @@ export const supabaseRepository: Repository = {
     if (error?.code === UNIQUE_VIOLATION) return { ok: false, error: "That name is taken. Try another." };
     if (error) return { ok: false, error: "That name could not be saved. Try again." };
     return { ok: true, value: data.display_name };
+  },
+  async listGameLinks() {
+    const db = await createServerSupabase();
+    const { data, error } = await db
+      .from("game_links")
+      .select("id,label,created_at,last_sync_at")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data as GameLinkRow[]).map((r): GameLink => ({
+      id: r.id,
+      label: r.label,
+      linkedAt: r.created_at,
+      lastSyncAt: r.last_sync_at,
+    }));
+  },
+  async listGameSets() {
+    const db = await createServerSupabase();
+    const { data, error } = await db
+      .from("game_sets")
+      .select("id,name,code,updated_at")
+      .not("code", "is", null)
+      .order("updated_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data as GameSetRow[]).map(toGameSet);
+  },
+  async getGameSet(id) {
+    if (!UUID.test(id)) return null;
+    const db = await createServerSupabase();
+    const { data, error } = await db
+      .from("game_sets")
+      .select("id,name,code,updated_at")
+      .eq("id", id)
+      .not("code", "is", null)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? toGameSet(data as GameSetRow) : null;
+  },
+  async newGameLinkCode() {
+    const db = await createServerSupabase();
+    const code = newLinkCode();
+    const { data, error } = await db.rpc("game_link_new", { p_code_hash: hashSecret(code) });
+    if (error) return { ok: false, error: "Sign in to link your game." };
+    return { ok: true, value: { code, expiresAt: data as string } };
+  },
+  async unlinkGame(id) {
+    const db = await createServerSupabase();
+    const { error } = await db.from("game_links").delete().eq("id", id);
+    if (error) return { ok: false, error: "That game could not be unlinked. Try again." };
+    return { ok: true, value: id };
+  },
+  async sendToGame(title, code) {
+    const db = await createServerSupabase();
+    const { data: auth } = await db.auth.getUser();
+    if (!auth.user) return { ok: false, error: "Sign in to send looks to your game." };
+    const { data, error } = await db.rpc("game_set_send", { p_name: cleanSetName(title), p_code: code });
+    if (error) return { ok: false, error: "That look could not be sent. Try again." };
+    if (!data) return { ok: false, error: "Your sets are full. Remove one to make room." };
+    return { ok: true, value: data as { name: string; linked: boolean } };
+  },
+  async removeGameSet(id) {
+    const db = await createServerSupabase();
+    const { error } = await db.rpc("game_set_remove", { p_id: id });
+    if (error) return { ok: false, error: "That set could not be removed. Try again." };
+    return { ok: true, value: id };
   },
   async listWorldPresets(f: WorldFilters) {
     const db = await createServerSupabase();

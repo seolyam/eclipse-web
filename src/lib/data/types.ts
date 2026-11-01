@@ -73,13 +73,30 @@ export interface SearchEntry {
 
 export interface Account {
   id: string;
-  /** Null until they choose one: Google's profile name is a real name. */
+  /** Null until they choose one. */
   name: string | null;
-  /** From Discord or Google. Shown to the account's owner only. */
+  /** From the sign-in provider. Shown to the account's owner only. */
   avatar: string | null;
   provider: string | null;
   /** May delete any look, not only their own. */
   moderator: boolean;
+}
+
+/** A game linked to an account. Only its owner ever sees this. */
+export interface GameLink {
+  id: string;
+  /** The character and realm that last synced. Empty until one has. */
+  label: string;
+  linkedAt: string;
+  lastSyncAt: string | null;
+}
+
+/** A look saved in the game or sent to it from here. Private until it is published. */
+export interface GameSet {
+  id: string;
+  name: string;
+  code: string;
+  updatedAt: string;
 }
 
 export type WriteResult<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -102,4 +119,13 @@ export interface Repository {
   /** Who is signed in, or null for a visitor. */
   getAccount(): Promise<Account | null>;
   setDisplayName(name: string): Promise<WriteResult<string>>;
+  listGameLinks(): Promise<GameLink[]>;
+  listGameSets(): Promise<GameSet[]>;
+  getGameSet(id: string): Promise<GameSet | null>;
+  /** A short code for the game to trade for its own token. It lasts ten minutes. */
+  newGameLinkCode(): Promise<WriteResult<{ code: string; expiresAt: string }>>;
+  unlinkGame(id: string): Promise<WriteResult<string>>;
+  /** Files a look with the player's sets, where their next sync picks it up. */
+  sendToGame(title: string, code: string): Promise<WriteResult<{ name: string; linked: boolean }>>;
+  removeGameSet(id: string): Promise<WriteResult<string>>;
 }

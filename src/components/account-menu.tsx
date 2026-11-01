@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, LogOut, Settings, Shirt } from "lucide-react";
+import { ChevronDown, Layers, LogOut, Settings, Shirt } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { AccountDialog } from "@/components/account-dialog";
@@ -42,6 +42,9 @@ export function AccountMenu({ account, onNamed }: { account: Account; onNamed: (
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href={`/wardrobe?author=${account.id}&sort=newest`}><Shirt />Your looks</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/sets"><Layers />Your sets</Link>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setSettings(true)}><Settings />Settings</DropdownMenuItem>
           <DropdownMenuSeparator />

@@ -185,6 +185,27 @@ export const builtinRepository: Repository = {
   async setDisplayName() {
     return { ok: false, error: NOT_LIVE };
   },
+  async listGameLinks() {
+    return [];
+  },
+  async listGameSets() {
+    return [];
+  },
+  async getGameSet() {
+    return null;
+  },
+  async newGameLinkCode() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async unlinkGame() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async sendToGame() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async removeGameSet() {
+    return { ok: false, error: NOT_LIVE };
+  },
   async listWorldPresets(f: WorldFilters) {
     return allPresets().filter(
       (p) => (!f.group || p.group === f.group) && (!f.look || p.look === f.look),

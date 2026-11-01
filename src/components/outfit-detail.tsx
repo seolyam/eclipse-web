@@ -2,10 +2,12 @@ import { BadgeCheck } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
 import { DeleteLook } from "@/components/delete-look";
 import { LoadoutFacts } from "@/components/outfit-breakdown";
+import { SendToGame } from "@/components/send-to-game";
 import { StudioPane } from "@/components/studio/studio-pane";
 import { UpvoteButton } from "@/components/upvote-button";
 import { resolveOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
+import { repository } from "@/lib/data";
 import type { OutfitPost } from "@/lib/data/types";
 import { ARMOR_LABEL, RACE_LABEL } from "@/lib/domain";
 
@@ -30,6 +32,7 @@ export function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost; headi
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <CopyButton code={post.code} className="h-[2.9rem] flex-1 px-6 text-[0.95rem] sm:flex-none" />
+        {repository.live && <SendToGame id={post.id} />}
         {post.upvotes !== null && <UpvoteButton id={post.id} count={post.upvotes} />}
         <p className="flex items-center gap-1 text-sm text-ink-dim">
           {post.author ?? "Item set"}

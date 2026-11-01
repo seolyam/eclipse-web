@@ -92,6 +92,36 @@ export async function saveDisplayName(name: string) {
   return r;
 }
 
+// A published code may be an old one, carrying a picture. A set holds the look alone.
+const MAX_SET_CODE = 32768;
+
+export async function sendLookToGame(id: string) {
+  const post = await repository.getOutfit(id);
+  if (!post) return { ok: false as const, error: "That look is gone." };
+  if (post.code.length > MAX_SET_CODE) {
+    return { ok: false as const, error: "This look is too large to send. Copy its code instead." };
+  }
+  const r = await repository.sendToGame(post.title, post.code);
+  if (r.ok) revalidatePath("/sets");
+  return r;
+}
+
+export async function createGameLinkCode() {
+  return repository.newGameLinkCode();
+}
+
+export async function unlinkGame(id: string) {
+  const r = await repository.unlinkGame(id);
+  if (r.ok) revalidatePath("/sets");
+  return r;
+}
+
+export async function removeGameSet(id: string) {
+  const r = await repository.removeGameSet(id);
+  if (r.ok) revalidatePath("/sets");
+  return r;
+}
+
 export async function upvoteOutfit(id: string) {
   const r = await repository.upvote(id);
   if (r.ok) revalidateHub();

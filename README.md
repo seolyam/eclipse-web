@@ -18,6 +18,7 @@ Landing page, setup guide, and a community Wardrobe and Showcase for sharing loo
 - **Showcase:** a picture-first gallery of community captures.
 - **Inspector:** decode and edit share codes.
 - **World presets** and a **setup guide**.
+- **Your sets:** a private backup of the loadouts in a linked game, with Send to game on any look.
 
 ## Share codes
 

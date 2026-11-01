@@ -1,0 +1,124 @@
+import type { ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Account, GameLink, GameSet } from "@/lib/data/types";
+
+vi.mock("server-only", () => ({}));
+vi.mock("next/navigation", () => ({
+  notFound: () => {
+    throw new Error("NOT_FOUND");
+  },
+  usePathname: () => "/sets",
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+vi.mock("@/app/actions", () => ({
+  createGameLinkCode: vi.fn(),
+  inspectCode: vi.fn(async () => ({ kind: "error", error: "" })),
+  publishOutfit: vi.fn(),
+  removeGameSet: vi.fn(),
+  removeScreenshot: vi.fn(),
+  unlinkGame: vi.fn(),
+  uploadScreenshot: vi.fn(),
+}));
+
+// The signed-in page cannot be reached with a test session while email login is off,
+// so it is rendered here with the data layer stubbed and everything else real.
+const data = vi.hoisted(() => ({
+  account: null as Account | null,
+  links: [] as GameLink[],
+  sets: [] as GameSet[],
+  set: null as GameSet | null,
+  live: true,
+}));
+
+vi.mock("@/lib/data", () => ({
+  repository: {
+    get live() {
+      return data.live;
+    },
+    getAccount: async () => data.account,
+    listGameLinks: async () => data.links,
+    listGameSets: async () => data.sets,
+    getGameSet: async () => data.set,
+  },
+}));
+
+const { default: SetsPage } = await import("./page");
+const { default: SetPage } = await import("./[id]/page");
+
+const ME: Account = { id: "me", name: "seolyam", avatar: null, provider: "discord", moderator: false };
+const CODE = `ECA1:${Buffer.from("slot 0 259306\nslot 4 1001735\n").toString("base64")}`;
+const SET: GameSet = { id: "11111111-1111-4111-8111-111111111111", name: "Raid night", code: CODE, updatedAt: new Date().toISOString() };
+
+const html = async (page: Promise<ReactElement>) => renderToStaticMarkup(await page);
+
+beforeEach(() => {
+  Object.assign(data, { account: ME, links: [], sets: [], set: null, live: true });
+});
+
+describe("Your sets", () => {
+  it("offers a visitor sign-in, and no sets", async () => {
+    data.account = null;
+    const page = await html(SetsPage());
+    expect(page).toContain("Continue with Discord");
+    expect(page).not.toContain("Link a game");
+  });
+
+  it("says so when there is no database to sign in to", async () => {
+    Object.assign(data, { account: null, live: false });
+    const page = await html(SetsPage());
+    expect(page).toContain("not connected");
+    expect(page).not.toContain("Continue with Discord");
+  });
+
+  it("explains itself to an account with nothing linked", async () => {
+    const page = await html(SetsPage());
+    expect(page).toContain("Link a game");
+    expect(page).toContain("Nothing here yet");
+    expect(page).toContain("0 sets");
+  });
+
+  it("lists a set with its pieces, a way in and a way to remove it", async () => {
+    data.sets = [SET];
+    const page = await html(SetsPage());
+    expect(page).toContain("Raid night");
+    expect(page).toContain(`href="/sets/${SET.id}"`);
+    expect(page).toContain("1 set");
+    expect(page).toContain("Remove Raid night");
+    expect(page).toContain("<img");
+  });
+
+  it("does not fall over on a code this site cannot read", async () => {
+    data.sets = [{ ...SET, code: "ECA1:!!!" }];
+    expect(await html(SetsPage())).toContain("Raid night");
+  });
+
+  it("names a linked game by the character that last synced", async () => {
+    data.links = [{ id: "l", label: "Lee - Icecrown", linkedAt: SET.updatedAt, lastSyncAt: SET.updatedAt }];
+    const page = await html(SetsPage());
+    expect(page).toContain("Lee - Icecrown");
+    expect(page).toContain("Synced just now");
+    expect(page).toContain("Unlink");
+  });
+
+  it("does not invent a name for a game that has never synced", async () => {
+    data.links = [{ id: "l", label: "", linkedAt: SET.updatedAt, lastSyncAt: null }];
+    expect(await html(SetsPage())).toContain("Waiting for its first sync");
+  });
+});
+
+describe("one set", () => {
+  const open = (id: string) => SetPage({ params: Promise.resolve({ id }) });
+
+  it("opens in the inspector, with the way to publish it", async () => {
+    data.set = SET;
+    const page = await html(open(SET.id));
+    expect(page).toContain("Raid night");
+    expect(page).toContain("Only you can see this set");
+    expect(page).toContain("Remove Raid night");
+  });
+
+  it("does not exist for anyone it does not belong to", async () => {
+    await expect(html(open(SET.id))).rejects.toThrow("NOT_FOUND");
+  });
+});

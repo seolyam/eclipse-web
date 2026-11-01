@@ -22,11 +22,20 @@ const SECTIONS = [
     id: "account",
     title: "If you sign in",
     points: [
-      "You sign in with Discord or Google. We never see your password.",
-      "The provider gives us your email address, your name or username, your profile picture and an account ID. These stay private.",
+      "You sign in with Discord. We never see your password.",
+      "Discord gives us your email address, your name or username, your profile picture and an account ID. These stay private.",
       "Your profile picture appears only to you, in your account menu.",
-      "Discord accounts use their Discord username as their public name. Google accounts choose one the first time they sign in, so a real name is not published.",
+      "Your Discord username is your public name until you change it.",
       "Cookies keep you signed in and return you to the page you were on.",
+    ],
+  },
+  {
+    id: "game",
+    title: "If you link your game",
+    points: [
+      "Linking is optional. A linked game copies your saved loadouts here so you can see them, restore them on another PC and send looks to them.",
+      "We store each loadout's name, icon and code, and the character and realm that last synced, with the time. These stay private to your account.",
+      "A loadout becomes public only if you publish it yourself.",
     ],
   },
   {
@@ -43,7 +52,7 @@ const SECTIONS = [
     title: "Who handles your data",
     points: [
       "Service providers host the website and store accounts, looks and screenshots for us.",
-      "Discord and Google handle signing in, under their own privacy policies.",
+      "Discord handles signing in, under its own privacy policy.",
       "Links to downloads, code and donations take you to other sites, which have their own policies.",
       "We do not sell your data or use it for advertising.",
     ],
@@ -54,6 +63,7 @@ const SECTIONS = [
     points: [
       "Change your public name at any time, from Settings in your account menu.",
       "Delete any look you published, from the look's page. Its screenshots are deleted with it.",
+      "Unlink a game, or remove any of your saved loadouts, from Your sets in your account menu.",
       "To delete your whole account, ask us on Discord. We keep your data until you delete it or ask us to.",
       "Moderators can remove looks that break the community's rules.",
     ],
