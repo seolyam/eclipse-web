@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   // NEXT_DIST_DIR=.next-build pnpm build verifies a build without touching the
   // .next that a running `next dev` is using.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  poweredByHeader: false,
   experimental: {
     // Room for one screenshot (MAX_SCREENSHOT_BYTES) and the form around it.
     serverActions: { bodySizeLimit: "4.5mb" },
