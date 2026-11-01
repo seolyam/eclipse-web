@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { OutfitCard, OutfitPoster } from "@/components/outfit-card";
 import { Icon } from "@/components/site/icons";
 import { Download, Features, Hero, Support } from "@/components/site/landing";
@@ -47,7 +48,10 @@ export default function HomePage() {
     <main id="main" className="landing">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: siteStructuredData() }} />
       <Hero />
-      <FeaturedLooks />
+      {/* The database must not hold back the hero: it sits below the first screen. */}
+      <Suspense fallback={null}>
+        <FeaturedLooks />
+      </Suspense>
       <Features live={repository.live} />
       <Download />
       <Support />

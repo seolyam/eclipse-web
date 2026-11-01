@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   // .next that a running `next dev` is using.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
+  // Keeps the title and description in <head> for everyone. Otherwise a page with a
+  // Suspense boundary flushes first and sends them in the body, Googlebot included.
+  htmlLimitedBots: /.*/,
   experimental: {
     // Room for one screenshot (MAX_SCREENSHOT_BYTES) and the form around it.
     serverActions: { bodySizeLimit: "4.5mb" },
