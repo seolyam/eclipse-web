@@ -87,7 +87,7 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
     <header className={`bar ${home ? "" : "bar--page"} ${!home || scrolled ? "is-solid" : ""}`}>
       <div className="bar__inner">
         <Link className="brand" href="/" aria-label="Eclipse home">
-          <Image src="/assets/img/logo-320.webp" width={28} height={28} alt="" unoptimized />
+          <Image src="/assets/img/logo-96.webp" width={28} height={28} alt="" unoptimized />
           <span>Eclipse</span>
         </Link>
         <nav className="bar__nav" aria-label="Primary">

@@ -8,7 +8,7 @@ export function SiteFooter() {
     <footer className="foot">
       <div className="wrap foot__inner">
         <Link className="brand" href="/">
-          <Image src="/assets/img/logo-320.webp" width={24} height={24} alt="" unoptimized />
+          <Image src="/assets/img/logo-96.webp" width={24} height={24} alt="" unoptimized />
           <span>Eclipse</span>
         </Link>
         <nav aria-label="Footer">
