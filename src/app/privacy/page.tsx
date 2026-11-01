@@ -15,7 +15,7 @@ const SECTIONS = [
     title: "If you only visit",
     points: [
       "You do not need an account. The site has no ads, no analytics and no tracking cookies.",
-      "Our hosting provider, Vercel, handles each request, and that includes your IP address and browser details.",
+      "Our hosting provider handles each request, and that includes your IP address and browser details.",
       "The home page shows a video from YouTube. Its preview image loads from YouTube when the section appears, so YouTube sees that request. The player itself uses YouTube's privacy-enhanced mode.",
       "The site remembers that you have seen the support message, in your browser only, until you close the tab.",
     ],
@@ -25,10 +25,10 @@ const SECTIONS = [
     title: "If you sign in",
     points: [
       "You sign in with Discord or Google. We never see your password.",
-      "The provider gives us your email address, your name or username, your profile picture and an account ID. These stay private in our sign-in system.",
-      "Your profile picture appears only to you, in your account menu. Your browser loads it directly from Discord or Google.",
+      "The provider gives us your email address, your name or username, your profile picture and an account ID. These stay private.",
+      "Your profile picture appears only to you, in your account menu.",
       "Discord accounts use their Discord username as their public name. Google accounts choose one the first time they sign in, so a real name is not published.",
-      "Two cookies support this: one keeps you signed in, and one remembers which page to return you to for up to ten minutes.",
+      "Cookies keep you signed in and return you to the page you were on.",
     ],
   },
   {
@@ -44,10 +44,9 @@ const SECTIONS = [
     id: "services",
     title: "Who handles your data",
     points: [
-      "Supabase stores accounts, looks and screenshots, on servers in Paris, France.",
-      "Vercel hosts the website.",
+      "Service providers host the website and store accounts, looks and screenshots for us.",
       "Discord and Google handle signing in, under their own privacy policies.",
-      "Links to download Eclipse, its code and donations go to Google Drive, GitHub and Ko-fi. Those sites have their own policies once you leave ours.",
+      "Links to downloads, code and donations take you to other sites, which have their own policies.",
       "We do not sell your data or use it for advertising.",
     ],
   },
