@@ -29,7 +29,7 @@ describe("the sign-in callback", () => {
   it("returns a signed-in visitor to the page they left", async () => {
     const response = await visit("?code=abc", "/inspector");
     expect(exchangeCodeForSession).toHaveBeenCalledWith("abc");
-    expect(landing(response)).toBe("https://site.test/inspector");
+    expect(landing(response)).toBe("https://site.test/inspector?auth=signed-in");
   });
 
   it("clears the remembered page", async () => {
@@ -38,11 +38,11 @@ describe("the sign-in callback", () => {
   });
 
   it("opens the Wardrobe when no page was remembered", async () => {
-    expect(landing(await visit("?code=abc"))).toBe("https://site.test/wardrobe");
+    expect(landing(await visit("?code=abc"))).toBe("https://site.test/wardrobe?auth=signed-in");
   });
 
   it("stays on this site", async () => {
-    expect(landing(await visit("?code=abc", "/\\evil.com"))).toBe("https://site.test/wardrobe");
+    expect(landing(await visit("?code=abc", "/\\evil.com"))).toBe("https://site.test/wardrobe?auth=signed-in");
   });
 
   it("says so when the code cannot be exchanged", async () => {

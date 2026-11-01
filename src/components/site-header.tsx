@@ -51,9 +51,10 @@ function useScrolled() {
   return scrolled;
 }
 
-const AUTH_NOTICES: Record<string, string> = {
-  failed: "Sign-in did not finish. Try again.",
-  cancelled: "Sign-in was cancelled.",
+const AUTH_NOTICES: Record<string, () => void> = {
+  "signed-in": () => toast.success("You're signed in"),
+  failed: () => toast.error("Sign-in did not finish. Try again."),
+  cancelled: () => toast.error("Sign-in was cancelled."),
 };
 
 /** Says how a sign-in ended, then takes the note out of the address. */
@@ -65,7 +66,7 @@ function useAuthNotice() {
     url.searchParams.delete("auth");
     window.history.replaceState(null, "", url);
     // The next task: the Toaster comes later in the layout and is not listening yet.
-    const timer = setTimeout(() => toast.error(notice));
+    const timer = setTimeout(notice);
     return () => clearTimeout(timer);
   }, []);
 }

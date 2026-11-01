@@ -20,7 +20,7 @@ async function finishSignIn(params: URLSearchParams): Promise<"failed" | "cancel
 export async function GET(request: NextRequest) {
   const target = new URL(safeNext(request.cookies.get(AUTH_NEXT_COOKIE)?.value), request.nextUrl.origin);
   const failure = await finishSignIn(request.nextUrl.searchParams);
-  if (failure) target.searchParams.set("auth", failure);
+  target.searchParams.set("auth", failure ?? "signed-in");
   const response = NextResponse.redirect(target);
   response.cookies.delete({ name: AUTH_NEXT_COOKIE, path: AUTH_COOKIE_PATH });
   return response;
