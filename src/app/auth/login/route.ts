@@ -1,5 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_COOKIE_PATH, AUTH_NEXT_COOKIE, safeNext } from "@/lib/account";
+import {
+  GOOGLE_NONCE_COOKIE,
+  GOOGLE_STATE_COOKIE,
+  googleAuthorizeUrl,
+  googleSignInConfigured,
+} from "@/lib/google-sign-in";
 import { isOAuthProvider, supabaseConfigured } from "@/lib/supabase/config";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -9,6 +15,24 @@ export async function GET(request: NextRequest) {
   const { origin, protocol, searchParams } = request.nextUrl;
   const provider = searchParams.get("provider");
   if (!supabaseConfigured() || !isOAuthProvider(provider)) return NextResponse.redirect(new URL("/wardrobe", origin));
+  const remembered = {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: protocol === "https:",
+    path: AUTH_COOKIE_PATH,
+    maxAge: TEN_MINUTES,
+  } as const;
+
+  if (provider === "google" && googleSignInConfigured()) {
+    const state = crypto.randomUUID();
+    const nonce = crypto.randomUUID();
+    const response = NextResponse.redirect(await googleAuthorizeUrl(origin, state, nonce));
+    response.cookies.set(AUTH_NEXT_COOKIE, safeNext(searchParams.get("next")), remembered);
+    response.cookies.set(GOOGLE_STATE_COOKIE, state, remembered);
+    response.cookies.set(GOOGLE_NONCE_COOKIE, nonce, remembered);
+    return response;
+  }
+
   const db = await createServerSupabase();
   const { data, error } = await db.auth.signInWithOAuth({
     provider,
@@ -17,12 +41,6 @@ export async function GET(request: NextRequest) {
   if (error || !data.url) return NextResponse.redirect(new URL("/wardrobe?auth=failed", origin));
   const response = NextResponse.redirect(data.url);
   // Supabase matches redirectTo against an allow list, so the page goes in a cookie.
-  response.cookies.set(AUTH_NEXT_COOKIE, safeNext(searchParams.get("next")), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: protocol === "https:",
-    path: AUTH_COOKIE_PATH,
-    maxAge: TEN_MINUTES,
-  });
+  response.cookies.set(AUTH_NEXT_COOKIE, safeNext(searchParams.get("next")), remembered);
   return response;
 }
