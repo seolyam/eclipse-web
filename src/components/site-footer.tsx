@@ -19,6 +19,7 @@ export function SiteFooter() {
           <a href={DISCORD_URL} target="_blank" rel="noopener">Discord</a>
           <a href={KOFI_URL} target="_blank" rel="noopener">Ko-fi</a>
           <DonateButton />
+          <Link href="/privacy">Privacy</Link>
         </nav>
       </div>
       <p className="wrap foot__legal">
