@@ -4,6 +4,7 @@ import { OutfitCard, OutfitPoster } from "@/components/outfit-card";
 import { Icon } from "@/components/site/icons";
 import { Download, Features, Hero, Support } from "@/components/site/landing";
 import { repository } from "@/lib/data";
+import { siteStructuredData } from "@/lib/seo";
 import { OPEN_GRAPH } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -44,6 +45,7 @@ async function FeaturedLooks() {
 export default function HomePage() {
   return (
     <main id="main" className="landing">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: siteStructuredData() }} />
       <Hero />
       <FeaturedLooks />
       <Features live={repository.live} />

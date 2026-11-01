@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pageMetadata, PAGES, type PagePath } from "@/lib/seo";
+import { pageMetadata, PAGES, siteStructuredData, type PagePath } from "@/lib/seo";
 
 const paths = Object.keys(PAGES) as PagePath[];
 const SUFFIX = " · Eclipse";
@@ -37,5 +37,26 @@ describe("a page's metadata", () => {
 
   it("keeps the shared preview image", () => {
     expect(pageMetadata("/guide").openGraph?.images).toBeDefined();
+  });
+});
+
+describe("the structured data", () => {
+  const graph = () => JSON.parse(siteStructuredData())["@graph"] as Record<string, unknown>[];
+
+  it("names the site and the software", () => {
+    expect(graph().map((node) => node["@type"])).toEqual(["WebSite", "SoftwareApplication"]);
+    expect(graph()[0]).toMatchObject({ name: "Eclipse" });
+  });
+
+  it("says Eclipse is free", () => {
+    expect(graph()[1]).toMatchObject({ offers: { "@type": "Offer", price: "0" } });
+  });
+
+  it("claims no rating, because nobody has given one", () => {
+    expect(siteStructuredData()).not.toMatch(/aggregateRating|"review"/i);
+  });
+
+  it("cannot close the script tag it sits in", () => {
+    expect(siteStructuredData()).not.toContain("<");
   });
 });

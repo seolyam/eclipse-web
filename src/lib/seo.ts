@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { OPEN_GRAPH } from "@/lib/site";
+import { OPEN_GRAPH, SITE_DESCRIPTION, siteUrl } from "@/lib/site";
 
 /** What search results and link previews say about each page. The sitemap lists these too. */
 export const PAGES = {
@@ -48,4 +48,26 @@ export function pageMetadata(path: PagePath): Metadata {
     alternates: { canonical: path },
     openGraph: { ...OPEN_GRAPH, title: `${title} · Eclipse`, description, url: path },
   };
+}
+
+/**
+ * Tells search engines the site's name and what Eclipse is. Goes in a script tag, so
+ * "<" is escaped. No rating: structured data must only state what the page can show.
+ */
+export function siteStructuredData() {
+  return JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "WebSite", name: "Eclipse", url: `${siteUrl}/` },
+      {
+        "@type": "SoftwareApplication",
+        name: "Eclipse",
+        description: SITE_DESCRIPTION,
+        url: `${siteUrl}/`,
+        applicationCategory: "GameApplication",
+        operatingSystem: "Windows",
+        offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      },
+    ],
+  }).replace(/</g, "\\u003c");
 }
