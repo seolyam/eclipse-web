@@ -9,8 +9,9 @@ import { WORLD_ROWS } from "@/lib/codec/world";
 import { repository } from "@/lib/data";
 import { WORLD_LOOKS, toCss } from "@/lib/domain";
 import { worldCache } from "@/lib/search-params";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "World presets" };
+export const metadata: Metadata = pageMetadata("/world");
 
 export default async function WorldPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const f = await worldCache.parse(searchParams);

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Setup" };
+export const metadata: Metadata = pageMetadata("/guide");
 
 const STEPS = [
   {

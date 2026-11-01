@@ -7,10 +7,14 @@ export const siteUrl = (
   process.env.NEXT_PUBLIC_SITE_URL || (vercelHost ? `https://${vercelHost}` : "http://localhost:3000")
 ).replace(/\/$/, "");
 
+export const SITE_TITLE = "Eclipse - A free wardrobe for World of Warcraft 3.3.5a";
+export const SITE_DESCRIPTION =
+  "Eclipse is a free overlay for the World of Warcraft 3.3.5a client. Every appearance, mount, spell and title in the game, on your own character.";
+
 export const OPEN_GRAPH: NonNullable<Metadata["openGraph"]> = {
   type: "website",
   siteName: "Eclipse",
-  title: "Eclipse - A free wardrobe for World of Warcraft",
+  title: SITE_TITLE,
   description: "Every appearance, mount, spell and title in the game, on your own character. Free, for the 3.3.5a client.",
   images: [{ url: "/assets/img/og-image.jpg", width: 1200, height: 630 }],
 };

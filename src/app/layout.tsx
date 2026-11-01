@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Sprite } from "@/components/site/icons";
 import { SupportDialog } from "@/components/site/support-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { OPEN_GRAPH, siteUrl } from "@/lib/site";
+import { OPEN_GRAPH, SITE_DESCRIPTION, SITE_TITLE, siteUrl } from "@/lib/site";
 import { supabaseConfigured } from "@/lib/supabase/config";
 import "./globals.css";
 
@@ -25,14 +25,10 @@ const newsreader = localFont({
   display: "swap",
 });
 
-const TITLE = "Eclipse - A free wardrobe for World of Warcraft";
-const DESCRIPTION =
-  "Eclipse is a free overlay for the World of Warcraft 3.3.5a client. Every appearance, mount, spell and title in the game, on your own character.";
-
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: TITLE, template: "%s · Eclipse" },
-  description: DESCRIPTION,
+  title: { default: SITE_TITLE, template: "%s · Eclipse" },
+  description: SITE_DESCRIPTION,
   icons: { icon: "/assets/img/icon-32.png", apple: "/assets/img/icon-180.png" },
   openGraph: OPEN_GRAPH,
   twitter: { card: "summary_large_image", images: ["/assets/img/og-image.jpg"] },

@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Decoder } from "@/components/decoder";
 import { HubTitle } from "@/components/hub";
 import { repository } from "@/lib/data";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Inspector" };
+export const metadata: Metadata = pageMetadata("/inspector");
 
 export default function InspectorPage() {
   return (

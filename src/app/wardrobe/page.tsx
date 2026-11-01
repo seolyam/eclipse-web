@@ -5,8 +5,9 @@ import { BuiltinNotice, HubTabs, HubTitle, listFromSearch, NoLooks, Pager, Publi
 import { OutfitCard } from "@/components/outfit-card";
 import { OutfitFilters } from "@/components/outfit-filters";
 import { repository } from "@/lib/data";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Wardrobe" };
+export const metadata: Metadata = pageMetadata("/wardrobe");
 
 export default async function WardrobePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { posts, total, filters } = await listFromSearch(searchParams);

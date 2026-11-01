@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 import { DISCORD_URL } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Privacy",
-  description: "What the Eclipse website stores, what is public, and how to remove it.",
-};
+export const metadata: Metadata = pageMetadata("/privacy");
 
 const UPDATED = "November 1, 2026";
 

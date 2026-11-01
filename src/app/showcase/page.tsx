@@ -4,8 +4,9 @@ import { HubTabs, HubTitle, listFromSearch, NoCaptures, NoLooks, Pager, PublishB
 import { OutfitPoster } from "@/components/outfit-card";
 import { OutfitFilters } from "@/components/outfit-filters";
 import { repository } from "@/lib/data";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Showcase" };
+export const metadata: Metadata = pageMetadata("/showcase");
 
 export default async function ShowcasePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { posts, total, filters } = await listFromSearch(searchParams, { captured: true });
