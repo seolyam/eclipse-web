@@ -4,7 +4,7 @@ import { hashSecret, newLinkCode } from "@/lib/game-sync/secrets";
 import { cleanSetName } from "@/lib/game-sync/wire";
 import { SCREENSHOT_BUCKET, screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { builtinRepository } from "./builtin";
+import { builtinRepository, matchingLooks } from "./builtin";
 import { compressScreenshot, SCREENSHOT_EXTENSION, SCREENSHOT_TYPE } from "./compress";
 import type {
   GameLink, GameSet, OutfitFilters, OutfitList, OutfitPost, Repository, WriteResult,
@@ -97,11 +97,13 @@ const SEARCH_INDEX_SIZE = 200;
 /** People can edit their own user metadata, so this is only a suggestion. */
 const safeAvatar = (url: unknown) => (typeof url === "string" && url.startsWith("https://") ? url : null);
 
-async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
-  const db = await createServerSupabase();
-  const size = f.pageSize ?? LOOKS_PER_PAGE;
-  const from = (Math.max(1, f.page ?? 1) - 1) * size;
-  let query = db.from("outfits").select(OUTFIT_COLUMNS, { count: "exact" }).range(from, from + size - 1);
+const outfitRows = (
+  db: Awaited<ReturnType<typeof createServerSupabase>>,
+  f: OutfitFilters,
+  columns: string,
+  options: { count: "exact"; head?: boolean },
+) => {
+  let query = db.from("outfits").select(columns, options);
   if (f.captured) query = query.neq("gallery", "{}");
   if (f.authorId) query = query.eq("author_id", f.authorId);
   if (f.className) query = query.eq("class_name", f.className);
@@ -111,16 +113,42 @@ async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
   if (f.tag) query = query.contains("tags", [f.tag]);
   const term = f.q ? safeTerm(f.q) : "";
   if (term) query = query.ilike("title", `%${term}%`);
-  query =
+  return query;
+};
+
+async function publishedOutfits(f: OutfitFilters): Promise<OutfitList> {
+  const db = await createServerSupabase();
+  const size = f.pageSize ?? LOOKS_PER_PAGE;
+  const from = (Math.max(1, f.page ?? 1) - 1) * size;
+  const page = outfitRows(db, f, OUTFIT_COLUMNS, { count: "exact" }).range(from, from + size - 1);
+  const query =
     f.sort === "newest"
-      ? query.order("created_at", { ascending: false })
+      ? page.order("created_at", { ascending: false })
       : f.sort === "top"
-        ? query.order("upvotes", { ascending: false })
-        : query.order("trending_score", { ascending: false });
+        ? page.order("upvotes", { ascending: false })
+        : page.order("trending_score", { ascending: false });
   const { data, error, count } = await query;
-  if (error?.code === RANGE_NOT_SATISFIABLE) return { posts: [], total: 0 };
+  if (error?.code === RANGE_NOT_SATISFIABLE) {
+    // The refusal holds no count, and the caller pages on past the last row.
+    const { count: rows, error: failed } = await outfitRows(db, f, "id", { count: "exact", head: true });
+    if (failed) throw new Error(failed.message);
+    return { posts: [], total: rows ?? 0 };
+  }
   if (error) throw new Error(error.message);
   return { posts: (data as unknown as OutfitRow[]).map(toPost), total: count ?? 0 };
+}
+
+/** Published looks, then the game's own sets, as one list to page through. */
+async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
+  const size = f.pageSize ?? LOOKS_PER_PAGE;
+  const from = (Math.max(1, f.page ?? 1) - 1) * size;
+  const published = await publishedOutfits(f);
+  const sets = matchingLooks(f);
+  const start = Math.max(0, from - published.total);
+  return {
+    posts: [...published.posts, ...sets.slice(start, start + size - published.posts.length)],
+    total: published.total + sets.length,
+  };
 }
 
 export const supabaseRepository: Repository = {
@@ -135,8 +163,9 @@ export const supabaseRepository: Repository = {
     return data ? toPost(data as unknown as OutfitRow) : null;
   },
   async searchIndex() {
-    const { posts } = await listOutfits({ sort: "top", pageSize: SEARCH_INDEX_SIZE });
-    return posts.map(({ id, title, author }) => ({ id, title, author }));
+    const { posts } = await publishedOutfits({ sort: "top", pageSize: SEARCH_INDEX_SIZE });
+    const published = posts.map(({ id, title, author }) => ({ id, title, author }));
+    return [...published, ...(await builtinRepository.searchIndex())];
   },
   async createOutfit(input) {
     const db = await createServerSupabase();

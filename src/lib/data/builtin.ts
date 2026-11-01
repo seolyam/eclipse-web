@@ -5,8 +5,9 @@ import { emptyOutfit, encodeOutfit } from "@/lib/codec/outfit";
 import { ARMOR_CLASSES, ARMOR_TYPES, LOOKS_PER_PAGE, type ArmorType } from "@/lib/domain";
 import type { OutfitFilters, OutfitPost, Repository } from "./types";
 
-// What the site can show with no database, and every word of it is real: the
-// game's own item sets and the one saved look in the Eclipse repo. Nobody
+// What the site can show with no database, and after every published look once
+// there is one. Every word of it is real: the game's own item sets and the one
+// saved look in the Eclipse repo. Nobody
 // published these, so they carry no author, votes or date, and nothing here is
 // dressed up with a race, mount or enchant the set does not hold. Writes are
 // refused rather than pretended.
@@ -109,10 +110,12 @@ function matches(o: OutfitPost, f: OutfitFilters): boolean {
   return true;
 }
 
+export const matchingLooks = (f: OutfitFilters) => allLooks().filter((o) => matches(o, f));
+
 export const builtinRepository: Repository = {
   live: false,
   async listOutfits(f) {
-    const hits = allLooks().filter((o) => matches(o, f));
+    const hits = matchingLooks(f);
     const size = f.pageSize ?? LOOKS_PER_PAGE;
     const start = (Math.max(1, f.page ?? 1) - 1) * size;
     return { posts: hits.slice(start, start + size), total: hits.length };

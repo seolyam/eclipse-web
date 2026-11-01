@@ -18,6 +18,7 @@ async function FeaturedLooks() {
   const { posts: captures } = await repository.listOutfits({ sort: "top", captured: true, pageSize: 4 });
   const looks = captures.length ? [] : (await repository.listOutfits({ sort: "top", pageSize: 4 })).posts;
   if (!captures.length && !looks.length) return null;
+  const community = captures.length > 0 || looks.some((post) => post.authorId);
   return (
     <section className="section" id="wardrobe" aria-labelledby="featured-heading">
       <div className="wrap">
@@ -25,7 +26,7 @@ async function FeaturedLooks() {
           <header className="section__head">
             <h2 id="featured-heading">From the Wardrobe</h2>
             <p>
-              {repository.live
+              {community
                 ? "Looks the community has dressed, every one a code away from your character."
                 : "Real item sets from the game, every one a code away from your character."}
             </p>
