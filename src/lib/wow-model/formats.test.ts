@@ -79,7 +79,7 @@ describe("BLP textures", () => {
 
 const MD20_SIZE = 0x130;
 
-// A chunked model: one triangle, one texture, one attachment, and the ids of its files.
+// A chunked model: one triangle, one texture, and the ids of its files.
 function model() {
   const arrays = new Map<number, [count: number, data: Uint8Array]>();
   const f32 = (...n: number[]) => new Uint8Array(Float32Array.from(n).buffer);
@@ -90,9 +90,6 @@ function model() {
   arrays.set(0x50, [1, u32(2, 3, 0, 0)]);
   arrays.set(0x70, [1, u16(0, 1)]);
   arrays.set(0x80, [1, u16(0)]);
-  const track = new Array<number>(20).fill(0);
-  arrays.set(0xf0, [1, bytes(u32(11), u16(5, 0), f32(0.5, 1.5, 2.5), track)]);
-  arrays.set(0xf8, [12, u16(...new Array<number>(11).fill(0xffff), 0)]);
 
   let size = MD20_SIZE;
   const md20 = new Uint8Array(4096);
@@ -121,14 +118,6 @@ describe("M2 models", () => {
     expect(m2.skinFile).toBe(1234);
     expect(m2.materials).toEqual([{ flags: 0, blend: 1 }]);
     expect(m2.textureLookup).toEqual([0]);
-  });
-
-  it("finds an attachment point through the lookup table", () => {
-    const m2 = parseM2(model());
-    const helm = m2.attachment(11);
-    expect(helm?.position[0]).toBeCloseTo(0.5);
-    expect(helm?.position[2]).toBeCloseTo(2.5);
-    expect(m2.attachment(5)).toBeNull();
   });
 
   it("refuses a file that is not a model", () => {

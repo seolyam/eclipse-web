@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { attachmentsFor, bodyLayers, regionRect, SKIN_SIZE, visibleGeosets, type WornItem } from "./character";
+import { attachmentsFor, bodyLayers, regionRect, SKIN_HEIGHT, SKIN_WIDTH, visibleGeosets, type WornItem } from "./character";
 
 const SLOT = { head: 0, shoulders: 2, shirt: 3, chest: 4, waist: 5, legs: 6, feet: 7, wrists: 8, hands: 9, back: 14, main: 15, off: 16, ranged: 17, tabard: 18 };
 
@@ -12,6 +12,13 @@ describe("which parts of the body show", () => {
     expect(shown.has(401)).toBe(true);
     expect(shown.has(501)).toBe(true);
     expect(shown.has(1301)).toBe(true);
+  });
+
+  // Measured on the human bodies: 3201 is a 98-triangle stub, and 3202 the whole head.
+  it("draws the parts an HD body keeps in groups of their own", () => {
+    const shown = visibleGeosets([], 2);
+    for (const part of [2001, 2201, 2301, 3202, 3301, 3401]) expect(shown.has(part), String(part)).toBe(true);
+    expect(shown.has(3201)).toBe(false);
   });
 
   it("shows ears, and exactly one hairstyle", () => {
@@ -78,27 +85,34 @@ describe("the order armour paints onto the skin", () => {
 });
 
 describe("the skin's layout", () => {
-  it("scales the classic 256-unit map to the skin", () => {
-    expect(SKIN_SIZE).toBe(1024);
+  // CharComponentTextureSections, layout 103 and every other two-to-one body.
+  it("keeps the classic body map on the left of a two-to-one skin", () => {
+    expect([SKIN_WIDTH, SKIN_HEIGHT]).toEqual([2048, 1024]);
     expect(regionRect("armUpper")).toEqual([0, 0, 512, 256]);
     expect(regionRect("legUpper")).toEqual([512, 384, 512, 256]);
     expect(regionRect("foot")).toEqual([512, 896, 512, 128]);
   });
 
-  it("fills the map without overlapping", () => {
-    const names = ["armUpper", "armLower", "hand", "faceUpper", "faceLower", "torsoUpper", "torsoLower", "legUpper", "legLower", "foot"] as const;
+  it("gives the face the whole right half", () => {
+    expect(regionRect("face")).toEqual([1024, 0, 1024, 1024]);
+  });
+
+  it("leaves no gap between the body regions", () => {
+    const names = ["armUpper", "armLower", "hand", "torsoUpper", "torsoLower", "legUpper", "legLower", "foot"] as const;
     const area = names.reduce((sum, n) => {
       const [, , w, h] = regionRect(n);
       return sum + w * h;
     }, 0);
-    expect(area).toBe(SKIN_SIZE * SKIN_SIZE);
+    // The hands stop short of a face panel the classic map kept under them.
+    expect(area).toBe(SKIN_HEIGHT * SKIN_HEIGHT - 512 * 384);
   });
 });
 
 describe("where a model hangs", () => {
   it("puts a helm on the head and pauldrons on both shoulders", () => {
-    // On these bodies 11 is the neck: a helm's origin is the crown, so it hung at the collar.
-    expect(attachmentsFor(worn(SLOT.head, { model: 1 }))).toEqual([{ attachment: 55, fallback: 11, model: 1, texture: undefined }]);
+    // Measured over 79 helms on an HD human, head 1.76..2.11: at 11 the median helm
+    // spans 1.58..2.03, around the neck, and at 55 it spans 1.75..2.20.
+    expect(attachmentsFor(worn(SLOT.head, { model: 1 }))).toEqual([{ attachment: 55, model: 1, texture: undefined }]);
     expect(attachmentsFor(worn(SLOT.shoulders, { model: 1, texture: 2, modelRight: 3, textureRight: 4 }))).toEqual([
       { attachment: 6, model: 1, texture: 2 },
       { attachment: 5, model: 3, texture: 4 },

@@ -4,6 +4,7 @@
 // answer browsers.
 import { decodeBlte } from "./blte";
 import type { BodyFiles } from "./figure";
+import type { BakedPose } from "./pose";
 import type { ItemRecipe } from "./recipe";
 
 const ITEM_SHARDS = 128;
@@ -67,8 +68,10 @@ export function gameFiles(fetcher: typeof fetch = (...args) => fetch(...args)) {
       return shard[item] ?? null;
     },
     async body(race: number, gender: number): Promise<BodyFiles | null> {
-      const bodies = await table<Record<string, BodyFiles>>("/dress/bodies.json");
-      return bodies[`${race}-${gender}`] ?? null;
+      const key = `${race}-${gender}`;
+      const bodies = await table<Record<string, Omit<BodyFiles, "pose">>>("/dress/bodies.json");
+      if (!bodies[key]) return null;
+      return { ...bodies[key], pose: await table<BakedPose>(`/dress/poses/${key}.json`) };
     },
   };
 }
