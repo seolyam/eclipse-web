@@ -123,6 +123,11 @@ describe("the built-in looks", () => {
     expect(created.ok).toBe(false);
     expect((await repo.upvote("crystal-scholar")).ok).toBe(false);
     expect((await repo.uploadScreenshot(new File([], "a.png"))).ok).toBe(false);
+    expect((await repo.report("crystal-scholar", "spam")).ok).toBe(false);
+    expect((await repo.setBookmark("crystal-scholar", true)).ok).toBe(false);
+    expect((await repo.restoreOutfit("crystal-scholar")).ok).toBe(false);
+    expect(await repo.isBookmarked("crystal-scholar")).toBe(false);
+    expect(await repo.listReports()).toEqual([]);
     expect((await repo.listOutfits({ sort: "top" })).total).toBe(before);
   });
 });

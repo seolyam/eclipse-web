@@ -5,7 +5,7 @@ import { DISCORD_URL } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata("/privacy");
 
-const UPDATED = "November 1, 2026";
+const UPDATED = "November 2, 2026";
 
 const SECTIONS = [
   {
@@ -44,6 +44,8 @@ const SECTIONS = [
     points: [
       "Your public name, and any look you publish with its title, code, tags and screenshots. Anyone can see these without an account.",
       "How many votes a look has. Which looks you voted for stays private.",
+      "Your bookmarks, which only you can see.",
+      "Any report you send, with its reason. Only moderators see who reported a look.",
       "Uploaded screenshots are compressed and their file details are removed, including any location data. Still, avoid uploading anything you would not want public, and remember a screenshot can show your character or account names.",
     ],
   },
@@ -65,7 +67,8 @@ const SECTIONS = [
       "Delete any look you published, from the look's page. Its screenshots are deleted with it.",
       "Unlink a game, or remove any of your saved loadouts, from Your sets in your account menu.",
       "To delete your whole account, ask us on Discord. We keep your data until you delete it or ask us to.",
-      "Moderators can remove looks that break the community's rules.",
+      "Remove a bookmark from the look's page.",
+      "Moderators can remove looks that break the community's rules. A look several people report is hidden until a moderator reviews it.",
     ],
   },
 ];

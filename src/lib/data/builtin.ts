@@ -96,6 +96,8 @@ function wornBy(o: OutfitPost, className: NonNullable<OutfitFilters["className"]
 }
 
 function matches(o: OutfitPost, f: OutfitFilters): boolean {
+  // Nobody can bookmark a built-in look.
+  if (f.saved) return false;
   if (f.captured && !o.gallery.length) return false;
   if (f.authorId && o.authorId !== f.authorId) return false;
   if (f.className && !wornBy(o, f.className)) return false;
@@ -130,6 +132,21 @@ export const builtinRepository: Repository = {
     return { ok: false, error: NOT_LIVE };
   },
   async upvote() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async report() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async isBookmarked() {
+    return false;
+  },
+  async setBookmark() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async listReports() {
+    return [];
+  },
+  async restoreOutfit() {
     return { ok: false, error: NOT_LIVE };
   },
   async uploadScreenshot() {

@@ -1,17 +1,26 @@
 import { BadgeCheck } from "lucide-react";
+import Link from "next/link";
+import { BookmarkButton } from "@/components/bookmark-button";
 import { CopyButton } from "@/components/copy-button";
 import { DeleteLook } from "@/components/delete-look";
 import { LoadoutFacts } from "@/components/outfit-breakdown";
+import { ReportLook } from "@/components/report-look";
+import { RestoreLook } from "@/components/restore-look";
 import { SendToGame } from "@/components/send-to-game";
 import { StudioPane } from "@/components/studio/studio-pane";
 import { UpvoteButton } from "@/components/upvote-button";
-import { resolveOutfit } from "@/lib/catalog";
+import { resolveOutfit, type ResolvedOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
 import { repository } from "@/lib/data";
 import type { OutfitPost } from "@/lib/data/types";
-import { ARMOR_LABEL, RACE_LABEL } from "@/lib/domain";
+import { ARMOR_LABEL, RACE_LABEL, VISIBLE_SLOTS } from "@/lib/domain";
 
-export function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost; heading?: "h1" | "h2" }) {
+/** The Dressing room dresses visible slots only, so a pure morph or mount has nothing to open. */
+const hasArmor = (r: ResolvedOutfit) => r.slots.some((s) => (VISIBLE_SLOTS as readonly number[]).includes(s.slot));
+
+export async function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost; heading?: "h1" | "h2" }) {
+  // Only a published look has an author, and only those can be bookmarked or reported.
+  const saved = post.authorId ? await repository.isBookmarked(post.id) : false;
   const decoded = decodeOutfit(post.code);
   const resolved = decoded.ok ? resolveOutfit(decoded.outfit) : null;
   const tags = [
@@ -24,6 +33,12 @@ export function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost; headi
 
   return (
     <div className="flex flex-col gap-5">
+      {post.hidden && (
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-md border border-line bg-surface p-3 text-sm text-ink-dim">
+          <p className="flex-1">Reports have hidden this look from everyone else until a moderator reviews it.</p>
+          <RestoreLook id={post.id} />
+        </div>
+      )}
       {resolved ? (
         <StudioPane post={post} resolved={resolved} heading={heading} />
       ) : (
@@ -34,10 +49,17 @@ export function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost; headi
         <CopyButton code={post.code} className="h-[2.9rem] flex-1 px-6 text-[0.95rem] sm:flex-none" />
         {repository.live && <SendToGame id={post.id} />}
         {post.upvotes !== null && <UpvoteButton id={post.id} count={post.upvotes} />}
+        {repository.live && post.authorId && <BookmarkButton id={post.id} saved={saved} />}
         <p className="flex items-center gap-1 text-sm text-ink-dim">
           {post.author ?? "Item set"}
           {post.authorVerified && <BadgeCheck className="size-3.5 text-amber" strokeWidth={1.5} aria-label="Verified" />}
         </p>
+        {resolved && hasArmor(resolved) && (
+          <Link href={`/dressing-room?look=${encodeURIComponent(post.id)}`} className="pill">
+            Open in Dressing room
+          </Link>
+        )}
+        {post.authorId && <ReportLook id={post.id} authorId={post.authorId} />}
         {post.authorId && <DeleteLook id={post.id} authorId={post.authorId} />}
       </div>
 

@@ -27,6 +27,23 @@ async function encode(input: Buffer, { edge, quality }: { edge: number; quality:
     .toBuffer();
 }
 
+// The size Discord, X and others draw a large link preview at.
+const CARD = { width: 1200, height: 630, quality: 80 };
+
+/** A stored screenshot as a link preview: a JPEG, which every preview reads. */
+export async function socialCard(input: Buffer): Promise<Buffer | null> {
+  try {
+    const { default: sharp } = await import("sharp");
+    return await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
+      .resize({ width: CARD.width, height: CARD.height, fit: "cover" })
+      .jpeg({ quality: CARD.quality, mozjpeg: true })
+      .toBuffer();
+  } catch (error) {
+    console.error("Link preview failed:", error);
+    return null;
+  }
+}
+
 /** A capture's two stored copies, or null when its bytes are not an image. */
 export async function compressScreenshot(input: Buffer) {
   try {

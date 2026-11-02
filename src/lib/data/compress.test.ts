@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { compressScreenshot } = await import("./compress");
+const { compressScreenshot, socialCard } = await import("./compress");
 
 const capture = (width: number, height: number) =>
   sharp({ create: { width, height, channels: 3, background: "#403020", noise: { type: "gaussian", mean: 120, sigma: 24 } } });
@@ -59,5 +59,20 @@ describe("a stored screenshot", () => {
   it("refuses bytes that are not an image", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     expect(await compressScreenshot(Buffer.from("not an image"))).toBeNull();
+  });
+});
+
+describe("a link preview", () => {
+  // Discord and others do not all read AVIF, which is what the site stores.
+  it("is a JPEG at the size link previews use, cropped from a stored screenshot", async () => {
+    const { full } = await compress(await capture(1920, 1080).png().toBuffer());
+    const card = await socialCard(full);
+    expect(card).not.toBeNull();
+    expect(await sharp(card!).metadata()).toMatchObject({ format: "jpeg", width: 1200, height: 630 });
+  });
+
+  it("is nothing for bytes that are not an image", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await socialCard(Buffer.from("not an image"))).toBeNull();
   });
 });

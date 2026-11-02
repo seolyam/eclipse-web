@@ -31,6 +31,7 @@ export async function listFromSearch(searchParams: Promise<SearchParams>, { capt
     category: f.category,
     tag: f.tag,
     authorId: f.author,
+    saved: f.saved,
     captured,
     sort: f.sort,
     page: f.page,

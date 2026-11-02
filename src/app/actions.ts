@@ -8,6 +8,7 @@ import {
 } from "@/lib/codec/schema";
 import { decodeWorld, OUTFIT_WORLD_TAG } from "@/lib/codec/world";
 import { repository } from "@/lib/data";
+import { REPORT_REASONS, type ReportReason } from "@/lib/data/types";
 import { UPLOAD_PATH } from "@/lib/screenshots";
 
 export type InspectResult =
@@ -125,5 +126,29 @@ export async function removeGameSet(id: string) {
 export async function upvoteOutfit(id: string) {
   const r = await repository.upvote(id);
   if (r.ok) revalidateHub();
+  return r;
+}
+
+export async function reportLook(id: string, reason: string) {
+  if (!Object.hasOwn(REPORT_REASONS, reason)) return { ok: false as const, error: "Choose a reason first." };
+  const r = await repository.report(id, reason as ReportReason);
+  // The third report hides the look from every list.
+  if (r.ok) revalidateHub();
+  return r;
+}
+
+export async function bookmarkLook(id: string, saved: boolean) {
+  const r = await repository.setBookmark(id, saved);
+  if (r.ok) revalidatePath("/wardrobe");
+  return r;
+}
+
+export async function restoreLook(id: string) {
+  const r = await repository.restoreOutfit(id);
+  if (r.ok) {
+    revalidateHub();
+    revalidatePath(`/wardrobe/${id}`);
+    revalidatePath("/moderation");
+  }
   return r;
 }
