@@ -5,7 +5,7 @@ import { CopyButton } from "@/components/copy-button";
 import { DeleteLook } from "@/components/delete-look";
 import { LoadoutFacts } from "@/components/outfit-breakdown";
 import { ReportLook } from "@/components/report-look";
-import { RestoreLook } from "@/components/restore-look";
+import { ModeratorReports } from "@/components/moderator-reports";
 import { SendToGame } from "@/components/send-to-game";
 import { StudioPane } from "@/components/studio/studio-pane";
 import { UpvoteButton } from "@/components/upvote-button";
@@ -33,12 +33,7 @@ export async function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost;
 
   return (
     <div className="flex flex-col gap-5">
-      {post.hidden && (
-        <div role="status" className="flex flex-wrap items-center gap-3 rounded-md border border-line bg-surface p-3 text-sm text-ink-dim">
-          <p className="flex-1">Reports have hidden this look from everyone else until a moderator reviews it.</p>
-          <RestoreLook id={post.id} />
-        </div>
-      )}
+      {post.authorId && <ModeratorReports id={post.id} />}
       {resolved ? (
         <StudioPane post={post} resolved={resolved} heading={heading} />
       ) : (

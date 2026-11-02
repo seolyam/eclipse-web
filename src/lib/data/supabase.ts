@@ -26,7 +26,6 @@ interface OutfitRow {
   created_at: string;
   author_id: string;
   gallery: string[];
-  hidden?: boolean;
   profiles: { display_name: string | null; verified: boolean } | null;
   remix?: { id: string; title: string; profiles: { display_name: string | null } | null } | null;
 }
@@ -34,7 +33,6 @@ interface OutfitRow {
 interface ReportedRow {
   outfit_id: string;
   title: string;
-  hidden: boolean;
   reports: number;
   reasons: ReportReason[];
   last_report: string;
@@ -59,7 +57,7 @@ const toGameSet = (r: GameSetRow): GameSet => ({ id: r.id, name: r.name, code: r
 // The hint is required: outfit_votes, outfit_reports and outfit_bookmarks also join
 // outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,author_id,gallery,hidden,profiles!outfits_author_id_fkey(display_name,verified)," +
+  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
   // outfits refers to itself, so the hint is the column: it picks the original, not the remixes.
   "remix:outfits!remixed_from(id,title,profiles!outfits_author_id_fkey(display_name))";
 
@@ -78,7 +76,6 @@ const toPost = (r: OutfitRow): OutfitPost => ({
   upvotes: r.upvotes,
   createdAt: r.created_at,
   gallery: r.gallery.map(screenshotUrl),
-  hidden: Boolean(r.hidden),
   remixedFrom: r.remix ? { id: r.remix.id, title: r.remix.title, author: r.remix.profiles?.display_name ?? null } : null,
 });
 
@@ -301,18 +298,17 @@ export const supabaseRepository: Repository = {
     return (data as ReportedRow[]).map((r) => ({
       id: r.outfit_id,
       title: r.title,
-      hidden: r.hidden,
       reports: Number(r.reports),
       reasons: r.reasons,
       lastReport: r.last_report,
     }));
   },
-  async restoreOutfit(id) {
-    if (!UUID.test(id)) return { ok: false, error: "That look cannot be restored." };
+  async dismissReports(id) {
+    if (!UUID.test(id)) return { ok: false, error: "That look has no reports to dismiss." };
     const db = await createServerSupabase();
-    const { error } = await db.rpc("restore_outfit", { target: id });
-    if (error?.code === REFUSED_BY_POLICY) return { ok: false, error: "Only moderators can restore a look." };
-    if (error) return { ok: false, error: "That look could not be restored. Try again." };
+    const { error } = await db.rpc("dismiss_reports", { target: id });
+    if (error?.code === REFUSED_BY_POLICY) return { ok: false, error: "Only moderators can dismiss reports." };
+    if (error) return { ok: false, error: "Those reports could not be dismissed. Try again." };
     return { ok: true, value: id };
   },
   async uploadScreenshot(file) {

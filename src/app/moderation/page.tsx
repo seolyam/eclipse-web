@@ -6,7 +6,7 @@ import { REPORT_REASONS } from "@/lib/data/types";
 
 export const metadata: Metadata = { title: "Reports", robots: { index: false, follow: false } };
 
-/** Looks with reports nobody has reviewed. Each opens on the look, where Keep and Delete are. */
+/** Looks with reports nobody has reviewed. Each opens on the look, where Dismiss and Delete are. */
 export default async function ModerationPage() {
   const account = await repository.getAccount();
   if (!account?.moderator) notFound();
@@ -16,7 +16,7 @@ export default async function ModerationPage() {
     <main id="main" className="wrap flex flex-col gap-5 py-10">
       <h1 className="text-2xl">Reports</h1>
       <p className="text-sm text-ink-dim">
-        Open a look to keep it, which shows it again and clears its reports, or to delete it.
+        Reports never hide a look. Open one to dismiss its reports and keep it, or to delete it.
       </p>
       {reported.length ? (
         <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-surface">
@@ -25,7 +25,6 @@ export default async function ModerationPage() {
               <Link href={`/wardrobe/${r.id}`} className="flex-1 text-ink underline-offset-2 hover:underline">
                 {r.title}
               </Link>
-              {r.hidden && <span className="text-xs text-bad">Hidden</span>}
               <span className="nums text-xs text-ink-dim">
                 {r.reports} {r.reports === 1 ? "report" : "reports"}
               </span>

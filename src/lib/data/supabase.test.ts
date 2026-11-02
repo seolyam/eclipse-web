@@ -343,10 +343,10 @@ describe("reports", () => {
 
   it("lists the moderation queue for a moderator", async () => {
     reply = () => Response.json([
-      { outfit_id: row.id, title: "A real post", hidden: true, reports: 3, reasons: ["spam"], last_report: row.created_at },
+      { outfit_id: row.id, title: "A real post", reports: 3, reasons: ["spam"], last_report: row.created_at },
     ]);
     expect(await repo.listReports()).toEqual([
-      { id: row.id, title: "A real post", hidden: true, reports: 3, reasons: ["spam"], lastReport: row.created_at },
+      { id: row.id, title: "A real post", reports: 3, reasons: ["spam"], lastReport: row.created_at },
     ]);
   });
 
@@ -355,14 +355,20 @@ describe("reports", () => {
     expect(await repo.listReports()).toEqual([]);
   });
 
-  it("refuses a restore from someone who is not a moderator", async () => {
-    reply = failWith("42501", 403);
-    expect(await repo.restoreOutfit(row.id)).toEqual({ ok: false, error: "Only moderators can restore a look." });
+  it("dismisses a look's reports through dismiss_reports", async () => {
+    reply = () => new Response(null, { status: 204 });
+    expect(await repo.dismissReports(row.id)).toEqual({ ok: true, value: row.id });
+    expect(requests[0].pathname).toBe("/rest/v1/rpc/dismiss_reports");
   });
 
-  it("carries the hidden flag so an author knows why their look is gone", async () => {
-    reply = () => Response.json({ ...row, hidden: true });
-    expect((await repo.getOutfit(row.id))?.hidden).toBe(true);
+  it("refuses a dismissal from someone who is not a moderator", async () => {
+    reply = failWith("42501", 403);
+    expect(await repo.dismissReports(row.id)).toEqual({ ok: false, error: "Only moderators can dismiss reports." });
+  });
+
+  it("never asks for a hidden flag: reports do not hide looks", async () => {
+    await repo.getOutfit(row.id);
+    expect(requests[0].searchParams.get("select")).not.toMatch(/(^|,)hidden(,|$)/);
   });
 });
 

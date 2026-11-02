@@ -21,8 +21,6 @@ export interface OutfitPost {
   createdAt: string | null;
   /** Links to studio screenshots, the cover first. The code holds no pictures. */
   gallery: string[];
-  /** Hidden by reports. Only its author and moderators can still see it. */
-  hidden?: boolean;
   /** The look this one was made from in the Dressing room, while it can still be seen. */
   remixedFrom?: { id: string; title: string; author: string | null } | null;
 }
@@ -113,7 +111,6 @@ export type ReportReason = keyof typeof REPORT_REASONS;
 export interface ReportedLook {
   id: string;
   title: string;
-  hidden: boolean;
   reports: number;
   reasons: ReportReason[];
   lastReport: string;
@@ -134,15 +131,15 @@ export interface Repository {
   searchIndex(): Promise<SearchEntry[]>;
   createOutfit(input: ParsedOutfit): Promise<WriteResult<OutfitPost>>;
   upvote(id: string): Promise<WriteResult<number>>;
-  /** Files a report. Three hide the look until a moderator reviews it. */
+  /** Files a report for moderators. A report never hides the look by itself. */
   report(id: string, reason: ReportReason): Promise<WriteResult<string>>;
   /** Whether the signed-in account bookmarked this look. False for a visitor. */
   isBookmarked(id: string): Promise<boolean>;
   setBookmark(id: string, saved: boolean): Promise<WriteResult<boolean>>;
   /** Moderators only: everything else gets an empty list. */
   listReports(): Promise<ReportedLook[]>;
-  /** Moderators only: shows a reported look again and marks its reports read. */
-  restoreOutfit(id: string): Promise<WriteResult<string>>;
+  /** Moderators only: keeps a reported look and marks its reports so far as read. */
+  dismissReports(id: string): Promise<WriteResult<string>>;
   /** Compresses and stores a screenshot, and returns its storage path. */
   uploadScreenshot(file: File): Promise<WriteResult<string>>;
   removeScreenshot(path: string): Promise<WriteResult<string>>;

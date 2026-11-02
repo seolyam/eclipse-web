@@ -1,0 +1,110 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { OutfitPost } from "@/lib/data/types";
+
+vi.mock("server-only", () => ({}));
+
+let pick: { post: OutfitPost; votes: number } | null = null;
+vi.mock("@/lib/data", () => ({ repository: { lookOfTheWeek: async () => pick } }));
+
+const { GET } = await import("./route");
+const { siteUrl } = await import("@/lib/site");
+
+const HOOK = "https://discord.test/api/webhooks/1/secret";
+const post: OutfitPost = {
+  id: "11111111-1111-4111-8111-111111111111",
+  title: "Frost in the Fens",
+  author: "Kira_*the*_Bold",
+  authorId: "33333333-3333-4333-8333-333333333333",
+  authorVerified: false,
+  code: "ECA1:c2xvdCAwIDEK",
+  className: null,
+  armor: null,
+  race: null,
+  category: "Armor",
+  tags: [],
+  upvotes: 9,
+  createdAt: "2026-11-01T00:00:00.000Z",
+  gallery: ["https://stub.supabase.co/storage/v1/object/public/showcase/a/b.avif"],
+};
+
+const sent: { url: string; body: Record<string, unknown> }[] = [];
+const call = (auth?: string) =>
+  GET(new Request(`${siteUrl}/api/cron/look-of-the-week`, auth ? { headers: { authorization: auth } } : {}));
+
+beforeEach(() => {
+  pick = null;
+  sent.length = 0;
+  vi.stubEnv("CRON_SECRET", "cron-secret");
+  vi.stubEnv("DISCORD_WEBHOOK_URL", HOOK);
+  vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+    sent.push({ url, body: JSON.parse(String(init.body)) });
+    return new Response(null, { status: 204 });
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
+describe("the weekly Discord post", () => {
+  it("answers only Vercel's scheduler, which sends the cron secret", async () => {
+    pick = { post, votes: 4 };
+    expect((await call()).status).toBe(401);
+    expect((await call("Bearer wrong")).status).toBe(401);
+    expect(sent).toEqual([]);
+  });
+
+  it("refuses everyone when no secret is set, rather than everyone being allowed", async () => {
+    vi.stubEnv("CRON_SECRET", "");
+    expect((await call("Bearer ")).status).toBe(401);
+  });
+
+  it("posts nothing in a quiet week", async () => {
+    const res = await call("Bearer cron-secret");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ posted: false });
+    expect(sent).toEqual([]);
+  });
+
+  it("posts the look, its votes, its creator and its screenshot", async () => {
+    pick = { post, votes: 4 };
+    const res = await call("Bearer cron-secret");
+    expect(await res.json()).toEqual({ posted: true, id: post.id });
+    expect(sent).toHaveLength(1);
+    expect(sent[0].url).toBe(HOOK);
+    const embed = (sent[0].body.embeds as Record<string, unknown>[])[0];
+    expect(embed.title).toBe("Frost in the Fens");
+    expect(embed.url).toBe(`${siteUrl}/wardrobe/${post.id}`);
+    expect(embed.description).toContain("4 upvotes");
+    expect(embed.image).toEqual({ url: `${siteUrl}/wardrobe/${post.id}/cover` });
+  });
+
+  it("never pings anyone, and shows a name's markdown as plain text", async () => {
+    pick = { post, votes: 4 };
+    await call("Bearer cron-secret");
+    expect(sent[0].body.allowed_mentions).toEqual({ parse: [] });
+    const embed = (sent[0].body.embeds as Record<string, unknown>[])[0];
+    expect(embed.description).toContain("Kira\\_\\*the\\*\\_Bold");
+  });
+
+  it("leaves the image out when the look has no screenshot", async () => {
+    pick = { post: { ...post, gallery: [] }, votes: 2 };
+    await call("Bearer cron-secret");
+    expect((sent[0].body.embeds as Record<string, unknown>[])[0].image).toBeUndefined();
+  });
+
+  it("does nothing without a webhook", async () => {
+    vi.stubEnv("DISCORD_WEBHOOK_URL", "");
+    pick = { post, votes: 4 };
+    expect(await (await call("Bearer cron-secret")).json()).toEqual({ posted: false });
+    expect(sent).toEqual([]);
+  });
+
+  it("reports a refused post as a failure, so the scheduler's log shows it", async () => {
+    vi.stubGlobal("fetch", async () => new Response("bad", { status: 400 }));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    pick = { post, votes: 4 };
+    expect((await call("Bearer cron-secret")).status).toBe(502);
+  });
+});
