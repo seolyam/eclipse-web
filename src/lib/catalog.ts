@@ -33,6 +33,10 @@ export function itemIcon(id: number): string | null {
   return itemById.get(id)?.[4] || null;
 }
 
+export function itemName(id: number): string | null {
+  return itemById.get(id)?.[1] ?? null;
+}
+
 export interface PlaceInfo {
   tag: string;
   name: string;

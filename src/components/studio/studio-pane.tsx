@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { ItemRing } from "@/components/item-icon";
 import { StudioGallery } from "@/components/studio/studio-gallery";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -34,7 +35,11 @@ function Piece({ slot, piece, side }: { slot: number; piece: ResolvedSlot | unde
               className="piece__name"
               style={{ color: hidden ? "#1eff00" : piece ? qualityColour(known) : "var(--ink-faint)" }}
             >
-              {name}
+              {piece && !hidden ? (
+                <Link href={`/wardrobe?item=${piece.item}`} className="underline-offset-2 hover:underline" aria-label={`Looks that wear ${name}`}>
+                  {name}
+                </Link>
+              ) : name}
             </p>
             <p className="piece__slot">{SLOT_NAMES[slot]}</p>
           </div>
@@ -43,7 +48,7 @@ function Piece({ slot, piece, side }: { slot: number; piece: ResolvedSlot | unde
       <TooltipContent side={side === "left" ? "right" : "left"}>
         {!piece && "This code leaves the slot to the wearer."}
         {hidden && "The code hides this slot on purpose."}
-        {piece && !hidden && `Item ${piece.item}${known === null ? "" : `, ${QUALITY_NAME[known]}`}`}
+        {piece && !hidden && `Item ${piece.item}${known === null ? "" : `, ${QUALITY_NAME[known]}`}. Open it for every look that wears it.`}
       </TooltipContent>
     </Tooltip>
   );
