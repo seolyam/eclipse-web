@@ -58,8 +58,6 @@ async function paintSkin(source: FileSource, body: BodyFiles, items: WornItem[])
   canvas.width = SKIN_WIDTH;
   canvas.height = SKIN_HEIGHT;
   const context = canvas.getContext("2d")!;
-  context.drawImage(await readImage(source, body.skin), 0, 0, SKIN_WIDTH, SKIN_HEIGHT);
-
   const base: { region: SkinRegion; file: number | undefined }[] = [
     { region: "face", file: body.face },
     { region: "legUpper", file: body.pelvis },
@@ -67,7 +65,11 @@ async function paintSkin(source: FileSource, body: BodyFiles, items: WornItem[])
   ];
   const layers = [...base.filter((l): l is { region: SkinRegion; file: number } => Boolean(l.file)), ...bodyLayers(items)];
   // Read together, painted in order: the order is what makes a sleeve go under a glove.
-  const images = await Promise.allSettled(layers.map((layer) => readImage(source, layer.file)));
+  const [skin, images] = await Promise.all([
+    readImage(source, body.skin),
+    Promise.allSettled(layers.map((layer) => readImage(source, layer.file))),
+  ]);
+  context.drawImage(skin, 0, 0, SKIN_WIDTH, SKIN_HEIGHT);
   images.forEach((image, i) => {
     if (image.status === "fulfilled") {
       const [x, y, w, h] = regionRect(layers[i].region);
@@ -155,21 +157,57 @@ export async function buildFigure(source: FileSource, body: BodyFiles, items: Wo
 
   const pose = readPose(body.pose);
   const matrices = solveBones(pose.bones);
-  const [{ m2, sections }, skin, hair, eyes] = await Promise.all([
+  const figure = new THREE.Group();
+  const failed = new Set<number>();
+  const cape = items.find((item) => item.slot === 14 && item.texture)?.texture;
+
+  // Every file is asked for at once, waiting only on the file that names it. Each trip
+  // goes to the game's CDN, so a chain of them is what makes a change slow.
+  const bodyFiles = Promise.all([
     readMesh(source, body.model),
     paintSkin(source, body, items),
     body.hair ? readImage(source, body.hair).catch(() => null) : null,
     body.eyes ? readImage(source, body.eyes).catch(() => null) : null,
+    cape ? readImage(source, cape).catch(() => null) : null,
   ]);
-  const cape = items.find((item) => item.slot === 14 && item.texture)?.texture;
-  const capeImage = cape ? await readImage(source, cape).catch(() => null) : null;
 
+  const parts = Promise.all(items.flatMap((item) => {
+    const points = attachmentsFor(item, items);
+    // A model with nowhere to hang, as a ranged weapon whose hand is full, is not shown.
+    if (item.model && !points.length) failed.add(item.slot);
+    return points.map(async (hung) => {
+      try {
+        const where = attachmentMatrix(pose.attachment(hung.attachment), matrices);
+        if (!where) throw new Error(`No attachment ${hung.attachment}.`);
+        const [model, objectImage] = await Promise.all([
+          readModel(source, hung.model),
+          hung.texture ? readImage(source, hung.texture) : null,
+        ]);
+        const objectTexture = objectImage ? keep(objectImage, 3) : null;
+        const fileTextures = new Map<number, THREE.Texture>();
+        await Promise.all(model.m2.textures.filter((t) => t.type === TEXTURE_FILE && t.file).map(async (t) => {
+          const image = await readImage(source, t.file).catch(() => null);
+          if (image) fileTextures.set(t.file, keep(image, t.flags));
+        }));
+        const part = buildMeshes(model.m2, model.sections, model.matrices, (role) => {
+          if (role.type === TEXTURE_OBJECT) return objectTexture;
+          if (role.type === TEXTURE_FILE) return fileTextures.get(role.file) ?? null;
+          return null;
+        }, null);
+        part.matrixAutoUpdate = false;
+        part.matrix.copy(where);
+        figure.add(part);
+      } catch {
+        failed.add(item.slot);
+      }
+    });
+  }));
+
+  const [[{ m2, sections }, skin, hair, eyes, capeImage]] = await Promise.all([bodyFiles, parts]);
   const skinTexture = keep(skin);
   const hairTexture = hair ? keep(hair, 3) : null;
   const eyesTexture = eyes ? keep(eyes) : null;
   const capeTexture = capeImage ? keep(capeImage) : null;
-
-  const figure = new THREE.Group();
   figure.add(buildMeshes(m2, sections, matrices, (role) => {
     if (role.type === TEXTURE_SKIN) return skinTexture;
     if (role.type === TEXTURE_HAIR) return hairTexture;
@@ -177,32 +215,6 @@ export async function buildFigure(source: FileSource, body: BodyFiles, items: Wo
     if (role.type === TEXTURE_OBJECT) return capeTexture;
     return null;
   }, visibleGeosets(items, body.hairstyle)));
-
-  const failed = new Set<number>();
-  await Promise.all(items.flatMap((item) => attachmentsFor(item).map(async (hung) => {
-    try {
-      const where = attachmentMatrix(pose.attachment(hung.attachment), matrices);
-      if (!where) throw new Error(`No attachment ${hung.attachment}.`);
-      const model = await readModel(source, hung.model);
-      const objectImage = hung.texture ? await readImage(source, hung.texture) : null;
-      const objectTexture = objectImage ? keep(objectImage, 3) : null;
-      const fileTextures = new Map<number, THREE.Texture>();
-      await Promise.all(model.m2.textures.filter((t) => t.type === TEXTURE_FILE && t.file).map(async (t) => {
-        const image = await readImage(source, t.file).catch(() => null);
-        if (image) fileTextures.set(t.file, keep(image, t.flags));
-      }));
-      const part = buildMeshes(model.m2, model.sections, model.matrices, (role) => {
-        if (role.type === TEXTURE_OBJECT) return objectTexture;
-        if (role.type === TEXTURE_FILE) return fileTextures.get(role.file) ?? null;
-        return null;
-      }, null);
-      part.matrixAutoUpdate = false;
-      part.matrix.copy(where);
-      figure.add(part);
-    } catch {
-      failed.add(item.slot);
-    }
-  })));
 
   // The game is Z-up and faces +X; three.js is Y-up and looks down -Z.
   const upright = new THREE.Group();

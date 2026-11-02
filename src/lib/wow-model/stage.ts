@@ -81,15 +81,17 @@ export function createStage(host: HTMLElement): Stage {
 
   return {
     async dress(race, gender, pieces, wanted) {
-      const body = await files.body(race, gender);
-      if (!body) throw new Error(`No body for race ${race}.`);
       const notDrawn: number[] = [];
-      const worn = await Promise.all(Object.entries(pieces).map(async ([key, item]) => {
-        const slot = Number(key);
-        const recipe = await files.recipe(item).catch(() => null);
-        if (!recipe || recipe.incomplete) notDrawn.push(slot);
-        return recipe ? [wornItem(slot, recipe, race, gender)] : [];
-      }));
+      const [body, worn] = await Promise.all([
+        files.body(race, gender),
+        Promise.all(Object.entries(pieces).map(async ([key, item]) => {
+          const slot = Number(key);
+          const recipe = await files.recipe(item).catch(() => null);
+          if (!recipe || recipe.incomplete) notDrawn.push(slot);
+          return recipe ? [wornItem(slot, recipe, race, gender)] : [];
+        })),
+      ]);
+      if (!body) throw new Error(`No body for race ${race}.`);
       const figure = await buildFigure(files.read, body, worn.flat());
       if (wanted()) show(figure);
       else figure.dispose();

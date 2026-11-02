@@ -63,6 +63,8 @@ SEXES = [(0, "male", "m"), (1, "female", "f")]
 REGIONS = ["armUpper", "armLower", "hand", "torsoUpper", "torsoLower", "legUpper", "legLower", "foot"]
 INV_SHIELD = 14
 INV_HEAD = 1
+# A bow is held in the left hand; every other ranged weapon in the right.
+INV_BOW = 15
 # HelmetGeosetVisData's seven masks, as geoset groups (DisplayDb.cpp, the head handler).
 HELM_GROUPS = [0, 1, 2, 3, 7, 16, 17]
 EMBEDDED_ID = re.compile(r"_(\d{6,8})_")
@@ -136,6 +138,8 @@ class Files:
     def __init__(self, by_path, models, textures_near, root):
         self.by_path, self.models, self.textures_near, self.root = by_path, models, textures_near, root
         self.used: set[int] = set()
+        # Files cut to fit a body, read from the build the bodies come from.
+        self.fitted: set[int] = set()
 
     def get(self, path: str) -> int | None:
         fdid = self.by_path.get(path)
@@ -165,7 +169,7 @@ class Files:
             return None
         return [male or female, female or male]
 
-    def model(self, path: str) -> int | None:
+    def model(self, path: str, fitted: bool = False) -> int | None:
         fdid = self.get(path)
         if fdid is None:
             return None
@@ -175,6 +179,8 @@ class Files:
         if skin is None:
             return None
         self.use(skin)
+        if fitted:
+            self.fitted.update((fdid, skin))
         # Most parts name their texture in the item row. Glows and trim are named in the
         # model, so anything beside it that shares its stem has to be findable too.
         folder, _, base = stem.rpartition("/")
@@ -224,7 +230,9 @@ def recipe(row: dict, inv: int, files: Files, helmvis: dict) -> dict:
             for _, _, sex in SEXES:
                 # Older heads end _hum; collection heads end _hu_m.
                 path = files.models.get(f"{stem}_{code}{sex}") or files.models.get(f"{stem}_{code}_{sex}")
-                hit = files.model(path) if path else None
+                # Mists keeps each helm cut for the old heads; retail recut the same
+                # FileDataIDs for the HD heads drawn here.
+                hit = files.model(path, fitted=True) if path else None
                 if hit:
                     heads[f"{code}{sex}"] = hit
         if heads:
@@ -249,6 +257,8 @@ def recipe(row: dict, inv: int, files: Files, helmvis: dict) -> dict:
                     missing += 1
     if inv == INV_SHIELD:
         out["shield"] = True
+    if inv == INV_BOW:
+        out["bow"] = True
     if missing:
         out["incomplete"] = True
     return out
@@ -498,10 +508,15 @@ def main() -> None:
     size = write_shards(OUT / "items", recipes, ITEM_SHARDS)
     print(f"{dict(state)}; {len(bodies)} bodies; recipes {size >> 10} KB; {len(files.used)} files", flush=True)
 
-    # A file is read from the first build that has it, with that build's exact bytes.
+    # A file is read from the first build that has it, with that build's exact bytes,
+    # except a fitted one, which the bodies' build serves first when it has it.
     placed: dict[int, tuple] = {}
+    bodies_build = roots[-1]
     for build, one in zip(args.builds, roots):
-        keys = {fdid: one[fdid] for fdid in files.used - placed.keys() if fdid in one}
+        wanted = files.used - placed.keys()
+        if one is not bodies_build:
+            wanted -= files.fitted & bodies_build.keys()
+        keys = {fdid: one[fdid] for fdid in wanted if fdid in one}
         got = place_build(tact_cdn, build, keys)
         placed.update(got)
         print(f"{build}: placed {len(got)} of {len(keys)} files", flush=True)
