@@ -57,6 +57,40 @@ describe("which parts of the body show", () => {
     expect(shown.has(1202)).toBe(true);
   });
 
+  // Retail's builder, as the overlay's races/RetailGeo.h ports it.
+  it("covers the torso with a chest's fourth value, or a tabard that paints it", () => {
+    expect(visibleGeosets([worn(SLOT.chest, { geosets: [0, 0, 0, 1] })], 1).has(2202)).toBe(true);
+    expect(visibleGeosets([worn(SLOT.tabard, { body: { torsoUpper: 1 } })], 1).has(2202)).toBe(true);
+    expect(visibleGeosets([worn(SLOT.chest)], 1).has(2201)).toBe(true);
+  });
+
+  it("shapes the foot as boots ask, and keeps the bare one for -1 or a shape the body lacks", () => {
+    expect(visibleGeosets([worn(SLOT.feet, { geosets: [0, -1] })], 1).has(2001)).toBe(true);
+    const shaped = (has: (g: number) => boolean) => visibleGeosets([worn(SLOT.feet, { geosets: [0, 3] })], 1, has);
+    expect(shaped(() => true).has(2004)).toBe(true);
+    expect(shaped((g) => g !== 2004).has(2001)).toBe(true);
+  });
+
+  it("gives boots a shaft only when no robe hides it", () => {
+    expect(visibleGeosets([worn(SLOT.feet, { geosets: [2] })], 1).has(503)).toBe(true);
+    const robed = visibleGeosets([worn(SLOT.feet, { geosets: [2] }), worn(SLOT.chest, { geosets: [0, 0, 1] })], 1);
+    expect(robed.has(503)).toBe(false);
+    expect(robed.has(500)).toBe(true);
+  });
+
+  it("draws sleeves from the chest's fifth value and gloves' cuffs from their own", () => {
+    expect(visibleGeosets([worn(SLOT.chest, { geosets: [0, 0, 0, 0, 2] })], 1).has(2803)).toBe(true);
+    const gloves = visibleGeosets([worn(SLOT.hands, { geosets: [2, 1] })], 1);
+    expect(gloves.has(403)).toBe(true);
+    expect(gloves.has(2302)).toBe(true);
+  });
+
+  it("asks the body before it shapes the pants", () => {
+    const pants = (has: (g: number) => boolean) => visibleGeosets([worn(SLOT.legs, { geosets: [4] })], 1, has);
+    expect(pants(() => true).has(1105)).toBe(true);
+    expect(pants((g) => g !== 1105).has(1101)).toBe(true);
+  });
+
   // The client's head handler: a hidden group falls back to its first variant, which
   // for hair (geoset 1) is bald and for ears (701) is the earless head.
   it("hides what a helm says it hides, by falling back to the bare variant", () => {
@@ -147,6 +181,16 @@ describe("where a model hangs", () => {
   it("counts a hand as free when its piece has no model to hold", () => {
     const crossbow = worn(SLOT.ranged, { model: 1 });
     expect(attachmentsFor(crossbow, [worn(SLOT.main), crossbow])[0].attachment).toBe(1);
+  });
+
+  it("hangs a backpack or quiver on the back, beside any cloak", () => {
+    expect(attachmentsFor(worn(SLOT.back, { texture: 1, modelBack: 2, textureBack: 3 }))).toEqual([
+      { attachment: 57, model: 2, texture: 3 },
+    ]);
+  });
+
+  it("hangs a belt's buckle from the waist", () => {
+    expect(attachmentsFor(worn(SLOT.waist, { model: 1, texture: 2 }))).toEqual([{ attachment: 53, model: 1, texture: 2 }]);
   });
 
   it("has nothing to hang for a piece that is only texture", () => {

@@ -13,6 +13,8 @@ export interface BonePose {
   translation: Vec3;
   rotation: Quat;
   scale: Vec3;
+  /** The hash of the bone's name, which a skinned piece's bones are matched on. */
+  crc?: number;
 }
 
 export interface Attachment {
@@ -22,8 +24,8 @@ export interface Attachment {
 
 /**
  * What tools/export_models.py keeps of a body's .skel: the first frame of Stand, as
- * [parent, pivot x3, translation x3, rotation x4, scale x3] for each bone. A still
- * figure needs nothing else from a file of nearly 20 MB.
+ * [parent, pivot x3, translation x3, rotation x4, scale x3, name hash] for each bone. A
+ * still figure needs nothing else from a file of nearly 20 MB.
  */
 export interface BakedPose {
   bones: number[][];
@@ -40,6 +42,7 @@ export function readPose(baked: BakedPose) {
       translation: vec3(row, 4),
       rotation: [row[7], row[8], row[9], row[10]],
       scale: vec3(row, 11),
+      crc: row[14],
     })),
     attachment(id: number): Attachment | null {
       const point = baked.attachments[id];
@@ -76,12 +79,15 @@ function rotate([x, y, z, w]: Quat): Mat4 {
   );
 }
 
-/** Every bone's model-space matrix. A parent may be listed after its child. */
-export function solveBones(bones: BonePose[]): Mat4[] {
+/**
+ * Every bone's model-space matrix. A parent may be listed after its child. `given` fixes
+ * a bone's matrix outright, as a skinned piece's bones take the body's.
+ */
+export function solveBones(bones: BonePose[], given: (index: number) => Mat4 | undefined = () => undefined): Mat4[] {
   const solved: (Mat4 | undefined)[] = new Array(bones.length);
   const solve = (i: number): Mat4 => {
-    const done = solved[i];
-    if (done) return done;
+    const done = solved[i] ?? given(i);
+    if (done) return (solved[i] = done);
     const b = bones[i];
     const own = [
       translate(b.pivot),

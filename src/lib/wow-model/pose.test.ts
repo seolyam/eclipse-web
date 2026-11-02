@@ -85,7 +85,7 @@ describe("a baked pose", () => {
   const baked = {
     bones: [
       [-1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
-      [0, 1, 2, 3, 0.5, 0, 0, 0, 0, Math.SQRT1_2, Math.SQRT1_2, 2, 2, 2],
+      [0, 1, 2, 3, 0.5, 0, 0, 0, 0, Math.SQRT1_2, Math.SQRT1_2, 2, 2, 2, 0xb6c65665],
     ],
     attachments: { 11: [1, 0.1, 0.2, 0.3] as [number, number, number, number] },
   };
@@ -97,7 +97,19 @@ describe("a baked pose", () => {
       translation: [0.5, 0, 0],
       rotation: [0, 0, Math.SQRT1_2, Math.SQRT1_2],
       scale: [2, 2, 2],
+      crc: 0xb6c65665,
     });
+  });
+
+  // A skinned piece's bone with the body's name moves as the body's does; one of its own
+  // moves with its parent.
+  it("lets a bone take a matrix it is given, and its children follow", () => {
+    const { bones } = readPose(baked);
+    const body = solveBones(bones);
+    const piece = [bone({}), bone({ parent: 0, pivot: [0, 0, 5] })];
+    const solved = solveBones(piece, (i) => (i === 0 ? body[1] : undefined));
+    expect([...solved[0]]).toEqual([...body[1]]);
+    close(translation(solved[1]), translation(body[1]));
   });
 
   it("solves like any other skeleton", () => {

@@ -6,6 +6,8 @@ Reads, never writes, the Eclipse tree:
     Eclipse/data/wardrobe/items.edb     item id -> model and texture names, geosets
     Eclipse/data/wardrobe/helmvis.edb   what a helm hides, by race
     re/out/hearth/listfile.csv          file name -> FileDataID
+    work/<line>/build/data/<line>_items.edb, <line>_helmvis.edb   a line's shipped keys
+    work/<line>/inventory.json          a line's retail ItemDisplayInfo, file by file
 
 --builds are tried in order. Every WoW product shares one CDN, and Mists of Pandaria
 Classic holds the sharpest copies of the old art: 1024x1024 skins where live retail
@@ -15,6 +17,11 @@ tree, cached in --cache (about 450 MB a build, and slow the first time).
 
 Bodies are the HD ones, which only retail has. Their bones live in a .skel of nearly
 20 MB, so the first frame of Stand is baked here and no browser downloads that file.
+
+The overlay's retail lines (War Within, Midnight) come from retail's own tables, kept
+in work/<line>/inventory.json, so each piece is the file retail draws for that race
+and sex: helms, shoulders, and the "collection" models that are skinned to the body
+the way a robe's skirt or a boot's cuff is. Their keys are the overlay's.
 
 Writes public/dress/:
     bodies.json          "<race id>-<gender>" -> the files of a bare character
@@ -69,6 +76,17 @@ INV_BOW = 15
 HELM_GROUPS = [0, 1, 2, 3, 7, 16, 17]
 EMBEDDED_ID = re.compile(r"_(\d{6,8})_")
 BUILDS = ["5.5.4.70531", "12.1.5.70448"]
+# export_catalog.py's LINES: folder, and the byte each of the line's keys carries.
+LINES = {4: "warwithin", 3: "midnight"}
+# ItemDisplayInfo.ModelType: 0 hangs from an attachment point, 1 is skinned to the body,
+# 4 is what a cloak hangs on the back, a backpack or a quiver.
+HUNG, SKINNED, ON_BACK = 0, 1, 4
+# ItemDisplayInfo.Flags the geoset builder reads, as RetailGeo.h packs them.
+KEEP_FOOT, CHEST_SLEEVES, GLOVE_SLEEVES = 0x100000, 0x1000000, 0x2000000
+PAD_KEEP_FOOT, PAD_CHEST, PAD_GLOVE, PAD_KIND0, PAD_KIND1 = 1, 2, 4, 8, 16
+INV_SHOULDER, INV_WAIST, INV_WRIST, INV_HANDS = 3, 6, 9, 10
+INV_CLOAK = (16,)
+WEAPONS = {13, 14, 15, 17, 21, 22, 23, 25, 26}
 INDEX_READERS = 8
 # An archive is 256 MB: a place past that means the index was misread.
 ARCHIVE_LIMIT = 1 << 28
@@ -140,6 +158,9 @@ class Files:
         self.used: set[int] = set()
         # Files cut to fit a body, read from the build the bodies come from.
         self.fitted: set[int] = set()
+        # Models the listfile names no .skin for; their own header says, once fetched.
+        self.unskinned: set[int] = set()
+        self._names: dict[int, str] | None = None
 
     def get(self, path: str) -> int | None:
         fdid = self.by_path.get(path)
@@ -192,6 +213,25 @@ class Files:
                     self.use(hit)
         return fdid
 
+    def model_id(self, fdid: int, fitted: bool) -> int | None:
+        """A model retail names by FileDataID, with its .skin and the textures beside it."""
+        if fdid not in self.root:
+            return None
+        if self._names is None:
+            self._names = {v: k for k, v in self.by_path.items()}
+        path = self._names.get(fdid, "")
+        if path.endswith(".m2") and self.model(path, fitted) == fdid:
+            return fdid
+        # Unnamed, or named without a .skin beside it: its header names the skin.
+        self.use(fdid)
+        self.unskinned.add(fdid)
+        if fitted:
+            self.fitted.add(fdid)
+        return fdid
+
+    def texture_id(self, fdid: int) -> int | None:
+        return self.use(fdid) if fdid in self.root else None
+
 
 def strip_ext(name: str) -> str:
     return re.sub(r"\.(mdx|m2|mdl)$", "", name.rpartition("/")[2])
@@ -201,7 +241,8 @@ def recipe(row: dict, inv: int, files: Files, helmvis: dict) -> dict:
     out: dict = {}
     missing = 0
     if any(row["geoset"]):
-        out["geosets"] = row["geoset"]
+        # Stored unsigned: 65535 is retail's -1.
+        out["geosets"] = [signed16(v) for v in row["geoset"]]
 
     body = {}
     for region, path in zip(REGIONS, row["body"]):
@@ -264,6 +305,163 @@ def recipe(row: dict, inv: int, files: Files, helmvis: dict) -> dict:
     return out
 
 
+def signed16(value: int) -> int:
+    return value - 0x10000 if value >= 0x8000 else value
+
+
+WEARERS = [(race, gender, f"{code}{sex}") for race, _, code in RACES for gender, _, sex in SEXES]
+
+
+def pick(entries: list[dict], race: int, gender: int) -> int | None:
+    """The file retail gives one wearer: its own race before every race (0), its own sex
+    before either, and a class's variant only when there is nothing for every class."""
+    def rank(e: dict):
+        # Sex 0 is male and 1 female; -1, 2 and 3 are either.
+        if e["race"] not in (0, race) or e["gender"] in (0, 1) and e["gender"] != gender:
+            return None
+        return (e.get("class", 0) != 0, e["race"] != race, e["gender"] not in (0, 1))
+
+    ranked = sorted((r, e["fdid"]) for e in entries if (r := rank(e)) is not None)
+    return ranked[0][1] if ranked else None
+
+
+def per_wearer(entries: list[dict], resolve) -> tuple[int | dict | None, bool]:
+    """One file for everyone, or one per wearer as "hum", "bef" and so on. Also whether
+    no wearer has one, though retail names files: a wearer left out of a map is told so
+    in the browser (recipe.ts), since a race's own armour fits only that race."""
+    out = {}
+    for race, gender, key in WEARERS:
+        fdid = pick(entries, race, gender)
+        hit = resolve(fdid) if fdid else None
+        if hit:
+            out[key] = hit
+    if not out:
+        return None, bool(entries)
+    values = set(out.values())
+    return (values.pop() if len(values) == 1 and len(out) == len(WEARERS) else out), False
+
+
+def pad_bits(flags: int, model_types: list[int]) -> int:
+    """RetailGeo.h's pad byte (tools/races/races_itemgeo.py pad_bits in the overlay)."""
+    p = 0
+    if flags & KEEP_FOOT:
+        p |= PAD_KEEP_FOOT
+    if flags & CHEST_SLEEVES:
+        p |= PAD_CHEST
+    if flags & GLOVE_SLEEVES:
+        p |= PAD_GLOVE
+    if model_types[0] in (0, 1) or model_types[0] >= 5:
+        p |= PAD_KIND0
+    if model_types[1] == 1:
+        p |= PAD_KIND1
+    return p
+
+
+def line_recipe(key: int, display: dict, inv: int, files: Files, helmvis: dict) -> dict:
+    """A retail line's piece, from the retail rows the overlay converted it from."""
+    ids = display["row"]
+    out: dict = {}
+    missing = False
+    geosets = [int(ids[f"GeosetGroup_{i}"]) for i in range(6)]
+    while geosets and not geosets[-1]:
+        geosets.pop()
+    if geosets:
+        out["geosets"] = geosets
+    model_types = [int(ids["ModelType_0"]), int(ids["ModelType_1"])]
+    pad = pad_bits(int(ids["Flags"]), model_types)
+    if inv not in (INV_WRIST, INV_HANDS):
+        # Only the wrist rule reads what kind each model is.
+        pad &= ~(PAD_KIND0 | PAD_KIND1)
+    if pad:
+        out["pad"] = pad
+
+    body = {}
+    for section, region in enumerate(REGIONS):
+        entries = [e for e in display.get("sections", ()) if e["section"] == section]
+        if not entries:
+            continue
+        pair = [pick(entries, 0, gender) for gender in (0, 1)]
+        pair = [files.texture_id(fdid) if fdid else None for fdid in pair]
+        if not any(pair):
+            missing = True
+            continue
+        body[region] = [pair[0] or pair[1], pair[1] or pair[0]]
+    if body:
+        out["body"] = body
+
+    def texture_of(k: int):
+        entries = [e for e in display.get("model_tex", ()) if e["k"] == k and e.get("usage", 0) == 0]
+        return per_wearer(entries, files.texture_id)[0] if entries else None
+
+    skinned = []
+    for k in (0, 1):
+        entries = [m for m in display.get("models", ()) if m["k"] == k]
+        if not entries:
+            continue
+        kind = model_types[k]
+        if kind == SKINNED:
+            model, short = per_wearer(entries, lambda fdid: files.model_id(fdid, fitted=True))
+            missing |= short
+            if model:
+                piece = {"model": model}
+                texture = texture_of(k)
+                if texture:
+                    piece["texture"] = texture
+                skinned.append(piece)
+            continue
+        if kind == ON_BACK and inv in INV_CLOAK:
+            model, short = per_wearer(entries, lambda fdid: files.model_id(fdid, fitted=False))
+            names = ("modelBack", "textureBack")
+        elif kind != HUNG:
+            missing = True
+            continue
+        elif inv == INV_SHOULDER:
+            # Each of the two holds both shoulders: position 0 the left, 1 the right.
+            side = [m for m in entries if m.get("pos", -1) in (k, -1)] or entries
+            model, short = per_wearer(side, lambda fdid: files.model_id(fdid, fitted=True))
+            names = ("model", "texture") if k == 0 else ("modelRight", "textureRight")
+        elif k == 0 and (inv == INV_HEAD or inv == INV_WAIST or inv in WEAPONS):
+            # A helm is cut for each head; a weapon or a buckle fits anyone.
+            model, short = per_wearer(entries, lambda fdid: files.model_id(fdid, fitted=inv == INV_HEAD))
+            names = ("model", "texture")
+        else:
+            missing = True
+            continue
+        missing |= short
+        if model:
+            out[names[0]] = model
+            texture = texture_of(k)
+            if texture:
+                out[names[1]] = texture
+        else:
+            missing = True
+    if skinned:
+        out["skinned"] = skinned
+    if inv in INV_CLOAK and "texture" not in out:
+        # The body's own cloak geosets wear the cloak's texture, with or without a 3D cape.
+        texture = texture_of(0)
+        if texture:
+            out["texture"] = texture
+
+    if inv == INV_HEAD:
+        # The line's helm-visibility rows are keyed as its items are.
+        vis = [int(ids[f"HelmetGeosetVis_{i}"]) for i in (0, 1)]
+        masks = [helmvis.get((key >> 24 << 24) | v) if v else None for v in vis]
+        if any(masks):
+            out["hides"] = [
+                [[group for group, mask in zip(HELM_GROUPS, row_masks) if mask & (1 << race)] for race, _, _ in RACES]
+                if row_masks else [[] for _ in RACES]
+                for row_masks in masks
+            ]
+    if inv == INV_SHIELD:
+        out["shield"] = True
+    if inv == INV_BOW:
+        out["bow"] = True
+    if missing:
+        out["incomplete"] = True
+    return out
+
+
 def chunks(data: bytes) -> dict[bytes, int]:
     """Where each chunk's contents start."""
     out, at = {}, 0
@@ -314,7 +512,10 @@ def stand_pose(data: bytes, sequences: tuple, bones_of: tuple, points: tuple) ->
             *(struct.unpack_from("<3f", data, moved) if moved else (0, 0, 0)),
             *rotation,
             *(struct.unpack_from("<3f", data, sized) if sized else (1, 1, 1)),
-        ))
+        ) + [
+            # The bone's name hash, which a skinned piece's own bones are matched on.
+            struct.unpack_from("<I", data, bone + 12)[0],
+        ])
 
     points_at, count, at, lookups, lookup_at = points
     attachments = {}
@@ -358,6 +559,32 @@ def body_poses(tact_cdn, build: str, bodies: dict) -> dict:
             poses[key] = model_pose(m2)
     skels = tact_cdn.fetch(sorted(set(skeletons.values())), build)
     return poses | {key: skel_pose(skels[skeleton]) for key, skeleton in skeletons.items()}
+
+
+def skins_of(tact_cdn, build: str, files: Files) -> None:
+    """The .skin, and the textures, of each model the listfile could not pair with one,
+    read from the model's own SFID and TXID chunks. A model with no skin is dropped from
+    nothing: the browser reports the piece it cannot draw."""
+    wanted = sorted(files.unskinned)
+    if not wanted:
+        return
+    found = 0
+    for at in range(0, len(wanted), 64):
+        for fdid, m2 in tact_cdn.fetch(wanted[at:at + 64], build).items():
+            parts = chunks(m2)
+            if b"SFID" in parts:
+                skin = struct.unpack_from("<I", m2, parts[b"SFID"])[0]
+                if skin in files.root:
+                    files.use(skin)
+                    if fdid in files.fitted:
+                        files.fitted.add(skin)
+                    found += 1
+            if b"TXID" in parts:
+                size = struct.unpack_from("<I", m2, parts[b"TXID"] - 4)[0]
+                for texture in struct.unpack_from(f"<{size // 4}I", m2, parts[b"TXID"]):
+                    if texture in files.root:
+                        files.use(texture)
+    print(f"skins read from {found} of {len(wanted)} unnamed models", flush=True)
 
 
 def body_files(files: Files) -> dict:
@@ -486,15 +713,30 @@ def main() -> None:
     rows = read_items_edb(wardrobe / "items.edb")
     helmvis = read_helmvis(wardrobe / "helmvis.edb")
 
+    lines = {}
+    for key_byte, folder in LINES.items():
+        built = args.eclipse / "work" / folder / "build" / "data"
+        shipped = read_items_edb(built / f"{folder}_items.edb")
+        displays = json.loads((args.eclipse / "work" / folder / "inventory.json").read_text(encoding="utf8"))["displays"]
+        lines[key_byte] = (shipped, displays, read_helmvis(built / f"{folder}_helmvis.edb"))
+
     recipes, state = {}, collections.Counter()
     for item, _name, inv, *_ in json.loads(ITEMS.read_text(encoding="utf8")):
-        row = rows.get(item)
-        made = recipe(row, inv, files, helmvis) if row else {}
-        if not row or not ({"body", "model", "texture"} & made.keys()):
+        if item >> 24:
+            shipped, displays, line_helmvis = lines[item >> 24]
+            display = displays.get(str(item & 0xFFFFFF)) if item in shipped else None
+            row = display if display and "row" in display else None
+            made = line_recipe(item, row, inv, files, line_helmvis) if row else {}
+        else:
+            row = rows.get(item)
+            made = recipe(row, inv, files, helmvis) if row else {}
+        if not row or not ({"body", "model", "texture", "skinned", "modelBack"} & made.keys()):
             state["nothing to draw"] += 1
             continue
         state["incomplete" if made.get("incomplete") else "complete"] += 1
         recipes[str(item)] = made
+
+    skins_of(tact_cdn, args.builds[-1], files)
 
     bodies = body_files(files)
     assert len(bodies) == len(RACES) * len(SEXES), sorted(bodies)

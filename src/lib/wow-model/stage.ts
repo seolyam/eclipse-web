@@ -87,8 +87,9 @@ export function createStage(host: HTMLElement): Stage {
         Promise.all(Object.entries(pieces).map(async ([key, item]) => {
           const slot = Number(key);
           const recipe = await files.recipe(item).catch(() => null);
-          if (!recipe || recipe.incomplete) notDrawn.push(slot);
-          return recipe ? [wornItem(slot, recipe, race, gender)] : [];
+          const piece = recipe ? wornItem(slot, recipe, race, gender) : null;
+          if (!piece || recipe?.incomplete || piece.missing) notDrawn.push(slot);
+          return piece ? [piece] : [];
         })),
       ]);
       if (!body) throw new Error(`No body for race ${race}.`);
