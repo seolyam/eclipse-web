@@ -25,6 +25,13 @@ describe("wearing a recipe", () => {
   it("leaves a head with no cut for this body bare, and says it is missing", () => {
     const worn = wornItem(HEAD, { model: { hum: 1 } }, NIGHT_ELF, FEMALE);
     expect(worn.model).toBeUndefined();
+    expect(worn.missing).toBe(true);
+    expect(wornItem(HEAD, { model: { hum: 1 } }, HUMAN, MALE).missing).toBe(false);
+  });
+
+  it("says a skinned piece cut only for other bodies is missing on this one", () => {
+    expect(wornItem(CHEST, { skinned: [{ model: { dwm: 1 } }] }, HUMAN, MALE).missing).toBe(true);
+    expect(wornItem(CHEST, { skinned: [{ model: { dwm: 1 } }] }, 3, MALE).missing).toBe(false);
   });
 
   it("uses one model for every body when there is only one", () => {
@@ -39,6 +46,30 @@ describe("wearing a recipe", () => {
     expect(wornItem(HEAD, recipe, HUMAN, MALE).hides).toEqual([0]);
     expect(wornItem(HEAD, recipe, NIGHT_ELF, MALE).hides).toEqual([7]);
     expect(wornItem(HEAD, recipe, HUMAN, FEMALE).hides).toEqual([1]);
+  });
+
+  it("puts on the skinned pieces cut for this race and sex, with their textures", () => {
+    const recipe: ItemRecipe = { skinned: [{ model: { hum: 1, huf: 2 }, texture: 5 }, { model: 7, texture: { huf: 8 } }] };
+    expect(wornItem(CHEST, recipe, HUMAN, FEMALE).skinned).toEqual([{ model: 2, texture: 5 }, { model: 7, texture: 8 }]);
+    expect(wornItem(CHEST, recipe, HUMAN, MALE).skinned).toEqual([{ model: 1, texture: 5 }, { model: 7, texture: undefined }]);
+  });
+
+  it("leaves out a skinned piece with no cut for this body", () => {
+    expect(wornItem(CHEST, { skinned: [{ model: { hum: 1 } }] }, NIGHT_ELF, MALE).skinned).toEqual([]);
+  });
+
+  it("picks a texture cut for this body, as it picks a model", () => {
+    expect(wornItem(HEAD, { model: 1, texture: { nif: 4 } }, NIGHT_ELF, FEMALE).texture).toBe(4);
+    expect(wornItem(HEAD, { model: 1, texture: { nif: 4 } }, HUMAN, FEMALE).texture).toBeUndefined();
+  });
+
+  it("carries what a cloak hangs on the back", () => {
+    expect(wornItem(14, { texture: 1, modelBack: { hum: 2 }, textureBack: 3 }, HUMAN, MALE)).toMatchObject({ modelBack: 2, textureBack: 3, missing: false });
+    expect(wornItem(14, { modelBack: { hum: 2 } }, NIGHT_ELF, MALE).missing).toBe(true);
+  });
+
+  it("keeps every retail geoset value and the display's flags", () => {
+    expect(wornItem(CHEST, { geosets: [0, 0, 1, 1, 2], pad: 2 }, HUMAN, MALE)).toMatchObject({ geosets: [0, 0, 1, 1, 2], pad: 2 });
   });
 
   it("defaults geosets to no opinion", () => {

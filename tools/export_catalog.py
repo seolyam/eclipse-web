@@ -13,6 +13,12 @@ Reads, never writes, the Eclipse tree:
     build/tests/world-preview/places.tsv   every place (tools/tests/world_preview)
     work/<line>/plan.json                  retail item quality (ItemSparse)
     new files/realm/spellitemenchantment.dbc  enchant id -> name
+    work/<line>/build/                     each retail line the overlay ships as a pack
+                                           (War Within, Midnight): its items, names,
+                                           icons and sets, keyed (line byte << 24) | the
+                                           retail display id, as the overlay keys them
+    work/<line>/inventory.json             retail item quality for a line's displays
+    re/out/hearth/listfile.csv             an icon's FileDataID -> its game name
 
 Writes:
     src/data/catalog/items.json   [id, name, invType, armor, icon]
@@ -57,6 +63,11 @@ ARMOR_WORD = [(4, re.compile(r"plate|warhelm|greathelm|sabatons", re.I)),
               (2, re.compile(r"leather|hide|\bferal", re.I)),
               (1, re.compile(r"\b(cloth|silk|robe|cowl|raiment|vestments|satin)\b", re.I))]
 GROUPS = ["Classic", "Burning Crusade", "Wrath", "Capitals", "Instances", "Other"]
+# The overlay's retail packs (RetailLines.h): folder, and the byte every id it brings
+# carries in its top eight bits, so none can mean a realm item or another line's.
+LINES = [("warwithin", 4), ("midnight", 3)]
+LINE_ICON = re.compile(r"eclipse[a-z]+_(\d+)$")
+CLEAN_ICON = re.compile(r"[a-z0-9_\-]+")
 
 
 def cstr(blob: bytes, off: int) -> str:
@@ -141,6 +152,75 @@ def read_ecap(path: Path):
         sid, name_off, _first, _count = struct.unpack_from("<IIII", d, o_set + i * 16)
         set_names[sid] = cstr(blob, name_off)
     return icon_of_item, set_names
+
+
+def read_icon_names(path: Path) -> dict[int, str]:
+    """Icon FileDataID -> the game's name for it (inv_sword_04), from the listfile."""
+    out = {}
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            fdid, _, name = line.rstrip("\n").partition(";")
+            name = name.lower()
+            if fdid.isdigit() and name.startswith("interface/icons/") and name.endswith(".blp"):
+                out[int(fdid)] = name[len("interface/icons/"):-4]
+    return out
+
+
+def read_line(base: Path, folder: str, key_byte: int, icon_names: dict[int, str]):
+    """One retail line's catalogue, as the overlay's wardrobe reads it (Appearances.cpp):
+    <line>.ecap holds each appearance's key and icon, <line>_names.bin its name.
+
+    Icons arrive renamed eclipse<line>_<FileDataID>; each goes back to its game name,
+    so an icon the realm also uses is one file. Returns names, slots, icons, the BLP
+    behind each icon, set names and pieces, and quality."""
+    data = base / "work" / folder / "build" / "data"
+    d = (data / f"{folder}.ecap").read_bytes()
+    magic, _, ncat, napp, nset, nlink, nblob = struct.unpack_from("<4sIIIIII", d, 0)
+    assert magic == b"ECAP", magic
+    o_app = 28 + ncat * 24
+    blob_at = o_app + napp * 40 + nset * 16 + nlink * 4
+    blob = d[blob_at:blob_at + nblob]
+    nm = (data / f"{folder}_names.bin").read_bytes()
+    assert struct.unpack_from("<I", nm, 0)[0] == napp and len(nm) == 4 + napp * 4, folder
+    name_at = struct.unpack_from(f"<{napp}I", nm, 4)
+
+    names: dict[int, str] = {}
+    icons: dict[int, str] = {}
+    blps: dict[str, Path] = {}
+    for i in range(napp):
+        v = struct.unpack_from("<IIIIIIIHHHBBBBH", d, o_app + i * 40)
+        entry, display, icon_off, kind = v[1], v[2], v[4], v[10]
+        key = entry or display
+        if kind != 0 or key >> 24 != key_byte:
+            continue
+        if 0 < name_at[i] < len(blob):
+            names.setdefault(key, cstr(blob, name_at[i]).strip())
+        raw = cstr(blob, icon_off).lower() if icon_off < len(blob) else ""
+        hit = LINE_ICON.fullmatch(raw)
+        if hit:
+            # A few listfile names carry a space, which is no name for a file a URL serves.
+            icon = icon_names.get(int(hit[1]), raw)
+            if not CLEAN_ICON.fullmatch(icon):
+                icon = raw
+            icons.setdefault(key, icon)
+            blps.setdefault(icon, base / "work" / folder / "build" / "Interface" / "Icons" / f"{raw}.blp")
+    names = {k: n for k, n in names.items() if n}
+
+    items = read_items(data / f"{folder}_items.edb")
+    set_names = {sid: name for sid, name in read_ecap(data / f"{folder}.ecap")[1].items()}
+    set_pieces = read_set_pieces(data / f"{folder}_setpieces.edb")
+
+    displays = json.loads((base / "work" / folder / "inventory.json").read_text(encoding="utf-8"))["displays"]
+    # The quality of the item the name is, else of every item on the display when they
+    # agree; one look can be a green and an epic, and then it has no single answer.
+    quality = {}
+    for key, name in names.items():
+        worn = displays.get(str(key & 0xFFFFFF), {}).get("items") or ()
+        named = {int(it.get("quality") or 0) for it in worn if it.get("name", "").strip().lower() == name.lower()}
+        seen = (named or {int(it.get("quality") or 0) for it in worn}) & set(range(8))
+        if len(seen) == 1:
+            quality[key] = next(iter(seen))
+    return names, items, icons, blps, set_names, set_pieces, quality
 
 
 def read_set_pieces(path: Path) -> dict[int, list[int]]:
@@ -303,6 +383,23 @@ def export_icons(pak: Path, want: set[str]) -> int:
     return done
 
 
+def export_line_icons(blps: dict[str, Path]) -> int:
+    """A line's icons, from the BLPs its pack ships. One the realm's atlas already
+    wrote is kept: the same name is the same game icon."""
+    from PIL import Image
+    ICONS.mkdir(parents=True, exist_ok=True)
+    done = 0
+    for name, blp in blps.items():
+        target = ICONS / (name + ".webp")
+        if not target.exists():
+            if not blp.exists():
+                continue
+            with Image.open(blp) as im:
+                im.convert("RGBA").save(target, "WEBP", quality=88, method=6)
+        done += 1
+    return done
+
+
 def write(name: str, data) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / name).write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")),
@@ -324,7 +421,12 @@ def main() -> int:
                base / "build" / "tests" / "world-preview" / "places.tsv",
                data / "appearances" / "set_pieces.edb",
                base / "work" / "warwithin" / "plan.json", base / "work" / "midnight" / "plan.json",
-               base / "new files" / "realm" / "spellitemenchantment.dbc"]
+               base / "new files" / "realm" / "spellitemenchantment.dbc",
+               base / "re" / "out" / "hearth" / "listfile.csv"]
+    for folder, _ in LINES:
+        built = base / "work" / folder / "build" / "data"
+        sources += [built / f"{folder}.ecap", built / f"{folder}_names.bin", built / f"{folder}_items.edb",
+                    built / f"{folder}_setpieces.edb", base / "work" / folder / "inventory.json"]
     missing = [str(s) for s in sources if not s.exists()]
     if missing:
         raise SystemExit("missing: " + ", ".join(missing))
@@ -345,6 +447,19 @@ def main() -> int:
     places = read_places(sources[4])
     qualities = read_qualities(sources[6:8], names)
     enchants = read_enchants(sources[8])
+
+    # The retail lines join on keys no realm id can take, so nothing is overwritten.
+    icon_names = read_icon_names(sources[9])
+    line_blps: dict[str, Path] = {}
+    for folder, key_byte in LINES:
+        l_names, l_items, l_icons, l_blps, l_set_names, l_set_pieces, l_quality = read_line(
+            base, folder, key_byte, icon_names)
+        for own, more in ((names, l_names), (items, l_items), (icon_of_item, l_icons), (set_names, l_set_names),
+                          (set_pieces, l_set_pieces), (qualities, l_quality)):
+            assert not own.keys() & more.keys(), folder
+            own.update(more)
+        line_blps.update(l_blps)
+        print("%s: %d items, %d with icon, %d sets" % (folder, len(l_names), len(l_icons), len(l_set_names)))
 
     rows = []
     for item in sorted(names):
@@ -370,6 +485,8 @@ def main() -> int:
         want |= {m[2].removesuffix(".blp") for m in mounts}
         print("icons written or present: %d of %d" %
               (export_icons(data / "wardrobe" / "icons.pak", want), len(want)))
+        print("retail line icons written or present: %d of %d" %
+              (export_line_icons(line_blps), len(line_blps)))
     return 0
 
 

@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { decodeBlp, type Image } from "./blp";
 import { attachmentsFor, bodyLayers, regionRect, SKIN_HEIGHT, SKIN_WIDTH, visibleGeosets, type SkinRegion, type WornItem } from "./character";
 import { fitsModel, parseM2, parseSkin, type M2, type M2Texture, type SkinSection } from "./m2";
-import { multiply, readPose, skinVertices, solveBones, type Attachment, type BakedPose, type Mat4 } from "./pose";
+import { multiply, readPose, skinVertices, solveBones, type Attachment, type BakedPose, type BonePose, type Mat4 } from "./pose";
 
 /** Reads one game file by FileDataID. */
 export type FileSource = (file: number) => Promise<ArrayBuffer>;
@@ -139,6 +139,20 @@ const readModel = async (source: FileSource, file: number) => {
   return { ...mesh, matrices: solveBones(mesh.m2.bones(STAND)) };
 };
 
+/**
+ * A skinned piece's bones in the body's pose. Its bones that share a body bone's name
+ * take that bone's matrix, since both are cut in the same bind space; its own extra
+ * bones, a tassel's or a cuff's, follow their parent.
+ */
+function boundBones(m2: M2, body: BonePose[], matrices: Mat4[]) {
+  const byName = new Map<number, Mat4>();
+  body.forEach((bone, i) => {
+    if (bone.crc !== undefined) byName.set(bone.crc, matrices[i]);
+  });
+  const own = m2.bones(STAND);
+  return solveBones(own, (i) => (own[i].crc !== undefined ? byName.get(own[i].crc!) : undefined));
+}
+
 /** A model hung from the body: its bone in the Stand pose, then the point's offset. */
 function attachmentMatrix(point: Attachment | null, matrices: Mat4[]) {
   if (!point) return null;
@@ -203,18 +217,54 @@ export async function buildFigure(source: FileSource, body: BodyFiles, items: Wo
     });
   }));
 
-  const [[{ m2, sections }, skin, hair, eyes, capeImage]] = await Promise.all([bodyFiles, parts]);
+  // Skinned pieces are read now and dressed once the skin is painted, since a cuff or a
+  // skirt can show the wearer's own skin.
+  const skinnedFiles = Promise.all(items.flatMap((item) => (item.skinned ?? []).map(async (piece) => {
+    try {
+      const [mesh, objectImage] = await Promise.all([
+        readMesh(source, piece.model),
+        piece.texture ? readImage(source, piece.texture) : null,
+      ]);
+      const files = new Map<number, HTMLCanvasElement>();
+      await Promise.all(mesh.m2.textures.filter((t) => t.type === TEXTURE_FILE && t.file).map(async (t) => {
+        const image = await readImage(source, t.file).catch(() => null);
+        if (image) files.set(t.file, image);
+      }));
+      return { mesh, objectImage, files };
+    } catch {
+      failed.add(item.slot);
+      return null;
+    }
+  })));
+
+  const [[{ m2, sections }, skin, hair, eyes, capeImage], , skinned] = await Promise.all([bodyFiles, parts, skinnedFiles]);
   const skinTexture = keep(skin);
   const hairTexture = hair ? keep(hair, 3) : null;
   const eyesTexture = eyes ? keep(eyes) : null;
   const capeTexture = capeImage ? keep(capeImage) : null;
+  const bodyGeosets = new Set(sections.map((section) => section.geoset));
+  const shown = visibleGeosets(items, body.hairstyle, (geoset) => bodyGeosets.has(geoset));
   figure.add(buildMeshes(m2, sections, matrices, (role) => {
     if (role.type === TEXTURE_SKIN) return skinTexture;
     if (role.type === TEXTURE_HAIR) return hairTexture;
     if (role.type === TEXTURE_EYES) return eyesTexture;
     if (role.type === TEXTURE_OBJECT) return capeTexture;
     return null;
-  }, visibleGeosets(items, body.hairstyle)));
+  }, shown));
+
+  for (const piece of skinned) {
+    if (!piece) continue;
+    const objectTexture = piece.objectImage ? keep(piece.objectImage, 3) : null;
+    const fileTextures = new Map([...piece.files].map(([file, image]) => [file, keep(image, 3)]));
+    // The same geosets as the body: a boot's cuff shows only where the body shows a boot.
+    figure.add(buildMeshes(piece.mesh.m2, piece.mesh.sections, boundBones(piece.mesh.m2, pose.bones, matrices), (role) => {
+      if (role.type === TEXTURE_OBJECT) return objectTexture;
+      if (role.type === TEXTURE_SKIN) return skinTexture;
+      if (role.type === TEXTURE_HAIR) return hairTexture;
+      if (role.type === TEXTURE_FILE) return fileTextures.get(role.file) ?? null;
+      return null;
+    }, shown));
+  }
 
   // The game is Z-up and faces +X; three.js is Y-up and looks down -Z.
   const upright = new THREE.Group();

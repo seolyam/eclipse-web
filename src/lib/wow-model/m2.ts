@@ -135,6 +135,7 @@ export function parseM2(buffer: ArrayBuffer): M2 {
         : [0, 2, 4, 6].map((o) => quatPart(data.getInt16(turned + o, true))) as Quat;
       return {
         parent: data.getInt16(at + 8, true),
+        crc: data.getUint32(at + 12, true),
         pivot: readVec3(at + 76),
         translation: moved === null ? [0, 0, 0] : readVec3(moved),
         rotation,

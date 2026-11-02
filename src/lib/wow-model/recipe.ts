@@ -2,15 +2,25 @@
 // every race's and sex's files, because a helm is cut once for each head.
 import { BODY_REGIONS, type BodyRegion, type WornItem } from "./character";
 
+/** A file for every wearer, or one per wearer as "hum", "bef" and so on. */
+export type PerWearer = number | Record<string, number>;
+
 export interface ItemRecipe {
-  geosets?: [number, number, number];
+  /** ItemDisplayInfo's GeosetGroup values: three for realm items, up to six for retail. */
+  geosets?: number[];
+  /** The display flags retail's geoset builder reads (character.ts PAD). */
+  pad?: number;
   /** Each texture as [male, female]. */
   body?: Partial<Record<BodyRegion, [number, number]>>;
-  /** A file, or one per head as "hum", "bef" and so on. */
-  model?: number | Record<string, number>;
-  texture?: number;
-  modelRight?: number;
-  textureRight?: number;
+  model?: PerWearer;
+  texture?: PerWearer;
+  modelRight?: PerWearer;
+  textureRight?: PerWearer;
+  /** A cloak's backpack or quiver, hung on the back. */
+  modelBack?: PerWearer;
+  textureBack?: PerWearer;
+  /** Models skinned to the body, each with the texture its object slot takes. */
+  skinned?: { model: PerWearer; texture?: PerWearer }[];
   shield?: boolean;
   bow?: boolean;
   /** Geoset groups hidden, as [male, female][race, in the order of RACE_ORDER]. */
@@ -29,19 +39,29 @@ export function wornItem(slot: number, recipe: ItemRecipe, race: number, gender:
     const files = recipe.body?.[region];
     if (files) body[region] = files[gender];
   }
-  const model = typeof recipe.model === "object"
-    ? recipe.model[`${RACE_CODE[race]}${gender ? "f" : "m"}`]
-    : recipe.model;
+  const wearer = `${RACE_CODE[race]}${gender ? "f" : "m"}`;
+  const pick = (file: PerWearer | undefined) => (typeof file === "object" ? file[wearer] : file);
+  // A piece cut for some bodies only, as a race's own armour, has nothing for the rest.
+  const models = [recipe.model, recipe.modelRight, recipe.modelBack, ...(recipe.skinned ?? []).map((piece) => piece.model)];
+  const missing = models.some((file) => file !== undefined && pick(file) === undefined);
   return {
     slot,
     geosets: recipe.geosets ?? [0, 0, 0],
+    pad: recipe.pad,
     body,
-    model,
-    texture: recipe.texture,
-    modelRight: recipe.modelRight,
-    textureRight: recipe.textureRight,
+    model: pick(recipe.model),
+    texture: pick(recipe.texture),
+    modelRight: pick(recipe.modelRight),
+    textureRight: pick(recipe.textureRight),
+    modelBack: pick(recipe.modelBack),
+    textureBack: pick(recipe.textureBack),
+    skinned: (recipe.skinned ?? []).flatMap((piece) => {
+      const model = pick(piece.model);
+      return model ? [{ model, texture: pick(piece.texture) }] : [];
+    }),
     shield: recipe.shield,
     bow: recipe.bow,
     hides: recipe.hides?.[gender]?.[RACE_ORDER.indexOf(race)],
+    missing,
   };
 }
