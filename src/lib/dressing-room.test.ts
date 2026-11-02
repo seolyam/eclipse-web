@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
 import { decodeOutfit } from "@/lib/codec/outfit";
-import { dressedCode } from "./dressing-room";
+import { resolveOutfit } from "@/lib/catalog";
+import { dressedCode, startingRack } from "./dressing-room";
 
 const decode = (code: string | null) => {
   const r = decodeOutfit(code ?? "");
@@ -23,6 +26,25 @@ describe("a dressing room code", () => {
 
   it("leaves the race alone unless one is chosen", () => {
     expect(decode(dressedCode({ 0: 1339122 }, null)).look).toBeNull();
+  });
+
+  it("opens a published look with its pieces, hidden slots and race", () => {
+    const outfit = decode(dressedCode({ 0: 1339122, 4: 0 }, { race: 4, gender: 1 }));
+    const rack = startingRack(outfit, resolveOutfit(outfit));
+    expect(rack.look).toEqual({ race: 4, gender: 1 });
+    expect(rack.pieces[4]).toBeNull();
+    expect(rack.pieces[0]).toMatchObject({ id: 1339122 });
+    // The rack gives the same code back, so nothing is lost on the way in.
+    const again = dressedCode(Object.fromEntries(Object.entries(rack.pieces).map(([s, p]) => [s, p?.id ?? 0])), rack.look);
+    expect(decode(again).slots).toEqual(outfit.slots);
+  });
+
+  it("leaves out what the Dressing room cannot dress", () => {
+    // A ring shows on no character.
+    const outfit = decode(dressedCode({ 0: 1339122, 10: 5976 }, null));
+    const rack = startingRack(outfit, resolveOutfit(outfit));
+    expect(Object.keys(rack.pieces)).toEqual(["0"]);
+    expect(rack.look).toBeNull();
   });
 
   it("writes a chosen race as a look with the default appearance", () => {

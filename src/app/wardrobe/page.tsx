@@ -26,6 +26,12 @@ export default async function WardrobePage({ searchParams }: { searchParams: Pro
           <Link href="/wardrobe" className="text-amber underline underline-offset-2">Show everyone&apos;s</Link>
         </p>
       )}
+      {filters.saved && (
+        <p className="text-sm text-ink-dim">
+          Showing your bookmarks, which only you can see.{" "}
+          <Link href="/wardrobe" className="text-amber underline underline-offset-2">Show every look</Link>
+        </p>
+      )}
       <OutfitFilters count={total} live={repository.live} />
       {posts.length ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

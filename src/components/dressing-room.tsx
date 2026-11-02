@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ItemHit } from "@/lib/catalog";
 import { RACE_BY_ID, RACE_LABEL, SLOT_NAMES, VISIBLE_SLOTS } from "@/lib/domain";
-import { dressedCode } from "@/lib/dressing-room";
+import { dressedCode, type StartingRack } from "@/lib/dressing-room";
 import { NARCISSUS_URL } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { backdropFor, qualityColour } from "@/lib/wow-assets";
@@ -57,16 +57,16 @@ function Piece({ slot, rack, side, active, onChoose }: {
 }
 
 /** Pick pieces slot by slot, see them on a character, and take away a code. */
-export function DressingRoom({ itemCount }: { itemCount: number }) {
-  const [rack, setRack] = useState<Rack>({});
+export function DressingRoom({ itemCount, start }: { itemCount: number; start: StartingRack | null }) {
+  const [rack, setRack] = useState<Rack>(start?.pieces ?? {});
   const [active, setActive] = useState<number>(VISIBLE_SLOTS[0]);
   const [query, setQuery] = useState("");
   // Results carry their slot: until the next answer lands, the last slot's items
   // must not be offered for this one, or a click would dress the wrong slot.
   const [found, setFound] = useState<{ slot: number; hits: ItemHit[] } | null>(null);
   const [failed, setFailed] = useState(false);
-  const [race, setRace] = useState(OWN_RACE);
-  const [gender, setGender] = useState(0);
+  const [race, setRace] = useState(start?.look ? String(start.look.race) : OWN_RACE);
+  const [gender, setGender] = useState(start?.look?.gender ?? 0);
   const search = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

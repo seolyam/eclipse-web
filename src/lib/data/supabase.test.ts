@@ -243,6 +243,102 @@ describe("publishing", () => {
   });
 });
 
+describe("reports", () => {
+  it("files the reason through report_outfit", async () => {
+    user = { id: row.author_id };
+    reply = () => new Response(null, { status: 204 });
+    expect(await repo.report(row.id, "spam")).toEqual({ ok: true, value: row.id });
+    expect(requests[0].pathname).toBe("/rest/v1/rpc/report_outfit");
+  });
+
+  it("asks a visitor to sign in", async () => {
+    reply = failWith("28000", 401);
+    expect(await repo.report(row.id, "spam")).toEqual({ ok: false, error: "Sign in to report a look." });
+  });
+
+  it("cannot report a game set, which has no author to answer for it", async () => {
+    expect((await repo.report("set-1", "spam")).ok).toBe(false);
+    expect(requests).toEqual([]);
+  });
+
+  it("lists the moderation queue for a moderator", async () => {
+    reply = () => Response.json([
+      { outfit_id: row.id, title: "A real post", hidden: true, reports: 3, reasons: ["spam"], last_report: row.created_at },
+    ]);
+    expect(await repo.listReports()).toEqual([
+      { id: row.id, title: "A real post", hidden: true, reports: 3, reasons: ["spam"], lastReport: row.created_at },
+    ]);
+  });
+
+  it("gives anyone else an empty queue instead of an error page", async () => {
+    reply = failWith("42501", 403);
+    expect(await repo.listReports()).toEqual([]);
+  });
+
+  it("refuses a restore from someone who is not a moderator", async () => {
+    reply = failWith("42501", 403);
+    expect(await repo.restoreOutfit(row.id)).toEqual({ ok: false, error: "Only moderators can restore a look." });
+  });
+
+  it("carries the hidden flag so an author knows why their look is gone", async () => {
+    reply = () => Response.json({ ...row, hidden: true });
+    expect((await repo.getOutfit(row.id))?.hidden).toBe(true);
+  });
+});
+
+describe("bookmarks", () => {
+  it("is never bookmarked for a visitor, and asks the database nothing", async () => {
+    expect(await repo.isBookmarked(row.id)).toBe(false);
+    expect(requests).toEqual([]);
+  });
+
+  it("reads the signed-in account's own bookmark", async () => {
+    user = { id: row.author_id };
+    reply = () => Response.json([{ outfit_id: row.id }]);
+    expect(await repo.isBookmarked(row.id)).toBe(true);
+    expect(requests[0].searchParams.get("user_id")).toBe(`eq.${row.author_id}`);
+  });
+
+  it("adds a bookmark as the signed-in account", async () => {
+    user = { id: row.author_id };
+    reply = () => new Response(null, { status: 201 });
+    expect(await repo.setBookmark(row.id, true)).toEqual({ ok: true, value: true });
+    expect(requests[0].pathname).toBe("/rest/v1/outfit_bookmarks");
+  });
+
+  it("treats a second add as already saved", async () => {
+    user = { id: row.author_id };
+    reply = failWith("23505", 409);
+    expect(await repo.setBookmark(row.id, true)).toEqual({ ok: true, value: true });
+  });
+
+  it("removes only the account's own bookmark", async () => {
+    user = { id: row.author_id };
+    reply = () => new Response(null, { status: 204 });
+    expect(await repo.setBookmark(row.id, false)).toEqual({ ok: true, value: false });
+    expect(requests[0].searchParams.get("user_id")).toBe(`eq.${row.author_id}`);
+    expect(requests[0].searchParams.get("outfit_id")).toBe(`eq.${row.id}`);
+  });
+
+  it("asks a visitor to sign in", async () => {
+    expect(await repo.setBookmark(row.id, true)).toEqual({ ok: false, error: "Sign in to bookmark a look." });
+  });
+
+  it("lists only bookmarked looks, without the game's sets", async () => {
+    user = { id: row.author_id };
+    reply = () => Response.json([row], { headers: { "Content-Range": `0-0/1` } });
+    const r = await repo.listOutfits({ sort: "newest", saved: true });
+    expect(r).toMatchObject({ total: 1, posts: [{ id: row.id }] });
+    expect(requests[0].searchParams.get("select")).toContain("outfit_bookmarks!inner(");
+    expect(requests[0].searchParams.get("outfit_bookmarks.user_id")).toBe(`eq.${row.author_id}`);
+  });
+
+  it("has no bookmarks to list for a visitor", async () => {
+    expect(await repo.listOutfits({ sort: "newest", saved: true })).toEqual({ posts: [], total: 0 });
+    expect(requests).toEqual([]);
+  });
+});
+
 describe("the Supabase adapter", () => {
   // outfit_votes is a second path from outfits to profiles, and a bare
   // profiles(...) embed makes PostgREST refuse the query as ambiguous.

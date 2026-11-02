@@ -18,11 +18,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? `${names.length} pieces, including ${names.slice(0, 3).join(", ")}. Copy the code and wear it with Eclipse.`
     : "An Eclipse look. Copy the code and wear it in game.";
   const url = `/wardrobe/${post.id}`;
+  // A look with a screenshot shows it in the preview; one without keeps the site's image.
+  const images = post.gallery.length ? [{ url: `${url}/cover`, width: 1200, height: 630, alt: post.title }] : undefined;
   return {
     title: post.title,
     description,
     alternates: { canonical: url },
-    openGraph: { ...OPEN_GRAPH, title: post.title, description, url },
+    openGraph: { ...OPEN_GRAPH, title: post.title, description, url, ...(images && { images }) },
+    ...(images && { twitter: { card: "summary_large_image", images: images.map((i) => i.url) } }),
   };
 }
 

@@ -1,4 +1,6 @@
-import { createParser, createSearchParamsCache, parseAsInteger, parseAsString, parseAsStringLiteral } from "nuqs/server";
+import {
+  createParser, createSearchParamsCache, parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral,
+} from "nuqs/server";
 import { ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL, SORTS } from "@/lib/domain";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -16,6 +18,8 @@ export const wardrobeParsers = {
   category: parseAsStringLiteral(CATEGORIES),
   tag: parseAsString,
   author: parseAsAccountId,
+  /** The signed-in account's bookmarks. Private, so the link shows each person their own. */
+  saved: parseAsBoolean.withDefault(false),
   sort: parseAsStringLiteral(SORTS).withDefault("trending"),
   page: parseAsInteger.withDefault(1),
 };

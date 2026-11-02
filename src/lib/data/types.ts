@@ -21,6 +21,8 @@ export interface OutfitPost {
   createdAt: string | null;
   /** Links to studio screenshots, the cover first. The code holds no pictures. */
   gallery: string[];
+  /** Hidden by reports. Only its author and moderators can still see it. */
+  hidden?: boolean;
 }
 
 export interface OutfitFilters {
@@ -34,6 +36,8 @@ export interface OutfitFilters {
   captured?: boolean;
   /** Only looks this account published. */
   authorId?: string | null;
+  /** Only looks the signed-in account bookmarked. */
+  saved?: boolean;
   sort: Sort;
   /** From 1. */
   page?: number;
@@ -81,6 +85,26 @@ export interface GameSet {
   updatedAt: string;
 }
 
+export const REPORT_REASONS = {
+  spam: "Spam or advertising",
+  offensive: "Offensive title or screenshot",
+  stolen: "Someone else's look, reposted",
+  broken: "Not a real look, or the code is broken",
+  other: "Something else",
+} as const;
+
+export type ReportReason = keyof typeof REPORT_REASONS;
+
+/** A look with reports no moderator has reviewed yet. Moderators only. */
+export interface ReportedLook {
+  id: string;
+  title: string;
+  hidden: boolean;
+  reports: number;
+  reasons: ReportReason[];
+  lastReport: string;
+}
+
 export type WriteResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 /** The seam: pages know this and nothing about where the rows live. */
@@ -92,6 +116,15 @@ export interface Repository {
   searchIndex(): Promise<SearchEntry[]>;
   createOutfit(input: ParsedOutfit): Promise<WriteResult<OutfitPost>>;
   upvote(id: string): Promise<WriteResult<number>>;
+  /** Files a report. Three hide the look until a moderator reviews it. */
+  report(id: string, reason: ReportReason): Promise<WriteResult<string>>;
+  /** Whether the signed-in account bookmarked this look. False for a visitor. */
+  isBookmarked(id: string): Promise<boolean>;
+  setBookmark(id: string, saved: boolean): Promise<WriteResult<boolean>>;
+  /** Moderators only: everything else gets an empty list. */
+  listReports(): Promise<ReportedLook[]>;
+  /** Moderators only: shows a reported look again and marks its reports read. */
+  restoreOutfit(id: string): Promise<WriteResult<string>>;
   /** Compresses and stores a screenshot, and returns its storage path. */
   uploadScreenshot(file: File): Promise<WriteResult<string>>;
   removeScreenshot(path: string): Promise<WriteResult<string>>;

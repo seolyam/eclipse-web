@@ -7,7 +7,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { builtinRepository, matchingLooks } from "./builtin";
 import { compressScreenshot, SCREENSHOT_EXTENSION, SCREENSHOT_TYPE } from "./compress";
 import type {
-  GameLink, GameSet, OutfitFilters, OutfitList, OutfitPost, Repository, WriteResult,
+  GameLink, GameSet, OutfitFilters, OutfitList, OutfitPost, ReportReason, Repository, WriteResult,
 } from "./types";
 
 // The same seam as builtin.ts, over supabase/migrations. RLS is what protects the
@@ -26,7 +26,17 @@ interface OutfitRow {
   created_at: string;
   author_id: string;
   gallery: string[];
+  hidden?: boolean;
   profiles: { display_name: string | null; verified: boolean } | null;
+}
+
+interface ReportedRow {
+  outfit_id: string;
+  title: string;
+  hidden: boolean;
+  reports: number;
+  reasons: ReportReason[];
+  last_report: string;
 }
 
 interface GameLinkRow {
@@ -45,10 +55,10 @@ interface GameSetRow {
 
 const toGameSet = (r: GameSetRow): GameSet => ({ id: r.id, name: r.name, code: r.code, updatedAt: r.updated_at });
 
-// The hint is required: outfit_votes also joins outfits to profiles, and PostgREST
-// refuses a bare profiles(...) embed as ambiguous.
+// The hint is required: outfit_votes, outfit_reports and outfit_bookmarks also join
+// outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)";
+  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,author_id,gallery,hidden,profiles!outfits_author_id_fkey(display_name,verified)";
 
 const toPost = (r: OutfitRow): OutfitPost => ({
   id: r.id,
@@ -65,6 +75,7 @@ const toPost = (r: OutfitRow): OutfitPost => ({
   upvotes: r.upvotes,
   createdAt: r.created_at,
   gallery: r.gallery.map(screenshotUrl),
+  hidden: Boolean(r.hidden),
 });
 
 // A search term goes into PostgREST's filter text, where , ( ) are syntax.
@@ -102,8 +113,12 @@ const outfitRows = (
   f: OutfitFilters,
   columns: string,
   options: { count: "exact"; head?: boolean },
+  savedBy: string | null,
 ) => {
-  let query = db.from("outfits").select(columns, options);
+  // An inner embed keeps only the outfits with a matching bookmark row.
+  let query = savedBy
+    ? db.from("outfits").select(`${columns},outfit_bookmarks!inner(user_id)`, options).eq("outfit_bookmarks.user_id", savedBy)
+    : db.from("outfits").select(columns, options);
   if (f.captured) query = query.neq("gallery", "{}");
   if (f.authorId) query = query.eq("author_id", f.authorId);
   if (f.className) query = query.eq("class_name", f.className);
@@ -118,9 +133,15 @@ const outfitRows = (
 
 async function publishedOutfits(f: OutfitFilters): Promise<OutfitList> {
   const db = await createServerSupabase();
+  let savedBy: string | null = null;
+  if (f.saved) {
+    const { data: auth } = await db.auth.getUser();
+    if (!auth.user) return { posts: [], total: 0 };
+    savedBy = auth.user.id;
+  }
   const size = f.pageSize ?? LOOKS_PER_PAGE;
   const from = (Math.max(1, f.page ?? 1) - 1) * size;
-  const page = outfitRows(db, f, OUTFIT_COLUMNS, { count: "exact" }).range(from, from + size - 1);
+  const page = outfitRows(db, f, OUTFIT_COLUMNS, { count: "exact" }, savedBy).range(from, from + size - 1);
   const query =
     f.sort === "newest"
       ? page.order("created_at", { ascending: false })
@@ -130,7 +151,7 @@ async function publishedOutfits(f: OutfitFilters): Promise<OutfitList> {
   const { data, error, count } = await query;
   if (error?.code === RANGE_NOT_SATISFIABLE) {
     // The refusal holds no count, and the caller pages on past the last row.
-    const { count: rows, error: failed } = await outfitRows(db, f, "id", { count: "exact", head: true });
+    const { count: rows, error: failed } = await outfitRows(db, f, "id", { count: "exact", head: true }, savedBy);
     if (failed) throw new Error(failed.message);
     return { posts: [], total: rows ?? 0 };
   }
@@ -198,6 +219,61 @@ export const supabaseRepository: Repository = {
     if (error?.code === SIGNED_OUT) return { ok: false, error: "Sign in to vote." };
     if (error) return { ok: false, error: "That vote could not be counted. Try again." };
     return { ok: true, value: data as number };
+  },
+  async report(id, reason) {
+    if (!UUID.test(id)) return { ok: false, error: "That look cannot be reported." };
+    const db = await createServerSupabase();
+    const { error } = await db.rpc("report_outfit", { target: id, why: reason });
+    if (error?.code === SIGNED_OUT) return { ok: false, error: "Sign in to report a look." };
+    if (error) return { ok: false, error: "That report could not be sent. Try again." };
+    return { ok: true, value: id };
+  },
+  async isBookmarked(id) {
+    if (!UUID.test(id)) return false;
+    const db = await createServerSupabase();
+    const { data: auth } = await db.auth.getUser();
+    if (!auth.user) return false;
+    const { data } = await db
+      .from("outfit_bookmarks")
+      .select("outfit_id")
+      .eq("user_id", auth.user.id)
+      .eq("outfit_id", id)
+      .maybeSingle();
+    return Boolean(data);
+  },
+  async setBookmark(id, saved) {
+    if (!UUID.test(id)) return { ok: false, error: "That look cannot be bookmarked." };
+    const db = await createServerSupabase();
+    const { data: auth } = await db.auth.getUser();
+    if (!auth.user) return { ok: false, error: "Sign in to bookmark a look." };
+    const { error } = saved
+      ? await db.from("outfit_bookmarks").insert({ user_id: auth.user.id, outfit_id: id })
+      : await db.from("outfit_bookmarks").delete().eq("user_id", auth.user.id).eq("outfit_id", id);
+    // A double click lands the same bookmark twice; the first one already saved it.
+    if (error && error.code !== UNIQUE_VIOLATION) return { ok: false, error: "That bookmark could not be saved. Try again." };
+    return { ok: true, value: saved };
+  },
+  async listReports() {
+    const db = await createServerSupabase();
+    const { data, error } = await db.rpc("moderation_queue");
+    if (error?.code === REFUSED_BY_POLICY) return [];
+    if (error) throw new Error(error.message);
+    return (data as ReportedRow[]).map((r) => ({
+      id: r.outfit_id,
+      title: r.title,
+      hidden: r.hidden,
+      reports: Number(r.reports),
+      reasons: r.reasons,
+      lastReport: r.last_report,
+    }));
+  },
+  async restoreOutfit(id) {
+    if (!UUID.test(id)) return { ok: false, error: "That look cannot be restored." };
+    const db = await createServerSupabase();
+    const { error } = await db.rpc("restore_outfit", { target: id });
+    if (error?.code === REFUSED_BY_POLICY) return { ok: false, error: "Only moderators can restore a look." };
+    if (error) return { ok: false, error: "That look could not be restored. Try again." };
+    return { ok: true, value: id };
   },
   async uploadScreenshot(file) {
     const db = await createServerSupabase();
