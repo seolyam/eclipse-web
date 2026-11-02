@@ -165,7 +165,7 @@ export const builtinRepository: Repository = {
   async listReports() {
     return [];
   },
-  async restoreOutfit() {
+  async dismissReports() {
     return { ok: false, error: NOT_LIVE };
   },
   async uploadScreenshot() {

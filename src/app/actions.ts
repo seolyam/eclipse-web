@@ -132,8 +132,7 @@ export async function upvoteOutfit(id: string) {
 export async function reportLook(id: string, reason: string) {
   if (!Object.hasOwn(REPORT_REASONS, reason)) return { ok: false as const, error: "Choose a reason first." };
   const r = await repository.report(id, reason as ReportReason);
-  // The third report hides the look from every list.
-  if (r.ok) revalidateHub();
+  if (r.ok) revalidatePath("/moderation");
   return r;
 }
 
@@ -143,12 +142,15 @@ export async function bookmarkLook(id: string, saved: boolean) {
   return r;
 }
 
-export async function restoreLook(id: string) {
-  const r = await repository.restoreOutfit(id);
-  if (r.ok) {
-    revalidateHub();
-    revalidatePath(`/wardrobe/${id}`);
-    revalidatePath("/moderation");
-  }
+/** A look's unread reports, for a moderator looking at it. Null for anyone else. */
+export async function openReportsFor(id: string) {
+  const account = await repository.getAccount();
+  if (!account?.moderator) return null;
+  return (await repository.listReports()).find((r) => r.id === id) ?? null;
+}
+
+export async function dismissLookReports(id: string) {
+  const r = await repository.dismissReports(id);
+  if (r.ok) revalidatePath("/moderation");
   return r;
 }

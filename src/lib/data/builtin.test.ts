@@ -138,7 +138,7 @@ describe("the built-in looks", () => {
     expect((await repo.uploadScreenshot(new File([], "a.png"))).ok).toBe(false);
     expect((await repo.report("crystal-scholar", "spam")).ok).toBe(false);
     expect((await repo.setBookmark("crystal-scholar", true)).ok).toBe(false);
-    expect((await repo.restoreOutfit("crystal-scholar")).ok).toBe(false);
+    expect((await repo.dismissReports("crystal-scholar")).ok).toBe(false);
     expect(await repo.isBookmarked("crystal-scholar")).toBe(false);
     expect(await repo.listReports()).toEqual([]);
     expect(await repo.getCreator("33333333-3333-4333-8333-333333333333")).toBeNull();

@@ -14,7 +14,7 @@ import {
 import { REPORT_REASONS, type ReportReason } from "@/lib/data/types";
 import { useAccount } from "@/lib/use-account";
 
-/** Shown to signed-in people other than the author. Three reports hide a look. */
+/** Shown to signed-in people other than the author. Moderators decide what happens. */
 export function ReportLook({ id, authorId }: { id: string; authorId: string }) {
   const [account] = useAccount();
   const [open, setOpen] = useState(false);
@@ -43,7 +43,7 @@ export function ReportLook({ id, authorId }: { id: string; authorId: string }) {
         <DialogHeader>
           <DialogTitle>Report this look?</DialogTitle>
           <DialogDescription>
-            Moderators review every report. A look several people report is hidden until they do.
+            Moderators see every report and decide whether the look stays up.
           </DialogDescription>
         </DialogHeader>
         <fieldset className="flex flex-col gap-2">

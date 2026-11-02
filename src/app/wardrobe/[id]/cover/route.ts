@@ -8,9 +8,7 @@ const NOT_FOUND = () => new Response(null, { status: 404 });
 /** A look's cover screenshot as a link preview. Looks with none keep the site's image. */
 export async function GET(_request: Request, { params }: Context) {
   const post = await getOutfit((await params).id);
-  // A hidden look reaches this only for a moderator or its author, and the answer is
-  // cached for everyone, so it gets no preview at all.
-  if (!post?.gallery.length || post.hidden) return NOT_FOUND();
+  if (!post?.gallery.length) return NOT_FOUND();
   const cover = await fetch(post.gallery[0]);
   if (!cover.ok) return NOT_FOUND();
   const card = await socialCard(Buffer.from(await cover.arrayBuffer()));
