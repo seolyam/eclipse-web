@@ -1,11 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ItemRing } from "@/components/item-icon";
+import { ModelStage } from "@/components/model-stage";
 import { StudioGallery } from "@/components/studio/studio-gallery";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ResolvedOutfit, ResolvedSlot } from "@/lib/catalog";
 import type { OutfitPost } from "@/lib/data/types";
-import { SLOT_NAMES, VISIBLE_SLOTS } from "@/lib/domain";
+import { RACE_BY_ID, SLOT_NAMES, VISIBLE_SLOTS } from "@/lib/domain";
 import { NARCISSUS_URL } from "@/lib/site";
 import { backdropFor, classArt, qualityColour, QUALITY_NAME, raceArt } from "@/lib/wow-assets";
 
@@ -13,6 +14,20 @@ import { backdropFor, classArt, qualityColour, QUALITY_NAME, raceArt } from "@/l
 // side of the figure, in the order a person reads a character.
 const LEFT = VISIBLE_SLOTS.slice(0, 7);
 const RIGHT = VISIBLE_SLOTS.slice(7);
+
+/** Slot -> item for each visible piece the code wears; hidden and empty slots draw nothing. */
+const worn = (resolved: ResolvedOutfit) =>
+  Object.fromEntries(
+    resolved.slots
+      .filter((s) => s.item !== 0 && (VISIBLE_SLOTS as readonly number[]).includes(s.slot))
+      .map((s) => [s.slot, s.item]),
+  );
+
+/** The client race to draw, or null (a stand-in) for none or a retail race with no body here. */
+const raceId = (resolved: ResolvedOutfit) => {
+  const hit = Object.entries(RACE_BY_ID).find(([, key]) => key === resolved.raceKey);
+  return hit ? Number(hit[0]) : null;
+};
 
 function Piece({ slot, piece, side }: { slot: number; piece: ResolvedSlot | undefined; side: "left" | "right" }) {
   const hidden = piece?.item === 0;
@@ -103,7 +118,12 @@ export function StudioPane({
       <div className="studio__grid">
         <Column slots={LEFT} resolved={resolved} side="left" />
         <div className="studio__stage">
-          <StudioGallery images={post.gallery} backdrop={scene} title={post.title} />
+          {post.gallery.length ? (
+            <StudioGallery images={post.gallery} backdrop={scene} title={post.title} />
+          ) : (
+            // No capture yet: the pieces themselves, drawn as the Dressing room draws them.
+            <ModelStage pieces={worn(resolved)} race={raceId(resolved)} gender={resolved.sex === "Female" ? 1 : 0} />
+          )}
         </div>
         <Column slots={RIGHT} resolved={resolved} side="right" />
       </div>
