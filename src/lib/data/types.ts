@@ -127,6 +127,8 @@ export interface Repository {
   readonly live: boolean;
   listOutfits(filters: OutfitFilters): Promise<OutfitList>;
   getOutfit(id: string): Promise<OutfitPost | null>;
+  /** The most upvoted look of the last seven days, or null when no look has earned it. */
+  lookOfTheWeek(): Promise<{ post: OutfitPost; votes: number } | null>;
   /** A creator's public page. Null for an unknown id or someone with no public name. */
   getCreator(id: string): Promise<Creator | null>;
   searchIndex(): Promise<SearchEntry[]>;

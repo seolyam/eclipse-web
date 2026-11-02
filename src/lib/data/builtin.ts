@@ -141,6 +141,9 @@ export const builtinRepository: Repository = {
   async getCreator() {
     return null;
   },
+  async lookOfTheWeek() {
+    return null;
+  },
   async searchIndex() {
     return allLooks().map(({ id, title, author }) => ({ id, title, author }));
   },

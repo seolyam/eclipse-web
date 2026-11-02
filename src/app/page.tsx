@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { LookOfTheWeek } from "@/components/look-of-the-week";
 import { OutfitCard, OutfitPoster } from "@/components/outfit-card";
 import { Icon } from "@/components/site/icons";
 import { Download, Features, Hero, Support } from "@/components/site/landing";
@@ -50,6 +51,9 @@ export default function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: siteStructuredData() }} />
       <Hero />
       {/* The database must not hold back the hero: it sits below the first screen. */}
+      <Suspense fallback={null}>
+        <LookOfTheWeek />
+      </Suspense>
       <Suspense fallback={null}>
         <FeaturedLooks />
       </Suspense>

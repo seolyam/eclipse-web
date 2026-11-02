@@ -189,6 +189,19 @@ export const supabaseRepository: Repository = {
     if (error) throw new Error(error.message);
     return data ? toPost(data as unknown as OutfitRow) : null;
   },
+  async lookOfTheWeek() {
+    const db = await createServerSupabase();
+    const { data, error } = await db.rpc("look_of_the_week");
+    // An extra on the home page: a failure here leaves the section out, not the page.
+    if (error) {
+      console.error("Look of the week failed:", error.message);
+      return null;
+    }
+    const pick = (data as { outfit_id: string; votes: number }[])[0];
+    if (!pick) return null;
+    const post = await supabaseRepository.getOutfit(pick.outfit_id);
+    return post ? { post, votes: Number(pick.votes) } : null;
+  },
   async getCreator(id) {
     if (!UUID.test(id)) return null;
     const db = await createServerSupabase();
