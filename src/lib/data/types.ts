@@ -23,6 +23,18 @@ export interface OutfitPost {
   gallery: string[];
   /** Hidden by reports. Only its author and moderators can still see it. */
   hidden?: boolean;
+  /** The look this one was made from in the Dressing room, while it can still be seen. */
+  remixedFrom?: { id: string; title: string; author: string | null } | null;
+}
+
+/** Someone who has chosen a public name. Every count is of what visitors can see. */
+export interface Creator {
+  id: string;
+  name: string;
+  verified: boolean;
+  joinedAt: string;
+  looks: number;
+  upvotes: number;
 }
 
 export interface OutfitFilters {
@@ -113,6 +125,8 @@ export interface Repository {
   readonly live: boolean;
   listOutfits(filters: OutfitFilters): Promise<OutfitList>;
   getOutfit(id: string): Promise<OutfitPost | null>;
+  /** A creator's public page. Null for an unknown id or someone with no public name. */
+  getCreator(id: string): Promise<Creator | null>;
   searchIndex(): Promise<SearchEntry[]>;
   createOutfit(input: ParsedOutfit): Promise<WriteResult<OutfitPost>>;
   upvote(id: string): Promise<WriteResult<number>>;

@@ -51,7 +51,9 @@ export async function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost;
         {post.upvotes !== null && <UpvoteButton id={post.id} count={post.upvotes} />}
         {repository.live && post.authorId && <BookmarkButton id={post.id} saved={saved} />}
         <p className="flex items-center gap-1 text-sm text-ink-dim">
-          {post.author ?? "Item set"}
+          {post.authorId && post.author ? (
+            <Link href={`/creators/${post.authorId}`} className="underline-offset-2 hover:text-ink hover:underline">{post.author}</Link>
+          ) : (post.author ?? "Item set")}
           {post.authorVerified && <BadgeCheck className="size-3.5 text-amber" strokeWidth={1.5} aria-label="Verified" />}
         </p>
         {resolved && hasArmor(resolved) && (
@@ -62,6 +64,14 @@ export async function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost;
         {post.authorId && <ReportLook id={post.id} authorId={post.authorId} />}
         {post.authorId && <DeleteLook id={post.id} authorId={post.authorId} />}
       </div>
+
+      {post.remixedFrom && (
+        <p className="text-sm text-ink-dim">
+          Based on{" "}
+          <Link href={`/wardrobe/${post.remixedFrom.id}`} className="text-amber underline underline-offset-2">{post.remixedFrom.title}</Link>
+          {post.remixedFrom.author && <> by {post.remixedFrom.author}</>}
+        </p>
+      )}
 
       <ul className="flex flex-wrap gap-1">
         {tags.map((t) => (

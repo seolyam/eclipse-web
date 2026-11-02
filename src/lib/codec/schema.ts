@@ -27,6 +27,8 @@ export const submitOutfitSchema = z.object({
   category: z.enum(CATEGORIES),
   tags: z.array(z.string().trim().min(1).max(24)).max(6),
   gallery: z.array(upload).max(MAX_SCREENSHOTS, `Keep it to ${MAX_SCREENSHOTS} screenshots.`).default([]),
+  /** The published look this was made from, credited on the new one. */
+  remixedFrom: z.uuid().optional(),
 });
 export type SubmitOutfit = z.input<typeof submitOutfitSchema>;
 export type ParsedOutfit = z.output<typeof submitOutfitSchema>;

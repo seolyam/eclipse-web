@@ -4,7 +4,7 @@ import { DressingRoom } from "@/components/dressing-room";
 import { HubTabs, HubTitle } from "@/components/hub";
 import { catalogCounts, resolveOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
-import { getOutfit } from "@/lib/data";
+import { getOutfit, repository } from "@/lib/data";
 import { startingRack, type StartingRack } from "@/lib/dressing-room";
 import { pageMetadata } from "@/lib/seo";
 
@@ -13,13 +13,18 @@ export const metadata: Metadata = pageMetadata("/dressing-room");
 type Props = { searchParams: Promise<{ look?: string | string[] }> };
 
 /** ?look=<id> opens a published look on the rack, to try on or change. */
-async function lookToOpen(id: unknown): Promise<{ id: string; title: string; rack: StartingRack } | null> {
+async function lookToOpen(id: unknown): Promise<{ id: string; title: string; published: boolean; rack: StartingRack } | null> {
   if (typeof id !== "string" || !id) return null;
   const post = await getOutfit(id);
   if (!post) return null;
   const decoded = decodeOutfit(post.code);
   if (!decoded.ok) return null;
-  return { id: post.id, title: post.title, rack: startingRack(decoded.outfit, resolveOutfit(decoded.outfit)) };
+  return {
+    id: post.id,
+    title: post.title,
+    published: post.authorId !== null,
+    rack: startingRack(decoded.outfit, resolveOutfit(decoded.outfit)),
+  };
 }
 
 export default async function DressingRoomPage({ searchParams }: Props) {
@@ -37,7 +42,13 @@ export default async function DressingRoomPage({ searchParams }: Props) {
           . Its armor and race are on the rack; mounts, morphs and enchants stay with the original.
         </p>
       )}
-      <DressingRoom key={opened?.id ?? "empty"} itemCount={catalogCounts.items} start={opened?.rack ?? null} />
+      <DressingRoom
+        key={opened?.id ?? "empty"}
+        itemCount={catalogCounts.items}
+        start={opened?.rack ?? null}
+        from={opened?.published ? opened.id : null}
+        canPublish={repository.live}
+      />
     </main>
   );
 }

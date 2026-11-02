@@ -28,6 +28,7 @@ interface OutfitRow {
   gallery: string[];
   hidden?: boolean;
   profiles: { display_name: string | null; verified: boolean } | null;
+  remix?: { id: string; title: string; profiles: { display_name: string | null } | null } | null;
 }
 
 interface ReportedRow {
@@ -58,7 +59,9 @@ const toGameSet = (r: GameSetRow): GameSet => ({ id: r.id, name: r.name, code: r
 // The hint is required: outfit_votes, outfit_reports and outfit_bookmarks also join
 // outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,author_id,gallery,hidden,profiles!outfits_author_id_fkey(display_name,verified)";
+  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,author_id,gallery,hidden,profiles!outfits_author_id_fkey(display_name,verified)," +
+  // outfits refers to itself, so the hint is the column: it picks the original, not the remixes.
+  "remix:outfits!remixed_from(id,title,profiles!outfits_author_id_fkey(display_name))";
 
 const toPost = (r: OutfitRow): OutfitPost => ({
   id: r.id,
@@ -76,6 +79,7 @@ const toPost = (r: OutfitRow): OutfitPost => ({
   createdAt: r.created_at,
   gallery: r.gallery.map(screenshotUrl),
   hidden: Boolean(r.hidden),
+  remixedFrom: r.remix ? { id: r.remix.id, title: r.remix.title, author: r.remix.profiles?.display_name ?? null } : null,
 });
 
 // A search term goes into PostgREST's filter text, where , ( ) are syntax.
@@ -183,6 +187,26 @@ export const supabaseRepository: Repository = {
     if (error) throw new Error(error.message);
     return data ? toPost(data as unknown as OutfitRow) : null;
   },
+  async getCreator(id) {
+    if (!UUID.test(id)) return null;
+    const db = await createServerSupabase();
+    // RLS limits the looks to what this visitor can see, so a hidden look is not counted.
+    const [profile, looks] = await Promise.all([
+      db.from("profiles").select("display_name,verified,created_at").eq("id", id).maybeSingle(),
+      db.from("outfits").select("upvotes").eq("author_id", id),
+    ]);
+    if (profile.error) throw new Error(profile.error.message);
+    if (looks.error) throw new Error(looks.error.message);
+    if (!profile.data?.display_name) return null;
+    return {
+      id,
+      name: profile.data.display_name,
+      verified: profile.data.verified,
+      joinedAt: profile.data.created_at,
+      looks: looks.data.length,
+      upvotes: looks.data.reduce((sum, r) => sum + r.upvotes, 0),
+    };
+  },
   async searchIndex() {
     const { posts } = await publishedOutfits({ sort: "top", pageSize: SEARCH_INDEX_SIZE });
     const published = posts.map(({ id, title, author }) => ({ id, title, author }));
@@ -204,6 +228,7 @@ export const supabaseRepository: Repository = {
         category: input.category,
         tags: input.tags,
         gallery: input.gallery,
+        remixed_from: input.remixedFrom ?? null,
       })
       .select(OUTFIT_COLUMNS)
       .single();
