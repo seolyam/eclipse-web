@@ -118,7 +118,15 @@ function Screenshots({
   );
 }
 
-function PublishForm({ code }: { code: string }) {
+/** The published look a code came from, by way of the Dressing room. */
+export interface RemixOf {
+  id: string;
+  title: string;
+  author: string | null;
+}
+
+function PublishForm({ code, remixOf }: { code: string; remixOf: RemixOf | null }) {
+  const [credit, setCredit] = useState(remixOf !== null);
   const [title, setTitle] = useState("");
   const [className, setClassName] = useState<ClassName | null>(null);
   const [armor, setArmor] = useState<ArmorType | null>(null);
@@ -143,6 +151,7 @@ function PublishForm({ code }: { code: string }) {
         category,
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6),
         gallery,
+        remixedFrom: credit && remixOf ? remixOf.id : undefined,
       });
       if (!r.ok) {
         setError(r.error);
@@ -163,6 +172,15 @@ function PublishForm({ code }: { code: string }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
+      {remixOf && (
+        <label className="flex items-center gap-2 text-sm text-ink-dim">
+          <input type="checkbox" checked={credit} onChange={(e) => setCredit(e.target.checked)} />
+          <span>
+            Based on <Link href={`/wardrobe/${remixOf.id}`} className="text-amber underline underline-offset-2">{remixOf.title}</Link>
+            {remixOf.author && <> by {remixOf.author}</>}
+          </span>
+        </label>
+      )}
       <div className="flex flex-col gap-1">
         <label htmlFor="outfit-title" className="text-xs text-ink-dim">Title</label>
         <Input id="outfit-title" value={title} maxLength={80} required onChange={(e) => setTitle(e.target.value)} className="bg-surface" />
@@ -187,7 +205,7 @@ function PublishForm({ code }: { code: string }) {
   );
 }
 
-function OutfitResultView({ result, canPublish }: { result: OutfitResult; canPublish: boolean }) {
+function OutfitResultView({ result, canPublish, remixOf }: { result: OutfitResult; canPublish: boolean; remixOf: RemixOf | null }) {
   // Hand a slot back to the wearer's gear, as the game's own slot clear does.
   const [removed, setRemoved] = useState<number[]>([]);
   const code = useMemo(() => {
@@ -212,7 +230,7 @@ function OutfitResultView({ result, canPublish }: { result: OutfitResult; canPub
       {canPublish && (
         <section className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4" aria-label="Publish">
           <h2 className="text-base">Publish it</h2>
-          <PublishForm key={code} code={code} />
+          <PublishForm key={code} code={code} remixOf={remixOf} />
         </section>
       )}
     </div>
@@ -253,7 +271,11 @@ function WorldResultView({ result, code }: { result: WorldResult; code: string }
   );
 }
 
-export function Decoder({ initial = "", canPublish = false }: { initial?: string; canPublish?: boolean }) {
+export function Decoder({ initial = "", canPublish = false, remixOf = null }: {
+  initial?: string;
+  canPublish?: boolean;
+  remixOf?: RemixOf | null;
+}) {
   const [text, setText] = useState(initial);
   const [result, setResult] = useState<InspectResult | null>(null);
   const [pending, start] = useTransition();
@@ -299,7 +321,7 @@ export function Decoder({ initial = "", canPublish = false }: { initial?: string
         {result?.kind === "error" && <p role="alert" className="text-sm text-bad">{result.error}</p>}
         {result && result.kind !== "error" && <p className="text-sm text-good">Valid {result.kind === "world" ? "world" : "loadout"} code</p>}
       </div>
-      {result?.kind === "outfit" && <OutfitResultView key={text} result={result} canPublish={canPublish} />}
+      {result?.kind === "outfit" && <OutfitResultView key={text} result={result} canPublish={canPublish} remixOf={remixOf} />}
       {result?.kind === "world" && <WorldResultView result={result} code={text.trim()} />}
     </div>
   );

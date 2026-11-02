@@ -125,6 +125,9 @@ export const builtinRepository: Repository = {
   async getOutfit(id) {
     return allLooks().find((o) => o.id === id) ?? null;
   },
+  async getCreator() {
+    return null;
+  },
   async searchIndex() {
     return allLooks().map(({ id, title, author }) => ({ id, title, author }));
   },

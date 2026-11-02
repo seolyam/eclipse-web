@@ -41,7 +41,7 @@ export function AccountMenu({ account, onNamed }: { account: Account; onNamed: (
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link href={`/wardrobe?author=${account.id}&sort=newest`}><Shirt />Your looks</Link>
+            <Link href={`/creators/${account.id}`}><Shirt />Your looks</Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/wardrobe?saved=true&sort=newest"><Bookmark />Bookmarks</Link>

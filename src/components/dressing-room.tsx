@@ -56,8 +56,18 @@ function Piece({ slot, rack, side, active, onChoose }: {
   );
 }
 
+/** The Inspector's publish form, holding this code and crediting the look it started from. */
+const publishHref = (code: string, from: string | null) =>
+  `/inspector?${new URLSearchParams(from ? { code, from } : { code })}`;
+
 /** Pick pieces slot by slot, see them on a character, and take away a code. */
-export function DressingRoom({ itemCount, start }: { itemCount: number; start: StartingRack | null }) {
+export function DressingRoom({ itemCount, start, from = null, canPublish = false }: {
+  itemCount: number;
+  start: StartingRack | null;
+  /** The published look on the rack, credited if this one is published. */
+  from?: string | null;
+  canPublish?: boolean;
+}) {
   const [rack, setRack] = useState<Rack>(start?.pieces ?? {});
   const [active, setActive] = useState<number>(VISIBLE_SLOTS[0]);
   const [query, setQuery] = useState("");
@@ -175,6 +185,9 @@ export function DressingRoom({ itemCount, start }: { itemCount: number; start: S
           </div>
         )}
         <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+          {code && canPublish && (
+            <Link href={publishHref(code, from)} className="pill">Publish this look</Link>
+          )}
           {code
             ? <CopyButton code={code} />
             : <p className="text-sm text-ink-dim">Choose a piece to get a code.</p>}

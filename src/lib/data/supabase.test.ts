@@ -243,6 +243,66 @@ describe("publishing", () => {
   });
 });
 
+describe("remix credit", () => {
+  const original = "22222222-2222-4222-8222-222222222222";
+
+  it("names the original when publishing a remix", async () => {
+    user = { id: row.author_id };
+    let sent: Record<string, unknown> = {};
+    reply = (_, init) => {
+      sent = JSON.parse(String(init?.body));
+      return Response.json(row);
+    };
+    await repo.createOutfit({ ...input, remixedFrom: original });
+    expect(sent.remixed_from).toBe(original);
+  });
+
+  it("credits nothing on an ordinary look", async () => {
+    user = { id: row.author_id };
+    let sent: Record<string, unknown> = {};
+    reply = (_, init) => {
+      sent = JSON.parse(String(init?.body));
+      return Response.json(row);
+    };
+    await repo.createOutfit(input);
+    expect(sent.remixed_from).toBeNull();
+  });
+
+  it("shows the original and its author", async () => {
+    reply = () => Response.json({ ...row, remix: { id: original, title: "The original", profiles: { display_name: "Ana" } } });
+    expect((await repo.getOutfit(row.id))?.remixedFrom).toEqual({ id: original, title: "The original", author: "Ana" });
+    expect(requests[0].searchParams.get("select")).toContain("remix:outfits!remixed_from(");
+  });
+
+  it("shows nothing once the original is gone or hidden", async () => {
+    reply = () => Response.json({ ...row, remix: null });
+    expect((await repo.getOutfit(row.id))?.remixedFrom).toBeNull();
+  });
+});
+
+describe("a creator's page", () => {
+  it("counts the looks and upvotes visitors can see", async () => {
+    reply = (url) => url.pathname.endsWith("/profiles")
+      ? Response.json({ display_name: "Kira", verified: true, created_at: row.created_at })
+      : Response.json([{ upvotes: 3 }, { upvotes: 4 }]);
+    expect(await repo.getCreator(row.author_id)).toEqual({
+      id: row.author_id, name: "Kira", verified: true, joinedAt: row.created_at, looks: 2, upvotes: 7,
+    });
+  });
+
+  it("has no page for someone with no public name", async () => {
+    reply = (url) => url.pathname.endsWith("/profiles")
+      ? Response.json({ display_name: null, verified: false, created_at: row.created_at })
+      : Response.json([]);
+    expect(await repo.getCreator(row.author_id)).toBeNull();
+  });
+
+  it("is a 404, not a crash, for a malformed id", async () => {
+    expect(await repo.getCreator("not-a-uuid")).toBeNull();
+    expect(requests).toEqual([]);
+  });
+});
+
 describe("reports", () => {
   it("files the reason through report_outfit", async () => {
     user = { id: row.author_id };

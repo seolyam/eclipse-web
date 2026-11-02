@@ -128,6 +128,7 @@ describe("the built-in looks", () => {
     expect((await repo.restoreOutfit("crystal-scholar")).ok).toBe(false);
     expect(await repo.isBookmarked("crystal-scholar")).toBe(false);
     expect(await repo.listReports()).toEqual([]);
+    expect(await repo.getCreator("33333333-3333-4333-8333-333333333333")).toBeNull();
     expect((await repo.listOutfits({ sort: "top" })).total).toBe(before);
   });
 });
