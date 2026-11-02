@@ -477,6 +477,11 @@ describe("the Supabase adapter", () => {
     expect(requests[0].searchParams.get("gallery")).toBe("neq.{}");
   });
 
+  it("filters to looks wearing one item, read from their codes by the database", async () => {
+    await repo.listOutfits({ sort: "top", item: 1339122 });
+    expect(requests[0].searchParams.get("items")).toBe("cs.{1339122}");
+  });
+
   it("filters to one author", async () => {
     await repo.listOutfits({ sort: "top", authorId: row.id });
     expect(requests[0].searchParams.get("author_id")).toBe(`eq.${row.id}`);

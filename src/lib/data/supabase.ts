@@ -130,6 +130,8 @@ const outfitRows = (
   if (f.armor) query = query.eq("armor", f.armor);
   if (f.category) query = query.eq("category", f.category);
   if (f.tag) query = query.contains("tags", [f.tag]);
+  // items is written by a trigger from the code (the look_items migration).
+  if (f.item) query = query.contains("items", [f.item]);
   const term = f.q ? safeTerm(f.q) : "";
   if (term) query = query.ilike("title", `%${term}%`);
   return query;

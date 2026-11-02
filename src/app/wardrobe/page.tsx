@@ -4,6 +4,7 @@ import type { SearchParams } from "nuqs/server";
 import { BuiltinNotice, HubTabs, HubTitle, listFromSearch, NoLooks, Pager, PublishButton } from "@/components/hub";
 import { OutfitCard } from "@/components/outfit-card";
 import { OutfitFilters } from "@/components/outfit-filters";
+import { itemName } from "@/lib/catalog";
 import { repository } from "@/lib/data";
 import { pageMetadata } from "@/lib/seo";
 
@@ -24,6 +25,12 @@ export default async function WardrobePage({ searchParams }: { searchParams: Pro
         <p className="text-sm text-ink-dim">
           Showing one person&apos;s looks.{" "}
           <Link href="/wardrobe" className="text-amber underline underline-offset-2">Show everyone&apos;s</Link>
+        </p>
+      )}
+      {filters.item !== null && filters.item > 0 && (
+        <p className="text-sm text-ink-dim">
+          Showing looks that wear {itemName(filters.item) ?? `item ${filters.item}`}.{" "}
+          <Link href="/wardrobe" className="text-amber underline underline-offset-2">Show every look</Link>
         </p>
       )}
       {filters.saved && (

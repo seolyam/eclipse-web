@@ -78,6 +78,19 @@ describe("the built-in looks", () => {
     expect(r.ok && r.outfit.mount).toBe(134653);
   });
 
+  it("finds every look wearing an item, and only those", async () => {
+    const all = await everything();
+    const wears = (code: string, item: number) => {
+      const r = decodeOutfit(code);
+      return r.ok && Object.values(r.outfit.slots).includes(item);
+    };
+    const item = 259306; // The Crystal Scholar's head.
+    const hits = (await repo.listOutfits({ sort: "top", item, pageSize: 10_000 })).posts;
+    expect(hits.map((p) => p.id)).toContain("crystal-scholar");
+    expect(hits.map((p) => p.id)).toEqual(all.filter((p) => wears(p.code, item)).map((p) => p.id));
+    expect((await repo.listOutfits({ sort: "top", item: 999_999_999 })).total).toBe(0);
+  });
+
   it("filters by armor, and by class through the armor it wears", async () => {
     const { posts: plate } = await repo.listOutfits({ armor: "plate", sort: "top" });
     expect(plate.length).toBeGreaterThan(0);

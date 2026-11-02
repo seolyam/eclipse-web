@@ -20,6 +20,8 @@ export const wardrobeParsers = {
   author: parseAsAccountId,
   /** The signed-in account's bookmarks. Private, so the link shows each person their own. */
   saved: parseAsBoolean.withDefault(false),
+  /** Looks wearing one item, by its id. */
+  item: parseAsInteger,
   sort: parseAsStringLiteral(SORTS).withDefault("trending"),
   page: parseAsInteger.withDefault(1),
 };

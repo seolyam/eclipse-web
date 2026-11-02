@@ -50,6 +50,8 @@ export interface OutfitFilters {
   authorId?: string | null;
   /** Only looks the signed-in account bookmarked. */
   saved?: boolean;
+  /** Only looks wearing this item. */
+  item?: number | null;
   sort: Sort;
   /** From 1. */
   page?: number;

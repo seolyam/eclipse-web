@@ -1,7 +1,7 @@
 import "server-only";
 import setsJson from "@/data/catalog/sets.json";
 import { itemIcon } from "@/lib/catalog";
-import { emptyOutfit, encodeOutfit } from "@/lib/codec/outfit";
+import { decodeOutfit, emptyOutfit, encodeOutfit } from "@/lib/codec/outfit";
 import { ARMOR_CLASSES, ARMOR_TYPES, LOOKS_PER_PAGE, type ArmorType } from "@/lib/domain";
 import type { OutfitFilters, OutfitPost, Repository } from "./types";
 
@@ -95,6 +95,18 @@ function wornBy(o: OutfitPost, className: NonNullable<OutfitFilters["className"]
   return o.armor !== null && ARMOR_CLASSES[o.armor].includes(className);
 }
 
+// Read once per look: the filter runs over every set on every Wardrobe page.
+const worn = new Map<string, Set<number>>();
+function wears(o: OutfitPost, item: number): boolean {
+  let items = worn.get(o.id);
+  if (!items) {
+    const r = decodeOutfit(o.code);
+    items = new Set(r.ok ? Object.values(r.outfit.slots) : []);
+    worn.set(o.id, items);
+  }
+  return items.has(item);
+}
+
 function matches(o: OutfitPost, f: OutfitFilters): boolean {
   // Nobody can bookmark a built-in look.
   if (f.saved) return false;
@@ -105,6 +117,7 @@ function matches(o: OutfitPost, f: OutfitFilters): boolean {
   if (f.armor && o.armor !== f.armor) return false;
   if (f.category && o.category !== f.category) return false;
   if (f.tag && !o.tags.includes(f.tag)) return false;
+  if (f.item && !wears(o, f.item)) return false;
   if (f.q) {
     const q = f.q.toLowerCase();
     return [o.title, ...o.tags].some((t) => t.toLowerCase().includes(q));
