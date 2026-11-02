@@ -280,6 +280,26 @@ describe("remix credit", () => {
   });
 });
 
+describe("the look of the week", () => {
+  it("is the database's pick, with how many votes it got this week", async () => {
+    reply = (url) => url.pathname.endsWith("/rpc/look_of_the_week")
+      ? Response.json([{ outfit_id: row.id, votes: 5 }])
+      : Response.json(row);
+    expect(await repo.lookOfTheWeek()).toMatchObject({ votes: 5, post: { id: row.id, title: "A real post" } });
+  });
+
+  it("is nothing in a quiet week", async () => {
+    reply = () => Response.json([]);
+    expect(await repo.lookOfTheWeek()).toBeNull();
+  });
+
+  it("never takes the home page down with it", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    reply = failWith("XX000", 500);
+    expect(await repo.lookOfTheWeek()).toBeNull();
+  });
+});
+
 describe("a creator's page", () => {
   it("counts the looks and upvotes visitors can see", async () => {
     reply = (url) => url.pathname.endsWith("/profiles")
