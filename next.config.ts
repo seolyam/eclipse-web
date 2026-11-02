@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
+      {
+        // A game file is named by its own hash, so its bytes never change. Without this,
+        // every visit asks the game's CDN again for the same bytes, through us.
+        source: "/game-cdn/data/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
     ];
   },
   async rewrites() {

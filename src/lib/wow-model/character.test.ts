@@ -110,20 +110,43 @@ describe("the skin's layout", () => {
 
 describe("where a model hangs", () => {
   it("puts a helm on the head and pauldrons on both shoulders", () => {
-    // Measured over 79 helms on an HD human, head 1.76..2.11: at 11 the median helm
-    // spans 1.58..2.03, around the neck, and at 55 it spans 1.75..2.20.
-    expect(attachmentsFor(worn(SLOT.head, { model: 1 }))).toEqual([{ attachment: 55, model: 1, texture: undefined }]);
+    // Retail cut its helms for the HD heads to hang from 11, as wow.export hangs them.
+    // Mists' copies of the same files fit the old heads, and sat at the neck from 11.
+    expect(attachmentsFor(worn(SLOT.head, { model: 1 }))).toEqual([{ attachment: 11, model: 1, texture: undefined }]);
     expect(attachmentsFor(worn(SLOT.shoulders, { model: 1, texture: 2, modelRight: 3, textureRight: 4 }))).toEqual([
       { attachment: 6, model: 1, texture: 2 },
       { attachment: 5, model: 3, texture: 4 },
     ]);
   });
 
-  it("puts a weapon in its hand, a shield on the arm and a ranged weapon on the back", () => {
+  it("puts a weapon in its hand and a shield on the arm", () => {
     expect(attachmentsFor(worn(SLOT.main, { model: 1 }))[0].attachment).toBe(1);
     expect(attachmentsFor(worn(SLOT.off, { model: 1 }))[0].attachment).toBe(2);
     expect(attachmentsFor(worn(SLOT.off, { model: 1, shield: true }))[0].attachment).toBe(0);
-    expect(attachmentsFor(worn(SLOT.ranged, { model: 1 }))[0].attachment).toBe(26);
+  });
+
+  // The client's dressing room (DressUpModelFrame) holds a ranged weapon: a bow in the
+  // left hand, a gun, crossbow, wand or thrown weapon in the right. Attachment 26 is
+  // where the client hangs a quiver.
+  it("holds a bow in the left hand and any other ranged weapon in the right", () => {
+    expect(attachmentsFor(worn(SLOT.ranged, { model: 1 }))).toEqual([{ attachment: 1, model: 1, texture: undefined }]);
+    expect(attachmentsFor(worn(SLOT.ranged, { model: 1, bow: true }))).toEqual([{ attachment: 2, model: 1, texture: undefined }]);
+  });
+
+  it("does not put a ranged weapon in a hand that already holds something", () => {
+    const crossbow = worn(SLOT.ranged, { model: 1 });
+    const bow = worn(SLOT.ranged, { model: 1, bow: true });
+    const sword = worn(SLOT.main, { model: 2 });
+    const shield = worn(SLOT.off, { model: 3, shield: true });
+    expect(attachmentsFor(crossbow, [sword, crossbow])).toEqual([]);
+    expect(attachmentsFor(bow, [shield, bow])).toEqual([]);
+    expect(attachmentsFor(bow, [sword, bow])[0].attachment).toBe(2);
+    expect(attachmentsFor(crossbow, [shield, crossbow])[0].attachment).toBe(1);
+  });
+
+  it("counts a hand as free when its piece has no model to hold", () => {
+    const crossbow = worn(SLOT.ranged, { model: 1 });
+    expect(attachmentsFor(crossbow, [worn(SLOT.main), crossbow])[0].attachment).toBe(1);
   });
 
   it("has nothing to hang for a piece that is only texture", () => {

@@ -17,6 +17,8 @@ export interface WornItem {
   modelRight?: number;
   textureRight?: number;
   shield?: boolean;
+  /** A ranged weapon held in the left hand. */
+  bow?: boolean;
   /** Geoset groups this piece removes, as a helm removes hair. */
   hides?: number[];
 }
@@ -109,13 +111,18 @@ export interface Hung {
   texture: number | undefined;
 }
 
-const ATTACHMENT = { shield: 0, handRight: 1, handLeft: 2, shoulderRight: 5, shoulderLeft: 6, sheath: 26, headTop: 55 };
+const ATTACHMENT = { shield: 0, handRight: 1, handLeft: 2, shoulderRight: 5, shoulderLeft: 6, helm: 11 };
 
-export function attachmentsFor(item: WornItem): Hung[] {
+/**
+ * Where each model of a piece hangs. `worn` is the whole look: a ranged weapon is held
+ * as the client's dressing room holds it, a bow in the left hand and the rest in the
+ * right, so it has nowhere to go when that hand already holds something.
+ */
+export function attachmentsFor(item: WornItem, worn: WornItem[] = []): Hung[] {
   const left = (attachment: number): Hung[] => (item.model ? [{ attachment, model: item.model, texture: item.texture }] : []);
   switch (item.slot) {
     case SLOT.head:
-      return left(ATTACHMENT.headTop);
+      return left(ATTACHMENT.helm);
     case SLOT.shoulders:
       return [
         ...left(ATTACHMENT.shoulderLeft),
@@ -125,8 +132,11 @@ export function attachmentsFor(item: WornItem): Hung[] {
       return left(ATTACHMENT.handRight);
     case SLOT.off:
       return left(item.shield ? ATTACHMENT.shield : ATTACHMENT.handLeft);
-    case SLOT.ranged:
-      return left(ATTACHMENT.sheath);
+    case SLOT.ranged: {
+      const hand = item.bow ? SLOT.off : SLOT.main;
+      const taken = worn.some((other) => other.slot === hand && other.model);
+      return taken ? [] : left(item.bow ? ATTACHMENT.handLeft : ATTACHMENT.handRight);
+    }
     default:
       return [];
   }

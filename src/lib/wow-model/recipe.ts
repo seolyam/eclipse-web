@@ -12,6 +12,7 @@ export interface ItemRecipe {
   modelRight?: number;
   textureRight?: number;
   shield?: boolean;
+  bow?: boolean;
   /** Geoset groups hidden, as [male, female][race, in the order of RACE_ORDER]. */
   hides?: number[][][];
   /** The item names files the CDN does not have, so it can only partly be drawn. */
@@ -40,6 +41,7 @@ export function wornItem(slot: number, recipe: ItemRecipe, race: number, gender:
     modelRight: recipe.modelRight,
     textureRight: recipe.textureRight,
     shield: recipe.shield,
+    bow: recipe.bow,
     hides: recipe.hides?.[gender]?.[RACE_ORDER.indexOf(race)],
   };
 }
