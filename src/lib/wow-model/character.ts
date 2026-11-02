@@ -4,7 +4,7 @@
 
 export const BODY_REGIONS = ["armUpper", "armLower", "hand", "torsoUpper", "torsoLower", "legUpper", "legLower", "foot"] as const;
 export type BodyRegion = (typeof BODY_REGIONS)[number];
-export type SkinRegion = BodyRegion | "faceUpper" | "faceLower";
+export type SkinRegion = BodyRegion | "face";
 
 export interface WornItem {
   /** Morph slot, as in SLOT_NAMES. */
@@ -23,15 +23,18 @@ export interface WornItem {
 
 const SLOT = { head: 0, shoulders: 2, shirt: 3, chest: 4, waist: 5, legs: 6, feet: 7, wrists: 8, hands: 9, back: 14, main: 15, off: 16, ranged: 17, tabard: 18 };
 
-export const SKIN_SIZE = 1024;
+/** An HD body's skin: ChrModelMaterial, type 1, on all ten classic races. */
+export const SKIN_WIDTH = 2048;
+export const SKIN_HEIGHT = 1024;
 
-/** The classic 256-unit skin map. Retail's textures are this at four times the size. */
-const REGION_RECTS: Record<SkinRegion, [number, number, number, number]> = {
+/** CharComponentTextureSections 9 and 10, which HD gives one texture and the right half. */
+const FACE_PANEL: [number, number, number, number] = [SKIN_HEIGHT, 0, SKIN_HEIGHT, SKIN_HEIGHT];
+
+/** The classic 256-unit body map, which an HD body keeps, on the left half. */
+const REGION_RECTS: Record<BodyRegion, [number, number, number, number]> = {
   armUpper: [0, 0, 128, 64],
   armLower: [0, 64, 128, 64],
   hand: [0, 128, 128, 32],
-  faceUpper: [0, 160, 128, 32],
-  faceLower: [0, 192, 128, 64],
   torsoUpper: [128, 0, 128, 64],
   torsoLower: [128, 64, 128, 32],
   legUpper: [128, 96, 128, 64],
@@ -40,7 +43,8 @@ const REGION_RECTS: Record<SkinRegion, [number, number, number, number]> = {
 };
 
 export function regionRect(region: SkinRegion): [number, number, number, number] {
-  const scale = SKIN_SIZE / 256;
+  if (region === "face") return FACE_PANEL;
+  const scale = SKIN_HEIGHT / 256;
   return REGION_RECTS[region].map((v) => v * scale) as [number, number, number, number];
 }
 
@@ -71,8 +75,15 @@ const GEOSET_GROUPS: Record<number, readonly number[]> = {
   [SLOT.tabard]: [12],
 };
 
-/** Group -> variant on a bare body. Variant 1 is "nothing"; ears are the exception. */
-const BARE: Record<number, number> = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 7: 2, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1, 15: 1, 18: 1 };
+/**
+ * Group -> variant on a bare body. Variant 1 is "nothing"; ears are the exception, and
+ * so is an HD head (32), whose first variant is a stub. An HD body also keeps its feet
+ * (20), chest (22), eyes (33) and eyebrows (34) out of geoset 0, and elves their hands
+ * (23). A race without one of these has that part in geoset 0.
+ */
+const BARE: Record<number, number> = {
+  1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 7: 2, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1, 15: 1, 18: 1, 20: 1, 22: 1, 23: 1, 32: 2, 33: 1, 34: 1,
+};
 
 /** The geoset ids to draw: the body, one hairstyle, and one variant of each group. */
 export function visibleGeosets(items: WornItem[], hairstyle: number): Set<number> {
@@ -94,19 +105,17 @@ export function visibleGeosets(items: WornItem[], hairstyle: number): Set<number
 
 export interface Hung {
   attachment: number;
-  /** Used on a body without the first point. */
-  fallback?: number;
   model: number;
   texture: number | undefined;
 }
 
-const ATTACHMENT = { shield: 0, handRight: 1, handLeft: 2, shoulderRight: 5, shoulderLeft: 6, neck: 11, sheath: 26, headTop: 55 };
+const ATTACHMENT = { shield: 0, handRight: 1, handLeft: 2, shoulderRight: 5, shoulderLeft: 6, sheath: 26, headTop: 55 };
 
 export function attachmentsFor(item: WornItem): Hung[] {
   const left = (attachment: number): Hung[] => (item.model ? [{ attachment, model: item.model, texture: item.texture }] : []);
   switch (item.slot) {
     case SLOT.head:
-      return left(ATTACHMENT.headTop).map((hung) => ({ ...hung, fallback: ATTACHMENT.neck }));
+      return left(ATTACHMENT.headTop);
     case SLOT.shoulders:
       return [
         ...left(ATTACHMENT.shoulderLeft),

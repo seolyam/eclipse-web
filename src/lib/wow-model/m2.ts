@@ -11,11 +11,6 @@ export interface M2Texture {
   file: number;
 }
 
-export interface M2Attachment {
-  bone: number;
-  position: Vec3;
-}
-
 export interface M2 {
   positions: Float32Array;
   normals: Float32Array;
@@ -27,7 +22,6 @@ export interface M2 {
   textureLookup: number[];
   /** FileDataID of the first .skin, the full-detail one. */
   skinFile: number;
-  attachment(id: number): M2Attachment | null;
   /** Every bone at the first frame of an animation held in this file, else at rest. */
   bones(sequenceId: number): BonePose[];
 }
@@ -44,7 +38,6 @@ export interface SkinSection {
 }
 
 const VERTEX = 48;
-const ATTACHMENT = 40;
 const SEQUENCE = 64;
 const BONE = 88;
 const SUBMESH = 48;
@@ -115,14 +108,6 @@ export function parseM2(buffer: ArrayBuffer): M2 {
   });
   const textureLookup = Array.from({ length: count(0x80) }, (_, i) => data.getUint16(offset(0x80) + i * 2, true));
 
-  const attachment = (id: number): M2Attachment | null => {
-    if (id >= count(0xf8)) return null;
-    const index = data.getInt16(offset(0xf8) + id * 2, true);
-    if (index < 0 || index >= count(0xf0)) return null;
-    const at = offset(0xf0) + index * ATTACHMENT;
-    return { bone: data.getUint16(at + 4, true), position: readVec3(at + 8) };
-  };
-
   const readVec3 = (at: number): Vec3 => [data.getFloat32(at, true), data.getFloat32(at + 4, true), data.getFloat32(at + 8, true)];
 
   // A track is a list per sequence, each pointing at its keyframes. A sequence kept in
@@ -160,7 +145,7 @@ export function parseM2(buffer: ArrayBuffer): M2 {
 
   return {
     positions, normals, uvs, boneIndices, boneWeights, textures, materials, textureLookup,
-    skinFile: u32s(chunks.get("SFID"))[0] ?? 0, attachment, bones,
+    skinFile: u32s(chunks.get("SFID"))[0] ?? 0, bones,
   };
 }
 

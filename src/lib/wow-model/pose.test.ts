@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IDENTITY, solveBones, skinVertices, transformPoint, translation, type BonePose } from "./pose";
+import { IDENTITY, readPose, solveBones, skinVertices, transformPoint, translation, type BonePose } from "./pose";
 
 const bone = (over: Partial<BonePose> = {}): BonePose => ({
   parent: -1,
@@ -78,5 +78,37 @@ describe("skinning a vertex", () => {
       Uint8Array.of(0, 0, 0, 0), Uint8Array.of(255, 0, 0, 0), turned,
     );
     close(normals, [0, 1, 0]);
+  });
+});
+
+describe("a baked pose", () => {
+  const baked = {
+    bones: [
+      [-1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
+      [0, 1, 2, 3, 0.5, 0, 0, 0, 0, Math.SQRT1_2, Math.SQRT1_2, 2, 2, 2],
+    ],
+    attachments: { 11: [1, 0.1, 0.2, 0.3] as [number, number, number, number] },
+  };
+
+  it("unpacks each bone's row in the order the bake writes it", () => {
+    expect(readPose(baked).bones[1]).toEqual({
+      parent: 0,
+      pivot: [1, 2, 3],
+      translation: [0.5, 0, 0],
+      rotation: [0, 0, Math.SQRT1_2, Math.SQRT1_2],
+      scale: [2, 2, 2],
+    });
+  });
+
+  it("solves like any other skeleton", () => {
+    const { bones } = readPose(baked);
+    const moved = solveBones(bones)[1];
+    close(translation(moved), translation(solveBones([bone({ pivot: [0, 0, 1] }), bones[1]])[1]));
+  });
+
+  it("finds an attachment point, and says when a body has none", () => {
+    const { attachment } = readPose(baked);
+    expect(attachment(11)).toEqual({ bone: 1, position: [0.1, 0.2, 0.3] });
+    expect(attachment(55)).toBeNull();
   });
 });

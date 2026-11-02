@@ -15,6 +15,39 @@ export interface BonePose {
   scale: Vec3;
 }
 
+export interface Attachment {
+  bone: number;
+  position: Vec3;
+}
+
+/**
+ * What tools/export_models.py keeps of a body's .skel: the first frame of Stand, as
+ * [parent, pivot x3, translation x3, rotation x4, scale x3] for each bone. A still
+ * figure needs nothing else from a file of nearly 20 MB.
+ */
+export interface BakedPose {
+  bones: number[][];
+  /** Attachment id -> [bone, x, y, z]. */
+  attachments: Record<string, [number, number, number, number]>;
+}
+
+export function readPose(baked: BakedPose) {
+  const vec3 = (row: number[], at: number): Vec3 => [row[at], row[at + 1], row[at + 2]];
+  return {
+    bones: baked.bones.map((row): BonePose => ({
+      parent: row[0],
+      pivot: vec3(row, 1),
+      translation: vec3(row, 4),
+      rotation: [row[7], row[8], row[9], row[10]],
+      scale: vec3(row, 11),
+    })),
+    attachment(id: number): Attachment | null {
+      const point = baked.attachments[id];
+      return point ? { bone: point[0], position: vec3(point, 1) } : null;
+    },
+  };
+}
+
 export const IDENTITY: Mat4 = Float64Array.of(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
 export function multiply(a: Mat4, b: Mat4): Mat4 {

@@ -13,8 +13,12 @@ still has the 512x512 originals. Retail fills in everything newer. Each build's 
 encoding table and archive indexes come through tools/lib/tact_cdn.py from the Eclipse
 tree, cached in --cache (about 450 MB a build, and slow the first time).
 
+Bodies are the HD ones, which only retail has. Their bones live in a .skel of nearly
+20 MB, so the first frame of Stand is baked here and no browser downloads that file.
+
 Writes public/dress/:
     bodies.json          "<race id>-<gender>" -> the files of a bare character
+    poses/<key>.json     the same key -> that body's Stand pose and attachment points
     items/<n>.json       item id -> recipe, split by id % 128
     files/<n>.json       FileDataID -> [archive index, offset, size], or [encoded key] for
                          a file the CDN keeps on its own, split by id % 256
@@ -38,6 +42,15 @@ OUT = ROOT / "public" / "dress"
 ITEMS = ROOT / "src" / "data" / "catalog" / "items.json"
 ITEM_SHARDS = 128
 FILE_SHARDS = 256
+
+# A .skel: its sequences, attachments and bones, with offsets from each chunk's start.
+SEQUENCE_BYTES = 64
+ATTACHMENT_BYTES = 40
+BONE_BYTES = 88
+STAND = 0
+# A sequence with this flag lives in the .skel; without it, in a separate .anim file.
+EMBEDDED = 0x20
+PLACES = 5
 
 # id, folder and file stem, and the two letters a head model's name carries.
 RACES = [
@@ -241,22 +254,127 @@ def recipe(row: dict, inv: int, files: Files, helmvis: dict) -> dict:
     return out
 
 
+def chunks(data: bytes) -> dict[bytes, int]:
+    """Where each chunk's contents start."""
+    out, at = {}, 0
+    while at + 8 <= len(data):
+        size = struct.unpack_from("<I", data, at + 4)[0]
+        out[data[at:at + 4]] = at + 8
+        at += 8 + size
+    return out
+
+
+def quat_part(value: int) -> float:
+    return (value + 32768 if value < 0 else value - 32767) / 32767
+
+
+def stand_pose(data: bytes, sequences: tuple, bones_of: tuple, points: tuple) -> dict:
+    """The first frame of Stand. Rows are read back by readPose in pose.ts.
+
+    Each argument starts with the base its offsets count from: a .skel's chunk, or the
+    model. Then its count and offset, and for points the lookup's count and offset too.
+    """
+    sequences_at, count, at = sequences
+    stand = next(
+        i for i in range(count)
+        if struct.unpack_from("<H", data, sequences_at + at + i * SEQUENCE_BYTES)[0] == STAND
+        and struct.unpack_from("<I", data, sequences_at + at + i * SEQUENCE_BYTES + 12)[0] & EMBEDDED
+    )
+    bones_at = bones_of[0]
+
+    def first_key(track: int) -> int | None:
+        runs, table = struct.unpack_from("<II", data, track + 12)
+        if stand >= runs:
+            return None
+        keys, values = struct.unpack_from("<II", data, bones_at + table + stand * 8)
+        return bones_at + values if keys else None
+
+    def row(*values) -> list:
+        return [round(v, PLACES) for v in values]
+
+    _, count, at = bones_of
+    bones = []
+    for i in range(count):
+        bone = bones_at + at + i * BONE_BYTES
+        moved, turned, sized = first_key(bone + 16), first_key(bone + 36), first_key(bone + 56)
+        rotation = [quat_part(v) for v in struct.unpack_from("<4h", data, turned)] if turned else [0, 0, 0, 1]
+        bones.append(row(
+            struct.unpack_from("<h", data, bone + 8)[0],
+            *struct.unpack_from("<3f", data, bone + 76),
+            *(struct.unpack_from("<3f", data, moved) if moved else (0, 0, 0)),
+            *rotation,
+            *(struct.unpack_from("<3f", data, sized) if sized else (1, 1, 1)),
+        ))
+
+    points_at, count, at, lookups, lookup_at = points
+    attachments = {}
+    for point in range(lookups):
+        index = struct.unpack_from("<h", data, points_at + lookup_at + point * 2)[0]
+        if 0 <= index < count:
+            entry = points_at + at + index * ATTACHMENT_BYTES
+            attachments[str(point)] = row(
+                struct.unpack_from("<H", data, entry + 4)[0], *struct.unpack_from("<3f", data, entry + 8),
+            )
+    return {"bones": bones, "attachments": attachments}
+
+
+def skel_pose(skel: bytes) -> dict:
+    parts = chunks(skel)
+    bones_at, sequences_at, points_at = parts[b"SKB1"], parts[b"SKS1"], parts[b"SKA1"]
+    return stand_pose(
+        skel,
+        (sequences_at, *struct.unpack_from("<2I", skel, sequences_at + 8)),
+        (bones_at, *struct.unpack_from("<2I", skel, bones_at)),
+        (points_at, *struct.unpack_from("<4I", skel, points_at)),
+    )
+
+
+def model_pose(m2: bytes) -> dict:
+    """Trolls alone keep their skeleton in the model, laid out as a .skel lays it out."""
+    base = chunks(m2)[b"MD21"]
+    pair = lambda at: struct.unpack_from("<2I", m2, base + at)  # noqa: E731
+    return stand_pose(m2, (base, *pair(0x1c)), (base, *pair(0x2c)), (base, *pair(0xf0), *pair(0xf8)))
+
+
+def body_poses(tact_cdn, build: str, bodies: dict) -> dict:
+    models = tact_cdn.fetch([body["model"] for body in bodies.values()], build)
+    poses, skeletons = {}, {}
+    for key, body in bodies.items():
+        m2 = models[body["model"]]
+        parts = chunks(m2)
+        if b"SKID" in parts:
+            skeletons[key] = struct.unpack_from("<I", m2, parts[b"SKID"])[0]
+        else:
+            poses[key] = model_pose(m2)
+    skels = tact_cdn.fetch(sorted(set(skeletons.values())), build)
+    return poses | {key: skel_pose(skels[skeleton]) for key, skeleton in skeletons.items()}
+
+
 def body_files(files: Files) -> dict:
     out = {}
     for race, folder, _ in RACES:
+        eyes = re.compile(rf"character/{folder}/eyes00_00_\d+\.blp")
+        eye_paths = [path for path in files.by_path if eyes.fullmatch(path)]
         for gender, sex_name, _ in SEXES:
             base = f"character/{folder}/{sex_name}/{folder}{sex_name}"
-            paths = {
-                "model": base + ".m2", "skin": base + "skin00_00.blp",
-                "faceUpper": base + "faceupper00_00.blp", "faceLower": base + "facelower00_00.blp",
-                "pelvis": base + "nakedpelvisskin00_00.blp",
-                "hair": f"character/{folder}/hair00_00.blp",
+            # Night Elf females name their textures nightelf_female, though not their model.
+            spaced = f"character/{folder}/{sex_name}/{folder}_{sex_name}"
+            textures = {
+                "skin": "skin00_00_hd.blp", "face": "faceupper00_00_hd.blp",
+                "pelvis": "nakedpelvisskin00_00_hd.blp",
             }
             if gender:
-                paths["torso"] = base + "nakedtorsoskin00_00.blp"
+                textures["torso"] = "nakedtorsoskin00_00_hd.blp"
             entry = {}
-            for key, path in paths.items():
-                fdid = files.model(path) if key == "model" else files.texture(path)
+            model = files.model(base + "_hd.m2")
+            if model:
+                entry["model"] = model
+            for key, name in textures.items():
+                fdid = files.texture(base + name) or files.texture(spaced + name)
+                if fdid:
+                    entry[key] = fdid
+            for key, path in (("hair", f"character/{folder}/hair00_00.blp"), ("eyes", eye_paths[0] if eye_paths else "")):
+                fdid = files.texture(path)
                 if fdid:
                     entry[key] = fdid
             if "model" in entry and "skin" in entry:
@@ -369,8 +487,14 @@ def main() -> None:
         recipes[str(item)] = made
 
     bodies = body_files(files)
+    assert len(bodies) == len(RACES) * len(SEXES), sorted(bodies)
+    for key, body in sorted(bodies.items()):
+        print(key, "has", " ".join(sorted(set(body) - {"hairstyle"})), flush=True)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "bodies.json").write_text(json.dumps(bodies, separators=(",", ":"), sort_keys=True), encoding="utf8")
+    (OUT / "poses").mkdir(exist_ok=True)
+    for key, pose in body_poses(tact_cdn, args.builds[-1], bodies).items():
+        (OUT / "poses" / f"{key}.json").write_text(json.dumps(pose, separators=(",", ":")), encoding="utf8")
     size = write_shards(OUT / "items", recipes, ITEM_SHARDS)
     print(f"{dict(state)}; {len(bodies)} bodies; recipes {size >> 10} KB; {len(files.used)} files", flush=True)
 

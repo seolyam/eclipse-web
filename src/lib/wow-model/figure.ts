@@ -2,9 +2,9 @@
 // Browser only: the skin is painted on a canvas.
 import * as THREE from "three";
 import { decodeBlp, type Image } from "./blp";
-import { attachmentsFor, bodyLayers, regionRect, SKIN_SIZE, visibleGeosets, type SkinRegion, type WornItem } from "./character";
+import { attachmentsFor, bodyLayers, regionRect, SKIN_HEIGHT, SKIN_WIDTH, visibleGeosets, type SkinRegion, type WornItem } from "./character";
 import { fitsModel, parseM2, parseSkin, type M2, type M2Texture, type SkinSection } from "./m2";
-import { multiply, skinVertices, solveBones, type Mat4, type Vec3 } from "./pose";
+import { multiply, readPose, skinVertices, solveBones, type Attachment, type BakedPose, type Mat4 } from "./pose";
 
 /** Reads one game file by FileDataID. */
 export type FileSource = (file: number) => Promise<ArrayBuffer>;
@@ -12,13 +12,14 @@ export type FileSource = (file: number) => Promise<ArrayBuffer>;
 export interface BodyFiles {
   model: number;
   skin: number;
-  faceUpper?: number;
-  faceLower?: number;
+  face?: number;
   pelvis?: number;
   torso?: number;
   hair?: number;
+  eyes?: number;
   /** The geoset id of the hairstyle to show. */
   hairstyle: number;
+  pose: BakedPose;
 }
 
 export interface Figure {
@@ -33,6 +34,7 @@ const TEXTURE_FILE = 0;
 const TEXTURE_SKIN = 1;
 const TEXTURE_OBJECT = 2;
 const TEXTURE_HAIR = 6;
+const TEXTURE_EYES = 19;
 const BLEND_OPAQUE = 0;
 const BLEND_ALPHA_KEY = 1;
 const TWO_SIDED = 0x4;
@@ -53,14 +55,13 @@ const readImage = async (source: FileSource, file: number) => blpCanvas(decodeBl
 
 async function paintSkin(source: FileSource, body: BodyFiles, items: WornItem[]) {
   const canvas = document.createElement("canvas");
-  canvas.width = SKIN_SIZE;
-  canvas.height = SKIN_SIZE;
+  canvas.width = SKIN_WIDTH;
+  canvas.height = SKIN_HEIGHT;
   const context = canvas.getContext("2d")!;
-  context.drawImage(await readImage(source, body.skin), 0, 0, SKIN_SIZE, SKIN_SIZE);
+  context.drawImage(await readImage(source, body.skin), 0, 0, SKIN_WIDTH, SKIN_HEIGHT);
 
   const base: { region: SkinRegion; file: number | undefined }[] = [
-    { region: "faceUpper", file: body.faceUpper },
-    { region: "faceLower", file: body.faceLower },
+    { region: "face", file: body.face },
     { region: "legUpper", file: body.pelvis },
     { region: "torsoUpper", file: body.torso },
   ];
@@ -124,18 +125,22 @@ function buildMeshes(
   return group;
 }
 
-async function readModel(source: FileSource, file: number) {
+async function readMesh(source: FileSource, file: number) {
   const m2 = parseM2(await source(file));
   const { sections } = parseSkin(await source(m2.skinFile));
   if (!fitsModel(sections, m2.positions.length / 3)) throw new Error(`Model ${file} and its skin do not match.`);
-  return { m2, sections, matrices: solveBones(m2.bones(STAND)) };
+  return { m2, sections };
 }
 
+const readModel = async (source: FileSource, file: number) => {
+  const mesh = await readMesh(source, file);
+  return { ...mesh, matrices: solveBones(mesh.m2.bones(STAND)) };
+};
+
 /** A model hung from the body: its bone in the Stand pose, then the point's offset. */
-function attachmentMatrix(body: M2, matrices: Mat4[], id: number) {
-  const point = body.attachment(id);
+function attachmentMatrix(point: Attachment | null, matrices: Mat4[]) {
   if (!point) return null;
-  const [x, y, z]: Vec3 = point.position;
+  const [x, y, z] = point.position;
   const offset = Float64Array.of(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1);
   return new THREE.Matrix4().fromArray(Array.from(multiply(matrices[point.bone], offset)));
 }
@@ -148,22 +153,27 @@ export async function buildFigure(source: FileSource, body: BodyFiles, items: Wo
     return texture;
   };
 
-  const [{ m2, sections, matrices }, skin, hair] = await Promise.all([
-    readModel(source, body.model),
+  const pose = readPose(body.pose);
+  const matrices = solveBones(pose.bones);
+  const [{ m2, sections }, skin, hair, eyes] = await Promise.all([
+    readMesh(source, body.model),
     paintSkin(source, body, items),
     body.hair ? readImage(source, body.hair).catch(() => null) : null,
+    body.eyes ? readImage(source, body.eyes).catch(() => null) : null,
   ]);
   const cape = items.find((item) => item.slot === 14 && item.texture)?.texture;
   const capeImage = cape ? await readImage(source, cape).catch(() => null) : null;
 
   const skinTexture = keep(skin);
   const hairTexture = hair ? keep(hair, 3) : null;
+  const eyesTexture = eyes ? keep(eyes) : null;
   const capeTexture = capeImage ? keep(capeImage) : null;
 
   const figure = new THREE.Group();
   figure.add(buildMeshes(m2, sections, matrices, (role) => {
     if (role.type === TEXTURE_SKIN) return skinTexture;
     if (role.type === TEXTURE_HAIR) return hairTexture;
+    if (role.type === TEXTURE_EYES) return eyesTexture;
     if (role.type === TEXTURE_OBJECT) return capeTexture;
     return null;
   }, visibleGeosets(items, body.hairstyle)));
@@ -171,8 +181,7 @@ export async function buildFigure(source: FileSource, body: BodyFiles, items: Wo
   const failed = new Set<number>();
   await Promise.all(items.flatMap((item) => attachmentsFor(item).map(async (hung) => {
     try {
-      const where = attachmentMatrix(m2, matrices, hung.attachment)
-        ?? (hung.fallback === undefined ? null : attachmentMatrix(m2, matrices, hung.fallback));
+      const where = attachmentMatrix(pose.attachment(hung.attachment), matrices);
       if (!where) throw new Error(`No attachment ${hung.attachment}.`);
       const model = await readModel(source, hung.model);
       const objectImage = hung.texture ? await readImage(source, hung.texture) : null;

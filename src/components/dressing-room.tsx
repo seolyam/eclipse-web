@@ -182,7 +182,7 @@ export function DressingRoom({ itemCount }: { itemCount: number }) {
       </div>
       <p className="flex flex-wrap justify-between gap-x-4 gap-y-1 px-5 pb-4 text-[0.7rem] text-ink-faint">
         <span>
-          The preview is a still figure with a default face and hair, and &quot;Your own race&quot; shows a human. Import the code in the game to see it on your character. To publish a look, paste its code into the{" "}
+          The preview is a still figure with a default face and hair, and &quot;Your own race&quot; shows a human. A game without HD models shows simpler bodies. Import the code in the game to see it on your character. To publish a look, paste its code into the{" "}
           <Link href="/inspector" className="underline underline-offset-2 hover:text-ink-dim">Inspector</Link>.
         </span>
         <span>

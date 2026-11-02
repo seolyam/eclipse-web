@@ -29,6 +29,7 @@ describe("the dressing room page", () => {
   it("says what the preview leaves out, so nobody mistakes it for the game", () => {
     expect(html).toMatch(/still figure/i);
     expect(html).toMatch(/default face and hair/i);
+    expect(html).toMatch(/without HD models/i);
   });
 
   it("does not make the page wait for the character", () => {

@@ -15,6 +15,7 @@ function server(over: Record<string, () => Response> = {}) {
     if (url === "/dress/files/8.json") return Response.json({ 264: [1, 100, 12], 520: [LOOSE] });
     if (url === "/dress/items/1.json") return Response.json({ 129: { texture: 5 } });
     if (url === "/dress/bodies.json") return Response.json({ "4-1": { model: 7, skin: 8, hairstyle: 2 } });
+    if (url === "/dress/poses/4-1.json") return Response.json({ bones: [], attachments: {} });
     if (url.includes(LOOSE)) return new Response(blte(4, 5), { status: 200 });
     if (url.startsWith("/game-cdn/")) return new Response(blte(1, 2, 3), { status: 206 });
     return new Response("missing", { status: 404 });
@@ -87,5 +88,19 @@ describe("reading what to dress", () => {
     const { files } = server();
     expect(await files.body(4, 1)).toMatchObject({ model: 7 });
     expect(await files.body(99, 0)).toBeNull();
+  });
+});
+
+describe("reading a body", () => {
+  it("brings its pose, which only this body needs", async () => {
+    const { calls, files } = server();
+    expect(await files.body(4, 1)).toEqual({ model: 7, skin: 8, hairstyle: 2, pose: { bones: [], attachments: {} } });
+    expect(calls.map((c) => c.url)).toContain("/dress/poses/4-1.json");
+  });
+
+  it("asks for no pose for a body that does not exist", async () => {
+    const { calls, files } = server();
+    expect(await files.body(99, 0)).toBeNull();
+    expect(calls.some((c) => c.url.startsWith("/dress/poses/"))).toBe(false);
   });
 });
