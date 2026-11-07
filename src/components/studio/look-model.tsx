@@ -4,20 +4,20 @@ import Image from "next/image";
 import { useState } from "react";
 import { ModelStage } from "@/components/model-stage";
 import { Button } from "@/components/ui/button";
+import type { Wearer } from "@/lib/viewer/figure";
 
 /**
  * A look with no studio capture, drawn on a character only when the visitor asks:
- * the model reads game files through /game-cdn, and browsing drawers should not.
+ * the engine and its packs are megabytes, and browsing drawers should not fetch them.
  */
-export function LookModel({ pieces, race, gender, backdrop }: {
+export function LookModel({ pieces, wearer, backdrop }: {
   pieces: Record<number, number>;
-  race: number | null;
-  gender: number;
+  wearer: Wearer | null;
   backdrop: string;
 }) {
   const [shown, setShown] = useState(false);
 
-  if (shown) return <ModelStage pieces={pieces} race={race} gender={gender} />;
+  if (shown) return <ModelStage pieces={pieces} wearer={wearer} />;
 
   return (
     <div className="gallery__frame">

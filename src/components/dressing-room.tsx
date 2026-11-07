@@ -127,7 +127,7 @@ export function DressingRoom({ itemCount, start, from = null, canPublish = false
           {LEFT.map((slot) => <Piece key={slot} slot={slot} rack={rack} side="left" active={slot === active} onChoose={choose} />)}
         </ul>
         <div className="studio__stage">
-          <ModelStage pieces={worn} race={chosenRace} gender={gender} />
+          <ModelStage pieces={worn} wearer={chosenRace === null ? null : { race: chosenRace, gender }} />
         </div>
         <ul className="flex flex-col gap-1.5">
           {RIGHT.map((slot) => <Piece key={slot} slot={slot} rack={rack} side="right" active={slot === active} onChoose={choose} />)}

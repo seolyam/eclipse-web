@@ -6,8 +6,10 @@ import { StudioGallery } from "@/components/studio/studio-gallery";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ResolvedOutfit, ResolvedSlot } from "@/lib/catalog";
 import type { OutfitPost } from "@/lib/data/types";
-import { RACE_BY_ID, SLOT_NAMES, VISIBLE_SLOTS } from "@/lib/domain";
+import { decodeOutfit } from "@/lib/codec/outfit";
+import { SLOT_NAMES, VISIBLE_SLOTS } from "@/lib/domain";
 import { NARCISSUS_URL } from "@/lib/site";
+import { wearerOf } from "@/lib/viewer/figure";
 import { backdropFor, classArt, qualityColour, QUALITY_NAME, raceArt } from "@/lib/wow-assets";
 
 // The studio's "Narcissus" template (ShowcaseOverlay.cpp): seven pieces either
@@ -23,10 +25,10 @@ const worn = (resolved: ResolvedOutfit) =>
       .map((s) => [s.slot, s.item]),
   );
 
-/** The client race to draw, or null (a stand-in) for none or a retail race with no body here. */
-const raceId = (resolved: ResolvedOutfit) => {
-  const hit = Object.entries(RACE_BY_ID).find(([, key]) => key === resolved.raceKey);
-  return hit ? Number(hit[0]) : null;
+/** Who the code dresses, face and hair included. Null: a stand-in, for a code with no look. */
+const wearer = (code: string) => {
+  const decoded = decodeOutfit(code);
+  return decoded.ok ? wearerOf(decoded.outfit.look) : null;
 };
 
 function Piece({ slot, piece, side }: { slot: number; piece: ResolvedSlot | undefined; side: "left" | "right" }) {
@@ -124,8 +126,7 @@ export function StudioPane({
             // No capture yet: the pieces themselves, drawn as the Dressing room draws them, on request.
             <LookModel
               pieces={worn(resolved)}
-              race={raceId(resolved)}
-              gender={resolved.sex === "Female" ? 1 : 0}
+              wearer={wearer(post.code)}
               backdrop={scene}
             />
           )}

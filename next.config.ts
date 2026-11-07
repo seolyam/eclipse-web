@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // .next that a running `next dev` is using.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
+  // The 3D engine and its pack format are workspace packages shipped as TypeScript source.
+  transpilePackages: ["@eclipse/engine", "@eclipse/format"],
   // Keeps the title and description in <head> for everyone. Otherwise a page with a
   // Suspense boundary flushes first and sends them in the body, Googlebot included.
   htmlLimitedBots: /.*/,

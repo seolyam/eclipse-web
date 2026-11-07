@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -52,3 +52,7 @@ __pycache__/
 
 # Supabase CLI
 supabase/.temp/
+
+# 3D engine runtime files, copied from node_modules by tools/copy-engine-assets.mjs
+/public/basis/
+/public/gpu/

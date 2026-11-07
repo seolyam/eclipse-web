@@ -11,6 +11,11 @@ const SHEATHE_POSITIONS = 4; // morph::kSheathePos_Count
 const COLOUR_AXES = 5; // ccol::kAxisCount
 const TINT_SLOTS = 14; // wcol::kSlotCount
 const MOUNT_SLOTS = 2; // wcol::kMountSlots
+const SKIN_SLOTS = 15; // skins::kSlotCount
+const SKIN_PRESETS = 264; // skins::PresetCount() in the newest released build
+const SKIN_PALETTES = 3;
+const SKIN_PLACEMENTS = 5;
+const ANY_RIDE = 1; // mo::kAnyRide: a mount look chosen with no mount
 const MAX_COSMETICS = 16; // Outfit::kMaxCosmetics
 const COSMETIC_MODES = 2; // sclr::kMode_COUNT
 
@@ -55,6 +60,15 @@ export type Look =
     }
   | { kind: "rlook"; race: string; sex: "m" | "f"; line: string };
 
+/**
+ * skins::ParseLookLine's numbers after the slot, already clamped as the game clamps
+ * them: item, preset, palette, placement, then 16 bytes and a hue.
+ */
+export interface Skin {
+  slot: number;
+  values: number[];
+}
+
 export interface Outfit {
   /** Morph slot -> item entry. 0 means the slot is deliberately hidden. */
   slots: Record<number, number>;
@@ -67,6 +81,11 @@ export interface Outfit {
   glow: [Glow | null, Glow | null];
   scale: number;
   look: Look | null;
+  /**
+   * A classic `look` line written under an `rlook`: what a player without the race pack
+   * wears instead (Morph.cpp Deserialize). `look` holds the rlook; this keeps the other.
+   */
+  fallback: Extract<Look, { kind: "look" }> | null;
   colorsKnown: boolean;
   colors: { axis: number; rgb: number }[];
   wtintKnown: boolean;
@@ -74,6 +93,10 @@ export interface Outfit {
   wtint: Tint[];
   mtintKnown: boolean;
   mtint: Tint[];
+  skinKnown: boolean;
+  skins: Skin[];
+  mskinKnown: boolean;
+  mskins: Skin[];
   cosmeticsKnown: boolean;
   cosmetics: Cosmetic[];
   /** Keys from a build newer than this file. Kept, so a re-copy loses nothing. */
@@ -96,6 +119,7 @@ export function emptyOutfit(): Outfit {
     glow: [null, null],
     scale: 0,
     look: null,
+    fallback: null,
     colorsKnown: false,
     colors: [],
     wtintKnown: false,
@@ -103,6 +127,10 @@ export function emptyOutfit(): Outfit {
     wtint: [],
     mtintKnown: false,
     mtint: [],
+    skinKnown: false,
+    skins: [],
+    mskinKnown: false,
+    mskins: [],
     cosmeticsKnown: false,
     cosmetics: [],
     unknown: [],
@@ -115,6 +143,25 @@ const hex = (t: string | undefined): number | null =>
   t !== undefined && /^[0-9a-fA-F]{1,8}$/.test(t) ? parseInt(t, 16) & 0xffffff : null;
 const clampByte = (v: number) => Math.min(v, 255);
 const hex6 = (v: number) => v.toString(16).toUpperCase().padStart(6, "0");
+
+/**
+ * skins::ParseLookLine: `<tag> <slot> <item> <preset> <palette> <placement>` and 16
+ * more, clamped as the game clamps them. Null: the game drops the line.
+ */
+function readSkin(parts: string[]): Skin | null {
+  if (parts.length < 21) return null;
+  const slot = Number(parts[1]);
+  const u = parts.slice(2, 21).map(uint);
+  if (!Number.isInteger(slot) || u.some((v) => v === null) || !u[0]) return null;
+  const [item, preset, palette, placement, ...rest] = u as number[];
+  const hue = rest[8] % 3600;
+  const bytes = rest.map(clampByte);
+  bytes[8] = hue;
+  return {
+    slot,
+    values: [item, preset & 0xffff, palette < SKIN_PALETTES ? palette : 0, placement < SKIN_PLACEMENTS ? placement : 0, ...bytes],
+  };
+}
 
 function readTint(parts: string[]): Tint | null {
   const n = parts.slice(1, 7).map(uint);
@@ -131,7 +178,7 @@ function readTint(parts: string[]): Tint | null {
   };
 }
 
-const upsert = (list: Tint[], t: Tint) => {
+const upsert = <T extends { slot: number }>(list: T[], t: T) => {
   const at = list.findIndex((x) => x.slot === t.slot);
   if (at >= 0) list[at] = t;
   else list.push(t);
@@ -281,7 +328,33 @@ export function parseOutfit(text: string): {
       case "look":
       case "rlook": {
         const look = readLook(line);
-        if (look) o.look = look;
+        if (look?.kind === "look") {
+          o.fallback = look;
+          // An rlook already read is what the code means; this line stands under it.
+          if (o.look?.kind !== "rlook") o.look = look;
+        } else if (look) o.look = look;
+        break;
+      }
+      case "skinok":
+        o.skinKnown = flag;
+        break;
+      case "mskinok":
+        o.mskinKnown = flag;
+        break;
+      case "skin":
+      case "mskin": {
+        const k = readSkin(parts);
+        const slots = key === "skin" ? SKIN_SLOTS : MOUNT_SLOTS;
+        if (k && k.values[1] >= SKIN_PRESETS) {
+          // A preset from a newer build: kept whole, as the newer game wrote it.
+          o.unknown.push(line);
+          break;
+        }
+        if (k && k.slot >= 0 && k.slot < slots) {
+          upsert(key === "skin" ? o.skins : o.mskins, k);
+          if (key === "skin") o.skinKnown = true;
+          else o.mskinKnown = true;
+        }
         break;
       }
       default:
@@ -293,6 +366,12 @@ export function parseOutfit(text: string): {
   }
   // MountTintsFollowSlots: a colour lives only with the mount it was chosen for.
   o.mtint = o.mtint.filter((t) => t.item === (t.slot ? o.mountFly : o.mount));
+  // A mount look chosen with no mount goes to the mount that is there.
+  o.mskins = o.mskins.flatMap((k) => {
+    const held = k.slot ? o.mountFly : o.mount;
+    if (k.values[0] === ANY_RIDE) return held ? [{ ...k, values: [held, ...k.values.slice(1)] }] : [k];
+    return k.values[0] === held ? [k] : [];
+  });
   return { outfit: o, recognised, warnings };
 }
 
@@ -316,13 +395,15 @@ export function serializeOutfit(o: Outfit): string {
     }
   });
   if (o.scale > 0) out.push(`scale ${o.scale.toFixed(4)}`);
-  if (o.look?.kind === "rlook") out.push(o.look.line);
-  else if (o.look) {
-    const l = o.look;
+  // The classic line first, then the retail one it stands under (cc::Serialize, races::Serialize).
+  const classic = o.look?.kind === "look" ? o.look : o.fallback;
+  if (classic) {
+    const l = classic;
     out.push(
       `look ${l.race} ${l.gender} ${l.skin} ${l.face} ${l.hairStyle} ${l.hairColour} ${l.facialHair}`,
     );
   }
+  if (o.look?.kind === "rlook") out.push(o.look.line);
   if (o.colorsKnown) out.push("ccolok 1");
   for (const c of [...o.colors].sort((x, y) => x.axis - y.axis)) {
     out.push(`ccol ${c.axis} ${hex6(c.rgb)}`);
@@ -332,6 +413,11 @@ export function serializeOutfit(o: Outfit): string {
   const tint = (key: string, t: Tint) =>
     `${key} ${t.slot} ${t.item} ${t.hue} ${t.sat} ${t.light} ${t.dye}`;
   for (const t of [...o.wtint].sort((x, y) => x.slot - y.slot)) out.push(tint("wcol", t));
+  const skin = (key: string, k: Skin) => `${key} ${k.slot} ${k.values.join(" ")}`.slice(0, 127);
+  if (o.skinKnown) out.push("skinok 1");
+  for (const k of [...o.skins].sort((x, y) => x.slot - y.slot)) out.push(skin("skin", k));
+  if (o.mskinKnown) out.push("mskinok 1");
+  for (const k of [...o.mskins].sort((x, y) => x.slot - y.slot)) out.push(skin("mskin", k));
   if (o.mtintKnown) out.push("mcolok 1");
   for (const t of [...o.mtint].sort((x, y) => x.slot - y.slot)) out.push(tint("mcol", t));
   if (o.cosmeticsKnown) out.push("cosok 1");
