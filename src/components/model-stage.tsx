@@ -4,7 +4,6 @@ import type { SlotId } from "@eclipse/format";
 import { useEffect, useRef, useState } from "react";
 import { SLOT_NAMES } from "@/lib/domain";
 import { bodyOf, lookTextOf, slotIdOf, wornOf, type Wearer } from "@/lib/viewer/figure";
-import { itemOfEntry } from "@/lib/viewer/pack";
 import { isAbort, useEngine } from "@/lib/viewer/use-engine";
 
 const ALL_SLOTS: SlotId[] = ["head", "shoulder", "back", "chest", "shirt", "tabard", "wrist", "hands", "waist", "legs", "feet", "mainhand", "offhand", "ranged"];
@@ -14,8 +13,8 @@ const MORPH_OF = Object.fromEntries(
 
 /** The look on an animated character. If this fails nothing is lost: the code works without it. */
 export function ModelStage({ pieces, wearer, children }: {
-  /** Morph slot -> item entry, for everything worn. 0 hides the slot. */
-  pieces: Record<number, number>;
+  /** Morph slot -> the worn piece's baked display, or null when none is baked. Hidden slots are left out. */
+  pieces: Record<number, number | null>;
   /** Null: "your own race", which a human stands in for. */
   wearer: Wearer | null;
   /** Controls drawn over the figure's foot, such as the animation picker. */
@@ -33,7 +32,7 @@ export function ModelStage({ pieces, wearer, children }: {
 
   useEffect(() => {
     let wanted = true;
-    const next = JSON.parse(look) as { wearer: Wearer | null; pieces: Record<number, number> };
+    const next = JSON.parse(look) as { wearer: Wearer | null; pieces: Record<number, number | null> };
     (async () => {
       const e = await engine();
       const id = bodyOf(next.wearer);
@@ -42,13 +41,16 @@ export function ModelStage({ pieces, wearer, children }: {
         await e.loadModel(id, lookTextOf(next.wearer?.line));
         body.current = { on: e, id };
       }
-      const worn = wornOf(next.pieces);
-      const found = await Promise.all(worn.map(async ([slot, entry]) => [slot, await itemOfEntry(slot, entry)] as const));
+      const worn = new Map(wornOf(next.pieces));
+      // A pack that fails to load is not shown either, and the rest still dress.
+      const failed: SlotId[] = [];
+      await Promise.all(ALL_SLOTS.map((slot) => e.equip(slot, worn.get(slot) ?? null).catch((err: unknown) => {
+        if (isAbort(err)) throw err;
+        failed.push(slot);
+      })));
       if (!wanted) return;
-      const items = new Map(found.flatMap(([slot, item]) => (item ? [[slot, item.id] as const] : [])));
-      await Promise.all(ALL_SLOTS.map((slot) => e.equip(slot, items.get(slot) ?? null)));
-      if (!wanted) return;
-      setNotShown(found.filter(([, item]) => !item).map(([slot]) => MORPH_OF[slot]));
+      const missing = [...worn].filter(([slot, id]) => !id || failed.includes(slot)).map(([slot]) => MORPH_OF[slot]);
+      setNotShown(missing);
       setStatus("ready");
     })().catch((err: unknown) => {
       if (!isAbort(err) && wanted) setStatus("failed");

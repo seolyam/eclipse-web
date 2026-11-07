@@ -11,7 +11,7 @@ import type { Wearer } from "@/lib/viewer/figure";
  * the engine and its packs are megabytes, and browsing drawers should not fetch them.
  */
 export function LookModel({ pieces, wearer, backdrop }: {
-  pieces: Record<number, number>;
+  pieces: Record<number, number | null>;
   wearer: Wearer | null;
   backdrop: string;
 }) {

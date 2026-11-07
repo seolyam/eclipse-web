@@ -43,11 +43,15 @@ describe("lookTextOf", () => {
 });
 
 describe("wornOf", () => {
-  it("keeps drawn slots and drops hidden and unseen ones", () => {
-    expect(wornOf({ 0: 1234, 1: 99, 4: 0, 15: 5678 })).toEqual([
-      ["head", 1234],
-      ["mainhand", 5678],
+  it("names each drawn slot's pack and drops slots nothing draws", () => {
+    expect(wornOf({ 0: 1234, 1: 99, 15: 5678 })).toEqual([
+      ["head", "item-1234"],
+      ["mainhand", "item-5678"],
     ]);
+  });
+
+  it("keeps a worn piece with no baked model, so the page can say so", () => {
+    expect(wornOf({ 4: null })).toEqual([["chest", null]]);
   });
 });
 

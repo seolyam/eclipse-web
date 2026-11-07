@@ -17,12 +17,12 @@ import { backdropFor, classArt, qualityColour, QUALITY_NAME, raceArt } from "@/l
 const LEFT = VISIBLE_SLOTS.slice(0, 7);
 const RIGHT = VISIBLE_SLOTS.slice(7);
 
-/** Slot -> item for each visible piece the code wears; hidden and empty slots draw nothing. */
+/** Slot -> baked model for each visible piece the code wears; hidden and empty slots draw nothing. */
 const worn = (resolved: ResolvedOutfit) =>
   Object.fromEntries(
     resolved.slots
       .filter((s) => s.item !== 0 && (VISIBLE_SLOTS as readonly number[]).includes(s.slot))
-      .map((s) => [s.slot, s.item]),
+      .map((s) => [s.slot, s.display]),
   );
 
 /** Who the code dresses, face and hair included. Null: a stand-in, for a code with no look. */

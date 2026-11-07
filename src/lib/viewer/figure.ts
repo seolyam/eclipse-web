@@ -67,10 +67,13 @@ export function lookTextOf(line: string | undefined): string | undefined {
   return pairs.length ? pairs.join(",") : undefined;
 }
 
-/** What the figure draws: slot and item entry, for every visible slot holding an item. */
-export function wornOf(pieces: Record<number, number>): [SlotId, number][] {
-  return Object.entries(pieces).flatMap(([slot, entry]) => {
+/**
+ * What the figure wears: each visible slot's pack (`item-<display>`), or null for a piece
+ * no pack draws. Slots nothing draws, such as rings, are left out.
+ */
+export function wornOf(pieces: Record<number, number | null>): [SlotId, string | null][] {
+  return Object.entries(pieces).flatMap(([slot, display]) => {
     const id = slotIdOf(Number(slot));
-    return id && entry ? [[id, entry] as [SlotId, number]] : [];
+    return id ? [[id, display ? `item-${display}` : null] as [SlotId, string | null]] : [];
   });
 }

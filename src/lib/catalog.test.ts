@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import itemsJson from "@/data/catalog/items.json";
+import displaysJson from "@/data/catalog/displays.json";
 import qualityJson from "@/data/catalog/quality.json";
+import { emptyOutfit } from "@/lib/codec/outfit";
+import { SLOT_INV_TYPES as SLOT_INV } from "@/lib/domain";
 
 vi.mock("server-only", () => ({}));
 
-import { searchItems } from "./catalog";
+import { resolveOutfit, searchItems } from "./catalog";
 
 type Row = [id: number, name: string, invType: number, armor: number, icon: string];
 const rows = itemsJson as Row[];
@@ -71,5 +74,28 @@ describe("searching the items", () => {
   it("leaves an item with no icon to the slot's own texture", () => {
     const bare = rows.find((r) => r[2] === 1 && !r[4]);
     if (bare) expect(searchItems(bare[1], SLOT.head, 200).find((h) => h.id === bare[0])?.icon).toBeNull();
+  });
+});
+
+describe("the model each item is drawn with", () => {
+  it("names the baked display, shared models included", () => {
+    const displays = displaysJson as Record<string, number>;
+    const [id, display] = Object.entries(displays)[0]!;
+    const row = rows.find((r) => r[0] === Number(id))!;
+    const slot = Number(Object.entries(SLOT_INV).find(([, types]) => types.includes(row[2]))![0]);
+    const hit = searchItems(row[1], slot, 200).find((h) => h.id === row[0]);
+    expect(hit?.display).toBe(display);
+  });
+
+  it("says when no model is baked, and never guesses", () => {
+    const bare = rows.find((r) => r[2] === 1 && !(String(r[0]) in (displaysJson as Record<string, number>)))!;
+    expect(searchItems(bare[1], SLOT.head, 200).find((h) => h.id === bare[0])?.display).toBeNull();
+  });
+
+  it("carries the display through a resolved code", () => {
+    const [id, display] = Object.entries(displaysJson as Record<string, number>)[0]!;
+    const outfit = emptyOutfit();
+    outfit.slots = { 0: Number(id) };
+    expect(resolveOutfit(outfit).slots[0]?.display).toBe(display);
   });
 });

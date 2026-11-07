@@ -163,7 +163,7 @@ export function DressingRoom({ itemCount, start, from = null, canPublish = false
     Object.fromEntries(Object.entries(rack).map(([slot, piece]) => [slot, piece?.id ?? 0])),
     race === OWN_RACE ? null : { race, gender, choices },
   );
-  const worn = Object.fromEntries(Object.entries(rack).flatMap(([slot, piece]) => (piece ? [[slot, piece.id]] : [])));
+  const worn = Object.fromEntries(Object.entries(rack).flatMap(([slot, piece]) => (piece ? [[slot, piece.display]] : [])));
 
   return (
     <section className="studio" aria-label="Dressing room">

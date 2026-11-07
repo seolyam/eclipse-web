@@ -63,7 +63,7 @@ export function startingRack(outfit: Outfit, resolved: ResolvedOutfit): Starting
   const pieces: Record<number, ItemHit | null> = {};
   for (const s of resolved.slots) {
     if (!visible.has(s.slot)) continue;
-    pieces[s.slot] = s.item === 0 ? null : { id: s.item, name: s.name ?? `Item ${s.item}`, icon: s.icon, quality: s.quality };
+    pieces[s.slot] = s.item === 0 ? null : { id: s.item, name: s.name ?? `Item ${s.item}`, icon: s.icon, quality: s.quality, display: s.display };
   }
   const l = outfit.look;
   let look: DressingLook | null = null;
