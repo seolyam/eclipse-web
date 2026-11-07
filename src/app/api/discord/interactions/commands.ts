@@ -10,6 +10,13 @@ import { siteUrl } from "@/lib/site";
 /** Message flag: only the person who asked sees it. */
 export const EPHEMERAL = 64;
 
+/**
+ * inlineMs: how long an answer may take and still go straight back, under Discord's
+ * three-second limit. retryMs: the wait before editing in a slow answer again, while
+ * Discord has not yet made its "thinking" message. Tests shorten both.
+ */
+export const timing = { inlineMs: 2000, retryMs: 1000 };
+
 export interface Reply {
   content?: string;
   embeds?: Embed[];
