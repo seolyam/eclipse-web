@@ -10,6 +10,7 @@ import {
 import { decodeWorld, OUTFIT_WORLD_TAG } from "@/lib/codec/world";
 import { repository } from "@/lib/data";
 import { REPORT_REASONS, type ReportReason } from "@/lib/data/types";
+import { announceLook } from "@/lib/look-feed";
 import { alertModerators } from "@/lib/moderation-alert";
 import { UPLOAD_PATH } from "@/lib/screenshots";
 
@@ -43,7 +44,9 @@ export async function publishOutfit(
   const r = await repository.createOutfit({ ...parsed.data, tags: withCodeTags(parsed.data) });
   if (!r.ok) return r;
   revalidateHub();
-  return { ok: true, id: r.value.id };
+  const post = r.value;
+  after(() => announceLook(post));
+  return { ok: true, id: post.id };
 }
 
 /** The Wardrobe's Mounts and Enchants filters, read from the code and not typed. */
