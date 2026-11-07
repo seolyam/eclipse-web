@@ -18,6 +18,7 @@ const TABS = [
   { href: "/wardrobe", label: "Wardrobe" },
   { href: "/showcase", label: "Showcase" },
   { href: "/dressing-room", label: "Dressing room" },
+  { href: "/mounts", label: "Mounts" },
 ];
 
 /** The filters both post views read from the URL. */

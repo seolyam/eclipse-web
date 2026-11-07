@@ -1,12 +1,11 @@
 "use client";
 
 import type { SlotId } from "@eclipse/format";
-import type { ViewerEngine } from "@eclipse/engine";
 import { useEffect, useRef, useState } from "react";
 import { SLOT_NAMES } from "@/lib/domain";
 import { bodyOf, lookTextOf, slotIdOf, wornOf, type Wearer } from "@/lib/viewer/figure";
-import { PACK_BASE, itemOfEntry } from "@/lib/viewer/pack";
-import { $engine } from "@/lib/viewer/state";
+import { itemOfEntry } from "@/lib/viewer/pack";
+import { isAbort, useEngine } from "@/lib/viewer/use-engine";
 
 const ALL_SLOTS: SlotId[] = ["head", "shoulder", "back", "chest", "shirt", "tabard", "wrist", "hands", "waist", "legs", "feet", "mainhand", "offhand", "ranged"];
 const MORPH_OF = Object.fromEntries(
@@ -23,8 +22,9 @@ export function ModelStage({ pieces, wearer, children }: {
   children?: React.ReactNode;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const engine = useRef<Promise<ViewerEngine> | null>(null);
-  const body = useRef<string | null>(null);
+  const engine = useEngine(canvas);
+  // The body on this engine; a new engine (a remount) has none yet.
+  const body = useRef<{ on: object; id: string } | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [notShown, setNotShown] = useState<number[]>([]);
 
@@ -34,29 +34,13 @@ export function ModelStage({ pieces, wearer, children }: {
   useEffect(() => {
     let wanted = true;
     const next = JSON.parse(look) as { wearer: Wearer | null; pieces: Record<number, number> };
-    // three.js and the engine are heavy, and only a figure needs them.
-    engine.current ??= import("@eclipse/engine").then(async ({ createEngine }) => {
-      const e = createEngine({
-        packBase: PACK_BASE,
-        interactable: true,
-        animated: !matchMedia("(prefers-reduced-motion: reduce)").matches,
-        cameraStyle: innerWidth < 768 ? "mobile" : "default",
-        shadow: true,
-        shortcuts: false,
-        lockCamera: false,
-      });
-      await e.mount(canvas.current as HTMLCanvasElement);
-      $engine.set(e);
-      return e;
-    });
-
     (async () => {
-      const e = await engine.current!;
+      const e = await engine();
       const id = bodyOf(next.wearer);
-      if (id !== body.current) {
+      if (body.current?.on !== e || body.current.id !== id) {
         setStatus("loading");
         await e.loadModel(id, lookTextOf(next.wearer?.line));
-        body.current = id;
+        body.current = { on: e, id };
       }
       const worn = wornOf(next.pieces);
       const found = await Promise.all(worn.map(async ([slot, entry]) => [slot, await itemOfEntry(slot, entry)] as const));
@@ -67,23 +51,12 @@ export function ModelStage({ pieces, wearer, children }: {
       setNotShown(found.filter(([, item]) => !item).map(([slot]) => MORPH_OF[slot]));
       setStatus("ready");
     })().catch((err: unknown) => {
-      // A newer look superseded this one: it answers instead.
-      if (err instanceof DOMException && err.name === "AbortError") return;
-      if (wanted) setStatus("failed");
+      if (!isAbort(err) && wanted) setStatus("failed");
     });
     return () => {
       wanted = false;
     };
-  }, [look]);
-
-  useEffect(() => () => {
-    void engine.current?.then((e) => {
-      if ($engine.get() === e) $engine.set(null);
-      e.dispose();
-    });
-    engine.current = null;
-    body.current = null;
-  }, []);
+  }, [look, engine]);
 
   return (
     <div className="flex flex-col gap-1">
