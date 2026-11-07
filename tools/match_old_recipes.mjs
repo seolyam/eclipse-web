@@ -1,15 +1,17 @@
 // Writes src/data/catalog/recipe-displays.json: catalogue item id -> a retail display that
 // wears exactly the files the retired figure pipeline drew the item with.
 //
-//   node tools/match_old_recipes.mjs --eclipse <path-to-eclipse-dev>
+//   node tools/match_old_recipes.mjs --eclipse <path-to-eclipse-dev> [--recipes <dress folder>]
 //
 // Before the 3D packs, each item had a recipe of game files (public/dress/items, removed
-// after RECIPES_AT). Many items the packs do not list by id still have a retail display
-// naming the same files, and the packs may already hold that display. Only exact matches
-// are kept: a display that names any file the recipe lacks could be another colour.
+// after RECIPES_AT). --recipes reads a fresh tools/export_models.py run instead, which
+// knows the realm's renamed recolours (tools/texture_aliases.json); delete its output after.
+// Many items the packs do not list by id still have a retail display naming the same
+// files, and the packs may already hold that display. Only exact matches are kept: a
+// display that names any file the recipe lacks could be another colour.
 // Reads the retail tables Eclipse-DEV keeps (re/out/races/db2-<build>); writes ids only.
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,8 +26,14 @@ const packBase = /publicBase:\s*"([^"]+)"/.exec(readFileSync(join(root, "package
 
 const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", maxBuffer: 1 << 28 });
 const recipes = {};
-for (const path of git("ls-tree", "-r", "--name-only", RECIPES_AT, "public/dress/items").split("\n").filter(Boolean)) {
-  Object.assign(recipes, JSON.parse(git("show", `${RECIPES_AT}:${path}`)));
+const fresh = process.argv.indexOf("--recipes");
+if (fresh >= 0) {
+  const dir = join(process.argv[fresh + 1], "items");
+  for (const f of readdirSync(dir)) Object.assign(recipes, JSON.parse(readFileSync(join(dir, f), "utf8")));
+} else {
+  for (const path of git("ls-tree", "-r", "--name-only", RECIPES_AT, "public/dress/items").split("\n").filter(Boolean)) {
+    Object.assign(recipes, JSON.parse(git("show", `${RECIPES_AT}:${path}`)));
+  }
 }
 
 const csv = (name) => {
