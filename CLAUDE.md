@@ -42,7 +42,8 @@ Commit subjects are `feat:`, `fix:` or `perf:` plus a plain sentence about the v
 - Applying migrations to the production database.
 - Changing environment variables.
 - Force-pushing or deleting branches.
-- Anything billed, including changes that raise `/game-cdn` traffic, which counts as our bandwidth.
+- Anything billed.
+- Changes that multiply reads from the pack host. It runs on Kirazul's free tier, not ours.
 
 ## Tools
 
@@ -76,11 +77,12 @@ Use the CLIs: `pnpm exec supabase` and the global `vercel`. Reach for an MCP onl
 
 ## Dressing room
 
-Game files stay on Blizzard's CDN. `public/dress` holds only tables, recipes and baked poses, and browsers read byte ranges through the `/game-cdn` rewrite because the CDN sends no CORS headers.
+3D figures, mounts and their animations come from Eclipse-Viewer. `packages/engine` and `packages/format` are vendored from `Kirazul/Eclipse-Viewer`, and `packages/README.md` records the commit and the local changes to reapply on every sync. They draw packs that the viewer's bake publishes to its own storage (`src/lib/viewer/pack.ts`). This site hosts no game files and proxies nothing.
 
-- **Bake:** `python tools/export_models.py --eclipse <Eclipse-DEV> --cache <folder>`, about 450 MB and 25 minutes cold. Run it again if a build's archives leave the CDN.
-- **Sources:** Mists Classic has the sharpest old art, and bodies are retail HD because Mists has none. wago.tools with no `?version=` serves Mists, so pass a version to get retail.
-- **Poses:** the figure is one baked Stand frame in `public/dress/poses`, which spares browsers a 19 MB skeleton. Animating it would mean shipping the skeleton.
-- **Helms** come from retail, which recut the same files for HD heads, and hang from attachment 11. Mists' copies fit the old heads and sit wrong on HD ones.
-- **Ranged weapons** are held as the client's dressing room holds them: a bow in the left hand, the rest in the right, and not shown when that hand is full. Attachment 26 is the quiver's.
-- **Wowhead's viewer:** its CDN refuses this site, so respect that and stay on Blizzard's CDN, with no proxy or referrer workaround.
+- **Pack host:** `R2.publicBase` in `packages/format/src/config.ts`. The r2.dev address is rate-limited and has no edge cache, so when the viewer moves to a custom domain, change that one value.
+- **Items:** each catalogue item is drawn by its baked retail display (`src/data/catalog/displays.json`), not its item id: the packs list one item per model. Rebuild that table with `node tools/export_item_displays.mjs` after a sync or a new bake. An item with no baked display is listed under "Not in the preview"; in November 2026 that was about a fifth of the catalogue.
+- **Engine files:** the Basis transcoder (`/basis`) and GPU tables (`/gpu`) are copied from `node_modules` by `tools/copy-engine-assets.mjs` before `dev` and `build`. They are gitignored and kept out of the middleware.
+- **One figure per page:** the engine's stores (`$look`, `$clips`, `$manifest`) are module-wide, and `$engine` in `src/lib/viewer/state.ts` holds the one engine on the page.
+- **Codes:** `src/lib/codec/golden/fields.json` holds codes the game's C++ wrote and read back. The codec must keep writing exactly what it wrote.
+- **Retail races:** a retail race or a changed appearance is written as an `rlook` line, with the classic body a player without the race pack wears written under it (`CLASSIC_FALLBACK`).
+- **Wowhead's viewer:** its CDN refuses this site, so respect that and stay on the viewer's packs, with no proxy or referrer workaround.

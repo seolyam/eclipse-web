@@ -16,7 +16,7 @@ import { useAccount } from "@/lib/use-account";
 
 // The logo is the way home, and the hub's tabs reach Showcase and the Dressing room.
 const NAV = [
-  { href: "/wardrobe", label: "Wardrobe", routes: ["/wardrobe", "/showcase", "/dressing-room"] },
+  { href: "/wardrobe", label: "Wardrobe", routes: ["/wardrobe", "/showcase", "/dressing-room", "/mounts"] },
   { href: "/inspector", label: "Inspector", routes: ["/inspector"] },
   { href: "/#download", label: "Download", section: "download" },
   { href: "/#support", label: "Support", section: "support" },

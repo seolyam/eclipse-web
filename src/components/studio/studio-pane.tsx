@@ -1,18 +1,35 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ItemRing } from "@/components/item-icon";
+import { LookModel } from "@/components/studio/look-model";
 import { StudioGallery } from "@/components/studio/studio-gallery";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ResolvedOutfit, ResolvedSlot } from "@/lib/catalog";
 import type { OutfitPost } from "@/lib/data/types";
+import { decodeOutfit } from "@/lib/codec/outfit";
 import { SLOT_NAMES, VISIBLE_SLOTS } from "@/lib/domain";
 import { NARCISSUS_URL } from "@/lib/site";
+import { wearerOf } from "@/lib/viewer/figure";
 import { backdropFor, classArt, qualityColour, QUALITY_NAME, raceArt } from "@/lib/wow-assets";
 
 // The studio's "Narcissus" template (ShowcaseOverlay.cpp): seven pieces either
 // side of the figure, in the order a person reads a character.
 const LEFT = VISIBLE_SLOTS.slice(0, 7);
 const RIGHT = VISIBLE_SLOTS.slice(7);
+
+/** Slot -> baked model for each visible piece the code wears; hidden and empty slots draw nothing. */
+const worn = (resolved: ResolvedOutfit) =>
+  Object.fromEntries(
+    resolved.slots
+      .filter((s) => s.item !== 0 && (VISIBLE_SLOTS as readonly number[]).includes(s.slot))
+      .map((s) => [s.slot, s.display]),
+  );
+
+/** Who the code dresses, face and hair included. Null: a stand-in, for a code with no look. */
+const wearer = (code: string) => {
+  const decoded = decodeOutfit(code);
+  return decoded.ok ? wearerOf(decoded.outfit.look) : null;
+};
 
 function Piece({ slot, piece, side }: { slot: number; piece: ResolvedSlot | undefined; side: "left" | "right" }) {
   const hidden = piece?.item === 0;
@@ -103,7 +120,16 @@ export function StudioPane({
       <div className="studio__grid">
         <Column slots={LEFT} resolved={resolved} side="left" />
         <div className="studio__stage">
-          <StudioGallery images={post.gallery} backdrop={scene} title={post.title} />
+          {post.gallery.length ? (
+            <StudioGallery images={post.gallery} backdrop={scene} title={post.title} />
+          ) : (
+            // No capture yet: the pieces themselves, drawn as the Dressing room draws them, on request.
+            <LookModel
+              pieces={worn(resolved)}
+              wearer={wearer(post.code)}
+              backdrop={scene}
+            />
+          )}
         </div>
         <Column slots={RIGHT} resolved={resolved} side="right" />
       </div>

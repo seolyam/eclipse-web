@@ -23,6 +23,11 @@ export const PAGES = {
     description:
       "Choose World of Warcraft items slot by slot, hide what you like, and copy the code to wear the look in game with Eclipse.",
   },
+  "/mounts": {
+    title: "Mounts: every WoW mount in 3D",
+    description:
+      "Browse every World of Warcraft mount, animated in 3D in each of its colours, with or without a rider.",
+  },
   "/guide": {
     title: "Setup guide for WoW 3.3.5a",
     description:

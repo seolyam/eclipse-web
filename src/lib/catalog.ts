@@ -1,4 +1,5 @@
 import "server-only";
+import displaysJson from "@/data/catalog/displays.json";
 import enchantsJson from "@/data/catalog/enchants.json";
 import itemsJson from "@/data/catalog/items.json";
 import mountsJson from "@/data/catalog/mounts.json";
@@ -20,6 +21,9 @@ const placeRows = placesJson.rows as PlaceRow[];
 // Quality and enchant names are sparse: a miss means unknown, never zero.
 const qualityById = qualityJson as Record<string, number>;
 const enchantById = enchantsJson as Record<string, string>;
+// tools/export_item_displays.mjs: the retail display each item's 3D model is baked under.
+const displayById = displaysJson as Record<string, number>;
+const displayOf = (id: number) => displayById[String(id)] ?? null;
 const placeByTag = new Map(placeRows.map((r, i) => [r[0], { row: r, index: i }]));
 
 export const catalogCounts = {
@@ -60,6 +64,8 @@ export interface ItemHit {
   icon: string | null;
   /** 0 poor .. 7 heirloom, or null when no source names it. */
   quality: number | null;
+  /** The baked 3D model it is drawn with, or null when none is baked. */
+  display: number | null;
 }
 
 /** Items a slot can wear, by name. An empty query lists the slot's first few. */
@@ -70,7 +76,7 @@ export function searchItems(query: string, slot: number, limit = 24): ItemHit[] 
   const hits: ItemHit[] = [];
   for (const [id, name, invType, , icon] of itemsJson as ItemRow[]) {
     if (fits.includes(invType) && name.toLowerCase().includes(q)) {
-      hits.push({ id, name, icon: icon || null, quality: qualityById[String(id)] ?? null });
+      hits.push({ id, name, icon: icon || null, quality: qualityById[String(id)] ?? null, display: displayOf(id) });
       if (hits.length >= limit) break;
     }
   }
@@ -86,6 +92,8 @@ export interface ResolvedSlot {
   icon: string | null;
   /** 0 poor .. 7 heirloom, or null when no source names it. */
   quality: number | null;
+  /** The baked 3D model it is drawn with, or null when none is baked. */
+  display: number | null;
 }
 
 export interface ResolvedMount {
@@ -136,6 +144,7 @@ export function resolveOutfit(o: Outfit): ResolvedOutfit {
         name: row?.[1] ?? null,
         icon: row?.[4] || null,
         quality: qualityById[item] ?? null,
+        display: displayOf(item),
       };
     })
     .sort((a, b) => (order.get(a.slot) ?? 99) - (order.get(b.slot) ?? 99));

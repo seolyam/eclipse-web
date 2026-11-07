@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Braces, Download, Images, LayoutGrid, Search, Shirt } from "lucide-react";
+import { BookOpen, Braces, Download, Images, LayoutGrid, Rabbit, Search, Shirt } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -13,6 +13,7 @@ const PAGES = [
   { href: "/showcase", label: "Showcase", icon: Images },
   { href: "/inspector", label: "Inspect a code", icon: Braces },
   { href: "/dressing-room", label: "Dressing room", icon: Shirt },
+  { href: "/mounts", label: "Mounts", icon: Rabbit },
   { href: "/guide", label: "Setup guide", icon: BookOpen },
   { href: "/#features", label: "Features", icon: LayoutGrid },
   { href: "/#download", label: "Download Eclipse", icon: Download },

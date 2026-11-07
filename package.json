@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node tools/copy-engine-assets.mjs",
     "dev": "next dev --turbopack",
+    "prebuild": "node tools/copy-engine-assets.mjs",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
@@ -11,12 +13,16 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@eclipse/engine": "workspace:*",
+    "@eclipse/format": "workspace:*",
+    "@nanostores/react": "2.0.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.5.1",
     "lucide-react": "^1.66.0",
+    "nanostores": "1.5.5",
     "next": "15.5.28",
     "nuqs": "^2.10.2",
     "radix-ui": "^1.8.1",

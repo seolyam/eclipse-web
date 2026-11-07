@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   // .next that a running `next dev` is using.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
+  // The 3D engine and its pack format are workspace packages shipped as TypeScript source.
+  transpilePackages: ["@eclipse/engine", "@eclipse/format"],
   // Keeps the title and description in <head> for everyone. Otherwise a page with a
   // Suspense boundary flushes first and sends them in the body, Googlebot included.
   htmlLimitedBots: /.*/,
@@ -22,22 +24,6 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
-      },
-      {
-        // A game file is named by its own hash, so its bytes never change. Without this,
-        // every visit asks the game's CDN again for the same bytes, through us.
-        source: "/game-cdn/data/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
-      },
-    ];
-  },
-  async rewrites() {
-    return [
-      // The game's CDN sends no CORS headers, so a browser can only read it from this
-      // address. Only content-addressed data files match: this is no general proxy.
-      {
-        source: "/game-cdn/data/:a([0-9a-f]{2})/:b([0-9a-f]{2})/:file([0-9a-f]{32})",
-        destination: "https://level3.ssl.blizzard.com/tpr/wow/data/:a/:b/:file",
       },
     ];
   },
