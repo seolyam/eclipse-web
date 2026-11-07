@@ -6,6 +6,7 @@ Reads, never writes, the Eclipse tree:
     Eclipse/data/wardrobe/items.edb     item id -> model and texture names, geosets
     Eclipse/data/wardrobe/helmvis.edb   what a helm hides, by race
     re/out/hearth/listfile.csv          file name -> FileDataID
+                                        (tools/texture_aliases.json adds the realm's renamed recolours)
     work/<line>/build/data/<line>_items.edb, <line>_helmvis.edb   a line's shipped keys
     work/<line>/inventory.json          a line's retail ItemDisplayInfo, file by file
 
@@ -47,6 +48,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "public" / "dress"
 ITEMS = ROOT / "src" / "data" / "catalog" / "items.json"
+# Realm texture name -> retail FileDataID, for names the listfile does not know.
+ALIASES = ROOT / "tools" / "texture_aliases.json"
 ITEM_SHARDS = 128
 FILE_SHARDS = 256
 
@@ -709,7 +712,12 @@ def main() -> None:
         root.update(one)
 
     wardrobe = args.eclipse / "Eclipse" / "data" / "wardrobe"
-    files = Files(*read_listfile(args.eclipse / "re" / "out" / "hearth" / "listfile.csv"), root)
+    by_path, models, textures_near = read_listfile(args.eclipse / "re" / "out" / "hearth" / "listfile.csv")
+    # The realm renamed many retail recolours; tools/match_textures.py found each one's
+    # retail file by its pixels. The listfile's own name wins where both exist.
+    for name, fdid in json.loads(ALIASES.read_text(encoding="utf8")).items():
+        by_path.setdefault(name, fdid)
+    files = Files(by_path, models, textures_near, root)
     rows = read_items_edb(wardrobe / "items.edb")
     helmvis = read_helmvis(wardrobe / "helmvis.edb")
 
