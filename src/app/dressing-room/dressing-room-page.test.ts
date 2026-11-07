@@ -6,7 +6,7 @@ import { SLOT_NAMES, VISIBLE_SLOTS } from "@/lib/domain";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/data", async () => {
   const { dressedCode } = await import("@/lib/dressing-room");
-  const shared = { id: "shared", title: "A shared look", code: dressedCode({ 4: 0 }, { race: 4, gender: 1 }) };
+  const shared = { id: "shared", title: "A shared look", code: dressedCode({ 4: 0 }, { race: "nightelf", gender: 1 }) };
   return {
     repository: { live: true },
     getOutfit: async (id: string) => (id === shared.id ? shared : null),
@@ -52,9 +52,8 @@ describe("the dressing room page", () => {
   });
 
   it("says what the preview leaves out, so nobody mistakes it for the game", () => {
-    expect(html).toMatch(/still figure/i);
-    expect(html).toMatch(/default face and hair/i);
-    expect(html).toMatch(/without HD models/i);
+    expect(html).toMatch(/current game&#x27;s models/i);
+    expect(html).toMatch(/without HD models or the race pack/i);
   });
 
   it("does not make the page wait for the character", () => {

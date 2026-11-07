@@ -20,6 +20,23 @@ const CLASSIC_RACE: Readonly<Record<number, string>> = {
   1: "human", 2: "orc", 3: "dwarf", 4: "nightelf", 5: "undead", 6: "tauren", 7: "gnome", 8: "troll", 9: "goblin", 10: "bloodelf", 11: "draenei",
 };
 
+/**
+ * The classic body a player without the race pack wears for a retail race: 3.3.5
+ * ChrRaces ids (Eclipse-Viewer bridge.ts CLASSIC_FALLBACK, from races_manifest.py).
+ */
+export const CLASSIC_FALLBACK: Readonly<Record<string, number>> = {
+  human: 1, kultiran: 1, worgen: 1, gilnean: 1, pandaren: 1,
+  orc: 2, maghar: 2, orcupright: 2, magharupright: 2,
+  dwarf: 3, darkiron: 3, earthen: 3,
+  nightelf: 4, nightborne: 4, haranir: 4,
+  undead: 5,
+  tauren: 6, highmountain: 6,
+  gnome: 7, mechagnome: 7, goblin: 7, vulpera: 7,
+  troll: 8, zandalari: 8,
+  bloodelf: 10, voidelf: 10, visage: 10, dracthyr: 10,
+  draenei: 11, lightforged: 11,
+};
+
 /** Who wears the look: a classic ChrRaces id, or a retail race key from an `rlook` line. */
 export interface Wearer {
   race: number | string;

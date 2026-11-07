@@ -29,9 +29,9 @@ describe("a dressing room code", () => {
   });
 
   it("opens a published look with its pieces, hidden slots and race", () => {
-    const outfit = decode(dressedCode({ 0: 1339122, 4: 0 }, { race: 4, gender: 1 }));
+    const outfit = decode(dressedCode({ 0: 1339122, 4: 0 }, { race: "nightelf", gender: 1 }));
     const rack = startingRack(outfit, resolveOutfit(outfit));
-    expect(rack.look).toEqual({ race: 4, gender: 1 });
+    expect(rack.look).toEqual({ race: "nightelf", gender: 1, choices: null });
     expect(rack.pieces[4]).toBeNull();
     expect(rack.pieces[0]).toMatchObject({ id: 1339122 });
     // The rack gives the same code back, so nothing is lost on the way in.
@@ -48,8 +48,25 @@ describe("a dressing room code", () => {
   });
 
   it("writes a chosen race as a look with the default appearance", () => {
-    expect(decode(dressedCode({}, { race: 4, gender: 1 })).look).toEqual({
+    expect(decode(dressedCode({}, { race: "nightelf", gender: 1 })).look).toEqual({
       kind: "look", race: 4, gender: 1, skin: 0, face: 0, hairStyle: 0, hairColour: 0, facialHair: 0,
     });
+  });
+
+  it("writes a retail race as an rlook over the classic body a player without it wears", () => {
+    const outfit = decode(dressedCode({}, { race: "vulpera", gender: 0 }));
+    expect(outfit.look).toMatchObject({ kind: "rlook", race: "vulpera", sex: "m", line: "rlook vulpera m" });
+    expect(outfit.fallback).toMatchObject({ kind: "look", race: 7, gender: 0 });
+  });
+
+  it("writes a chosen appearance as retail's option and choice ids", () => {
+    const outfit = decode(dressedCode({}, { race: "human", gender: 1, choices: [[10, 3], [12, 7]] }));
+    expect(outfit.look).toMatchObject({ kind: "rlook", line: "rlook human f 10:3 12:7" });
+    expect(outfit.fallback).toMatchObject({ race: 1, gender: 1 });
+  });
+
+  it("opens a retail look with its appearance", () => {
+    const outfit = decode(dressedCode({ 0: 1339122 }, { race: "vulpera", gender: 1, choices: [[10, 3]] }));
+    expect(startingRack(outfit, resolveOutfit(outfit)).look).toEqual({ race: "vulpera", gender: 1, choices: [[10, 3]] });
   });
 });

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { SLOT_NAMES } from "@/lib/domain";
 import { bodyOf, lookTextOf, slotIdOf, wornOf, type Wearer } from "@/lib/viewer/figure";
 import { PACK_BASE, itemOfEntry } from "@/lib/viewer/pack";
+import { $engine } from "@/lib/viewer/state";
 
 const ALL_SLOTS: SlotId[] = ["head", "shoulder", "back", "chest", "shirt", "tabard", "wrist", "hands", "waist", "legs", "feet", "mainhand", "offhand", "ranged"];
 const MORPH_OF = Object.fromEntries(
@@ -13,11 +14,13 @@ const MORPH_OF = Object.fromEntries(
 ) as Record<SlotId, number>;
 
 /** The look on an animated character. If this fails nothing is lost: the code works without it. */
-export function ModelStage({ pieces, wearer }: {
+export function ModelStage({ pieces, wearer, children }: {
   /** Morph slot -> item entry, for everything worn. 0 hides the slot. */
   pieces: Record<number, number>;
   /** Null: "your own race", which a human stands in for. */
   wearer: Wearer | null;
+  /** Controls drawn over the figure's foot, such as the animation picker. */
+  children?: React.ReactNode;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const engine = useRef<Promise<ViewerEngine> | null>(null);
@@ -43,6 +46,7 @@ export function ModelStage({ pieces, wearer }: {
         lockCamera: false,
       });
       await e.mount(canvas.current as HTMLCanvasElement);
+      $engine.set(e);
       return e;
     });
 
@@ -50,6 +54,7 @@ export function ModelStage({ pieces, wearer }: {
       const e = await engine.current!;
       const id = bodyOf(next.wearer);
       if (id !== body.current) {
+        setStatus("loading");
         await e.loadModel(id, lookTextOf(next.wearer?.line));
         body.current = id;
       }
@@ -72,7 +77,10 @@ export function ModelStage({ pieces, wearer }: {
   }, [look]);
 
   useEffect(() => () => {
-    void engine.current?.then((e) => e.dispose());
+    void engine.current?.then((e) => {
+      if ($engine.get() === e) $engine.set(null);
+      e.dispose();
+    });
     engine.current = null;
     body.current = null;
   }, []);
@@ -86,6 +94,7 @@ export function ModelStage({ pieces, wearer }: {
             {status === "loading" ? "Dressing the character…" : "The preview could not load. The code still works."}
           </p>
         )}
+        {children && status === "ready" && <div className="absolute inset-x-2 bottom-2 flex items-center gap-2">{children}</div>}
       </div>
       {notShown.length > 0 && (
         <p className="text-center text-xs text-ink-dim">Not in the preview: {notShown.map((slot) => SLOT_NAMES[slot]).join(", ")}.</p>
