@@ -131,8 +131,11 @@ export interface Repository {
   searchIndex(): Promise<SearchEntry[]>;
   createOutfit(input: ParsedOutfit): Promise<WriteResult<OutfitPost>>;
   upvote(id: string): Promise<WriteResult<number>>;
-  /** Files a report for moderators. A report never hides the look by itself. */
-  report(id: string, reason: ReportReason): Promise<WriteResult<string>>;
+  /**
+   * Files a report for moderators. A report never hides the look by itself. True when
+   * it is this person's first report of the look, false when it counted for nothing.
+   */
+  report(id: string, reason: ReportReason): Promise<WriteResult<boolean>>;
   /** Whether the signed-in account bookmarked this look. False for a visitor. */
   isBookmarked(id: string): Promise<boolean>;
   setBookmark(id: string, saved: boolean): Promise<WriteResult<boolean>>;

@@ -1,15 +1,10 @@
 import { repository } from "@/lib/data";
+import { AMBER, plain } from "@/lib/discord";
 import { siteUrl } from "@/lib/site";
 
 // Called by Vercel's scheduler (vercel.json crons) every Monday. It posts the look of
 // the week to the community Discord through DISCORD_WEBHOOK_URL. A quiet week posts
 // nothing: the site only shows what was recorded.
-
-// Discord reads an embed's description as markdown. A name is shown as typed.
-const plain = (text: string) => text.replace(/([\\*_~`|>[\]()#-])/g, "\\$1");
-
-// The site's amber, as Discord wants it: one number.
-const AMBER = 0xf2a93b;
 
 export async function GET(request: Request) {
   // Vercel sends this header when CRON_SECRET is set. With no secret, nothing passes.

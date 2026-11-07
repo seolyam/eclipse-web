@@ -260,10 +260,10 @@ export const supabaseRepository: Repository = {
   async report(id, reason) {
     if (!UUID.test(id)) return { ok: false, error: "That look cannot be reported." };
     const db = await createServerSupabase();
-    const { error } = await db.rpc("report_outfit", { target: id, why: reason });
+    const { data, error } = await db.rpc("report_outfit", { target: id, why: reason });
     if (error?.code === SIGNED_OUT) return { ok: false, error: "Sign in to report a look." };
     if (error) return { ok: false, error: "That report could not be sent. Try again." };
-    return { ok: true, value: id };
+    return { ok: true, value: data === true };
   },
   async isBookmarked(id) {
     if (!UUID.test(id)) return false;

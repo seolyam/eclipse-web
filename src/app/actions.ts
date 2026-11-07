@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { resolveOutfit, resolveWorld, type ResolvedOutfit, type ResolvedWorldPlace } from "@/lib/catalog";
 import { decodeOutfit, OUTFIT_TAG, type Outfit } from "@/lib/codec/outfit";
 import {
@@ -9,6 +10,7 @@ import {
 import { decodeWorld, OUTFIT_WORLD_TAG } from "@/lib/codec/world";
 import { repository } from "@/lib/data";
 import { REPORT_REASONS, type ReportReason } from "@/lib/data/types";
+import { alertModerators } from "@/lib/moderation-alert";
 import { UPLOAD_PATH } from "@/lib/screenshots";
 
 export type InspectResult =
@@ -133,6 +135,8 @@ export async function reportLook(id: string, reason: string) {
   if (!Object.hasOwn(REPORT_REASONS, reason)) return { ok: false as const, error: "Choose a reason first." };
   const r = await repository.report(id, reason as ReportReason);
   if (r.ok) revalidatePath("/moderation");
+  // Moderators hear about each person's first report, after the reporter has their answer.
+  if (r.ok && r.value) after(() => alertModerators(id, reason as ReportReason));
   return r;
 }
 
