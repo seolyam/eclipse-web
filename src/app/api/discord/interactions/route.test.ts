@@ -9,15 +9,18 @@ vi.mock("next/server", () => ({ after: (work: () => Promise<unknown>) => pending
 
 let looks: OutfitPost[] = [];
 let index: SearchEntry[] = [];
+/** While set, the database takes this long to answer. */
+let slowMs = 0;
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 vi.mock("@/lib/data", () => ({
   repository: {
-    getOutfit: async (id: string) => looks.find((l) => l.id === id) ?? null,
-    searchIndex: async () => index,
+    getOutfit: async (id: string) => (await wait(slowMs), looks.find((l) => l.id === id) ?? null),
+    searchIndex: async () => (await wait(slowMs), index),
   },
 }));
 
 const { POST } = await import("./route");
-const { lookId } = await import("./commands");
+const { lookId, timing } = await import("./commands");
 const { siteUrl } = await import("@/lib/site");
 
 const post: OutfitPost = {
@@ -65,16 +68,22 @@ const command = (name: string, options: Record<string, string>) => ({
 });
 
 const edits: { url: string; method?: string; body: Record<string, unknown> }[] = [];
+/** Discord's answers to each edit, in order; then 200. */
+let editReplies: Response[] = [];
 
 beforeEach(() => {
   looks = [post];
   index = [];
   edits.length = 0;
   pending.length = 0;
+  slowMs = 0;
+  editReplies = [];
+  timing.inlineMs = 50;
+  timing.retryMs = 1;
   vi.stubEnv("DISCORD_PUBLIC_KEY", publicHex);
   vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
     edits.push({ url, method: init.method, body: JSON.parse(String(init.body)) });
-    return new Response(null, { status: 200 });
+    return editReplies.shift() ?? new Response(null, { status: 200 });
   });
 });
 
@@ -83,15 +92,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** Runs a command that defers, and returns the message it edits in. */
-async function deferred(payload: unknown) {
+/** Runs a command that answers at once, and returns its message. */
+async function answered(payload: unknown) {
   const res = await send(payload);
-  expect(await res.json()).toEqual({ type: 5 });
-  await Promise.all(pending);
-  expect(edits).toHaveLength(1);
-  expect(edits[0].method).toBe("PATCH");
-  expect(edits[0].url).toBe("https://discord.com/api/v10/webhooks/app-1/tok-1/messages/@original");
-  return edits[0].body;
+  const body = await res.json();
+  expect(body.type).toBe(4);
+  expect(pending).toEqual([]);
+  return body.data as Record<string, unknown>;
 }
 
 describe("Discord's signature", () => {
@@ -121,7 +128,7 @@ describe("/look", () => {
   });
 
   it("shows the look with its picture, code and a link, and pings nobody", async () => {
-    const reply = await deferred(command("look", { look: `${siteUrl}/wardrobe/${post.id}` }));
+    const reply = await answered(command("look", { look: `${siteUrl}/wardrobe/${post.id}` }));
     expect(reply.allowed_mentions).toEqual({ parse: [] });
     expect(reply.flags).toBeUndefined();
     const [embed] = reply.embeds as Record<string, unknown>[];
@@ -144,8 +151,9 @@ describe("/look", () => {
 
   it("says so when no look has that id", async () => {
     looks = [];
-    const reply = await deferred(command("look", { look: post.id }));
+    const reply = await answered(command("look", { look: post.id }));
     expect(reply.content).toMatch(/no look/i);
+    expect(reply.flags).toBe(64);
     expect(reply.embeds).toBeUndefined();
   });
 });
@@ -157,7 +165,7 @@ describe("/wardrobe", () => {
 
   it("lists matching looks by title or creator, every word counting", async () => {
     index = [entry(1, "Frost in the Fens"), entry(2, "Ember Knight", "Frostbite"), entry(3, "Sunlit Robes")];
-    const reply = await deferred(command("wardrobe", { search: "frost" }));
+    const reply = await answered(command("wardrobe", { search: "frost" }));
     const [embed] = reply.embeds as Record<string, string>[];
     expect(embed.description).toContain("Frost in the Fens");
     expect(embed.description).toContain("Ember Knight");
@@ -166,7 +174,7 @@ describe("/wardrobe", () => {
 
   it("shows five and links the rest to the Wardrobe's own search", async () => {
     index = Array.from({ length: 8 }, (_, i) => entry(i + 1, `Frost ${i + 1}`));
-    const reply = await deferred(command("wardrobe", { search: "frost" }));
+    const reply = await answered(command("wardrobe", { search: "frost" }));
     const [embed] = reply.embeds as Record<string, string>[];
     expect(embed.description.match(/\/wardrobe\/0000/g)).toHaveLength(5);
     expect(embed.description).toContain(`${siteUrl}/wardrobe?q=frost`);
@@ -175,7 +183,41 @@ describe("/wardrobe", () => {
 
   it("says so when nothing matches", async () => {
     index = [entry(1, "Sunlit Robes")];
-    const reply = await deferred(command("wardrobe", { search: "frost" }));
+    const reply = await answered(command("wardrobe", { search: "frost" }));
     expect(reply.content).toMatch(/no looks match/i);
+  });
+});
+
+describe("a slow answer", () => {
+  const ORIGINAL = "https://discord.com/api/v10/webhooks/app-1/tok-1/messages/@original";
+
+  it("shows Discord's thinking message, then edits the answer in", async () => {
+    slowMs = 120;
+    const res = await send(command("look", { look: post.id }));
+    expect(await res.json()).toEqual({ type: 5 });
+    await Promise.all(pending);
+    expect(edits).toHaveLength(1);
+    expect(edits[0].method).toBe("PATCH");
+    expect(edits[0].url).toBe(ORIGINAL);
+    expect((edits[0].body.embeds as Record<string, unknown>[])[0].title).toBe(post.title);
+    expect(edits[0].body.flags).toBeUndefined();
+  });
+
+  it("tries the edit again while Discord has not made the thinking message yet", async () => {
+    slowMs = 120;
+    const unknown = () => Response.json({ message: "Unknown Webhook", code: 10015 }, { status: 404 });
+    editReplies = [unknown(), unknown()];
+    await send(command("look", { look: post.id }));
+    await Promise.all(pending);
+    expect(edits).toHaveLength(3);
+    expect(edits.every((e) => e.url === ORIGINAL)).toBe(true);
+  });
+
+  it("gives up after a few tries rather than retrying forever", async () => {
+    slowMs = 120;
+    editReplies = Array.from({ length: 10 }, () => new Response("{}", { status: 404 }));
+    await send(command("look", { look: post.id }));
+    await Promise.all(pending);
+    expect(edits.length).toBeLessThanOrEqual(4);
   });
 });
