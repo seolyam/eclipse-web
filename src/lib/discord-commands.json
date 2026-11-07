@@ -1,0 +1,18 @@
+[
+  {
+    "name": "look",
+    "type": 1,
+    "description": "Show a look from the Wardrobe",
+    "options": [
+      { "name": "look", "type": 3, "required": true, "description": "The look's link or id", "max_length": 200 }
+    ]
+  },
+  {
+    "name": "wardrobe",
+    "type": 1,
+    "description": "Search the Wardrobe's looks by title or creator",
+    "options": [
+      { "name": "search", "type": 3, "required": true, "description": "Words from a title or a creator's name", "max_length": 100 }
+    ]
+  }
+]

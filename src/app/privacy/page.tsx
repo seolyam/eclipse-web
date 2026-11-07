@@ -55,6 +55,7 @@ const SECTIONS = [
     points: [
       "Service providers host the website and store accounts, looks and screenshots for us.",
       "Discord handles signing in, under its own privacy policy.",
+      "When a look is reported, moderators get a message on Discord naming the look and the reason, but not who reported it.",
       "Links to downloads, code and donations take you to other sites, which have their own policies.",
       "We do not sell your data or use it for advertising.",
     ],

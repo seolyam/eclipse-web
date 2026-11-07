@@ -324,11 +324,16 @@ describe("a creator's page", () => {
 });
 
 describe("reports", () => {
-  it("files the reason through report_outfit", async () => {
+  it("files the reason through report_outfit, and says when the report is new", async () => {
     user = { id: row.author_id };
-    reply = () => new Response(null, { status: 204 });
-    expect(await repo.report(row.id, "spam")).toEqual({ ok: true, value: row.id });
+    reply = () => Response.json(true);
+    expect(await repo.report(row.id, "spam")).toEqual({ ok: true, value: true });
     expect(requests[0].pathname).toBe("/rest/v1/rpc/report_outfit");
+  });
+
+  it("counts a repeat report as nothing new, so nobody is alerted twice", async () => {
+    reply = () => Response.json(false);
+    expect(await repo.report(row.id, "spam")).toEqual({ ok: true, value: false });
   });
 
   it("asks a visitor to sign in", async () => {
