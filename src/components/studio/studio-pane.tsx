@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { ItemRing } from "@/components/item-icon";
 import { LookModel } from "@/components/studio/look-model";
-import { StudioGallery } from "@/components/studio/studio-gallery";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ResolvedOutfit, ResolvedSlot } from "@/lib/catalog";
 import type { OutfitPost } from "@/lib/data/types";
@@ -120,16 +119,14 @@ export function StudioPane({
       <div className="studio__grid">
         <Column slots={LEFT} resolved={resolved} side="left" />
         <div className="studio__stage">
-          {post.gallery.length ? (
-            <StudioGallery images={post.gallery} backdrop={scene} title={post.title} />
-          ) : (
-            // No capture yet: the pieces themselves, drawn as the Dressing room draws them, on request.
-            <LookModel
-              pieces={worn(resolved)}
-              wearer={wearer(post.code)}
-              backdrop={scene}
-            />
-          )}
+          {/* The pieces themselves, drawn as the Dressing room draws them; captures sit behind a switch. */}
+          <LookModel
+            pieces={worn(resolved)}
+            wearer={wearer(post.code)}
+            gallery={post.gallery}
+            backdrop={scene}
+            title={post.title}
+          />
         </div>
         <Column slots={RIGHT} resolved={resolved} side="right" />
       </div>

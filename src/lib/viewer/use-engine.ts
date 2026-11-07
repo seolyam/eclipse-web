@@ -16,12 +16,15 @@ export function useEngine(canvas: RefObject<HTMLCanvasElement | null>): () => Pr
     void engine.current?.then((e) => {
       if ($engine.get() === e) $engine.set(null);
       e.dispose();
-    });
+    }, () => {});
     engine.current = null;
   }, []);
 
   return useCallback(() => {
     engine.current ??= import("@eclipse/engine").then(async ({ createEngine }) => {
+      // The figure can close while the engine downloads, as a skimmed drawer does: build nothing then.
+      const target = canvas.current;
+      if (!target) throw new DOMException("The figure closed before its engine loaded", "AbortError");
       const e = createEngine({
         packBase: PACK_BASE,
         interactable: true,
@@ -31,7 +34,7 @@ export function useEngine(canvas: RefObject<HTMLCanvasElement | null>): () => Pr
         shortcuts: false,
         lockCamera: false,
       });
-      await e.mount(canvas.current as HTMLCanvasElement);
+      await e.mount(target);
       $engine.set(e);
       return e;
     });
