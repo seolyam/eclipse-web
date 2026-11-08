@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { after } from "next/server";
 import { CopyButton } from "@/components/copy-button";
@@ -6,11 +7,13 @@ import { LinkGame, RemoveGameSet, UnlinkGame } from "@/components/game-sync";
 import { HubTitle } from "@/components/hub";
 import { ItemRing } from "@/components/item-icon";
 import { SignInOptions } from "@/components/sign-in-dialog";
+import { Button } from "@/components/ui/button";
 import { resolveOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
 import { repository } from "@/lib/data";
 import type { GameLink, GameSet } from "@/lib/data/types";
 import { VISIBLE_SLOTS } from "@/lib/domain";
+import { screenshotUrl, thumbOf } from "@/lib/screenshots";
 
 export const metadata: Metadata = {
   title: "Your sets",
@@ -49,6 +52,50 @@ function Linked({ link, now }: { link: GameLink; now: number }) {
   );
 }
 
+const pictures = (n: number) => (n === 1 ? "1 picture" : `${n} pictures`);
+
+/** A game picture's small copy, which the site stores beside every picture. */
+function Thumb({ path, alt, className }: { path: string; alt: string; className: string }) {
+  return (
+    <span className={`relative block overflow-hidden rounded-md border border-line ${className}`}>
+      <Image src={thumbOf(screenshotUrl(path))} alt={alt} fill unoptimized sizes="12rem" className="object-cover" />
+    </span>
+  );
+}
+
+// A game's pictures wait on their set until it is published, so a set holding any is
+// one the player sent from the studio and has not finished: it leads the page.
+function ReadyToPublish({ sets }: { sets: GameSet[] }) {
+  return (
+    <section aria-labelledby="ready-heading" className="flex flex-col gap-3 rounded-lg border border-amber/40 bg-amber/5 p-4">
+      <div>
+        <h2 id="ready-heading" className="text-sm font-medium text-ink">Ready to publish</h2>
+        <p className="text-xs text-ink-dim">
+          Pictures your game sent wait here, private to you, until you publish their look to the Wardrobe.
+        </p>
+      </div>
+      <ul className="flex flex-col gap-3">
+        {sets.map((set) => (
+          <li key={set.id} className="flex flex-wrap items-center gap-3">
+            <div className="flex gap-1.5">
+              {set.gallery.slice(0, 3).map((path, i) => (
+                <Thumb key={path} path={path} alt={`${set.name}, picture ${i + 1}`} className="aspect-video w-24" />
+              ))}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm text-ink">{set.name}</p>
+              <p className="text-xs text-ink-faint">{pictures(set.gallery.length)} from your game</p>
+            </div>
+            <Button asChild size="sm">
+              <Link href={`/sets/${set.id}`}>Publish</Link>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function SetCard({ set, now }: { set: GameSet; now: number }) {
   const decoded = decodeOutfit(set.code);
   const slots = decoded.ok ? resolveOutfit(decoded.outfit).slots : [];
@@ -57,13 +104,12 @@ function SetCard({ set, now }: { set: GameSet; now: number }) {
   return (
     <article className="card-stroke flex flex-col overflow-hidden rounded-lg border border-line bg-surface transition-colors hover:bg-surface-raised">
       <Link href={`/sets/${set.id}`} className="flex flex-1 flex-col gap-3 p-4" aria-label={`Open ${set.name}`}>
+        {set.gallery.length > 0 && <Thumb path={set.gallery[0]} alt="" className="aspect-video w-full" />}
         <div className="min-w-0">
           <h3 className="line-clamp-2 font-serif text-lg leading-tight font-normal tracking-[-0.01em]">{set.name}</h3>
           <p className="text-xs text-ink-faint">Updated {ago(set.updatedAt, now)}</p>
           {set.gallery.length > 0 && (
-            <p className="text-xs text-ink-dim">
-              {set.gallery.length === 1 ? "1 picture" : `${set.gallery.length} pictures`} from your game
-            </p>
+            <p className="text-xs text-ink-dim">{pictures(set.gallery.length)} from your game</p>
           )}
         </div>
         {pieces.length > 0 && (
@@ -103,10 +149,12 @@ export default async function SetsPage() {
   after(() => repository.clearOrphanPictures());
   const [links, sets] = await Promise.all([repository.listGameLinks(), repository.listGameSets()]);
   const now = Date.now();
+  const waiting = sets.filter((set) => set.gallery.length > 0);
 
   return (
     <main id="main" className="wrap flex flex-col gap-8 py-10">
       <HubTitle title="Your sets" blurb={BLURB} />
+      {waiting.length > 0 && <ReadyToPublish sets={waiting} />}
 
       <section aria-labelledby="games-heading" className="flex max-w-xl flex-col gap-3">
         <h2 id="games-heading" className="text-xs font-medium text-ink-faint">Linked games</h2>

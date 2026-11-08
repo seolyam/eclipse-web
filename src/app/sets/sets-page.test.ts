@@ -111,6 +111,29 @@ describe("Your sets", () => {
     expect(await html(SetsPage())).not.toContain("from your game");
   });
 
+  it("puts what the game sent up top, with the picture and a way to publish it", async () => {
+    const SENT = { ...SET, id: "22222222-2222-4222-8222-222222222222", name: "Nightmare", gallery: [PICTURE] };
+    data.sets = [SET, SENT];
+    const page = await html(SetsPage());
+    const ready = page.slice(page.indexOf("Ready to publish"), page.indexOf("Linked games"));
+    expect(ready).toContain("Nightmare");
+    expect(ready).not.toContain("Raid night");
+    expect(ready).toContain(PICTURE.replace(".avif", "-thumb.avif"));
+    expect(ready).toMatch(new RegExp(`href="/sets/${SENT.id}"[^>]*>Publish<`));
+  });
+
+  it("shows the game's picture on its set's card", async () => {
+    data.sets = [{ ...SET, gallery: [PICTURE] }];
+    const page = await html(SetsPage());
+    const card = page.slice(page.indexOf("1 set<"));
+    expect(card).toContain(PICTURE.replace(".avif", "-thumb.avif"));
+  });
+
+  it("has no call to publish when the game sent nothing", async () => {
+    data.sets = [SET];
+    expect(await html(SetsPage())).not.toContain("Ready to publish");
+  });
+
   it("clears old set pictures after answering, and only for a signed-in owner", async () => {
     await html(SetsPage());
     expect(later).toHaveBeenCalledTimes(1);
@@ -150,6 +173,16 @@ describe("one set", () => {
     expect(page).toContain("Raid night");
     expect(page).toContain("Only you can see this set");
     expect(page).toContain("Remove Raid night");
+  });
+
+  it("shows what the game sent first, and points to the form that publishes it", async () => {
+    data.set = { ...SET, gallery: [PICTURE] };
+    const page = await html(open(SET.id));
+    expect(page).toContain("Your game sent 1 picture of this look");
+    expect(page).toContain(PICTURE.replace(".avif", "-thumb.avif"));
+    expect(page).toContain('href="#publish"');
+    data.set = SET;
+    expect(await html(open(SET.id))).not.toContain("Your game sent");
   });
 
   it("does not exist for anyone it does not belong to", async () => {

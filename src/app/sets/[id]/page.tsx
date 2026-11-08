@@ -1,11 +1,13 @@
 import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Decoder } from "@/components/decoder";
 import { RemoveGameSet } from "@/components/game-sync";
 import { HubTitle } from "@/components/hub";
 import { repository } from "@/lib/data";
+import { screenshotUrl, thumbOf } from "@/lib/screenshots";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -30,6 +32,23 @@ export default async function SetPage({ params }: Props) {
         <HubTitle title={set.name} blurb="Only you can see this set. Publish it below to share it with everyone." />
         <RemoveGameSet id={set.id} name={set.name} after="/sets" />
       </div>
+      {set.gallery.length > 0 && (
+        // What the studio sent, where the player lands: the form holding it is below the breakdown.
+        <section aria-label="Pictures from your game" className="flex flex-col gap-3 rounded-lg border border-amber/40 bg-amber/5 p-4">
+          <p className="text-sm text-ink">
+            Your game sent {set.gallery.length === 1 ? "1 picture" : `${set.gallery.length} pictures`} of this look.
+            {" "}{set.gallery.length === 1 ? "It is" : "They are"} already in the publish form: give the look a title and publish it.
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {set.gallery.map((path, i) => (
+              <li key={path} className="relative aspect-video w-40 overflow-hidden rounded-md border border-line">
+                <Image src={thumbOf(screenshotUrl(path))} alt={`Picture ${i + 1} from your game`} fill unoptimized sizes="10rem" className="object-cover" />
+              </li>
+            ))}
+          </ul>
+          <a href="#publish" className="pill self-start">Go to the publish form</a>
+        </section>
+      )}
       <Decoder initial={set.code} canPublish={repository.live} fromSet={{ id: set.id, gallery: set.gallery }} />
     </main>
   );
