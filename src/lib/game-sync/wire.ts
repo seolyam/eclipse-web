@@ -14,6 +14,15 @@
 //             set <rev> <b64 name> <b64 icon|-> <code>
 //             del <rev> <b64 name>
 //
+// A picture from the Showcase studio, for one saved set (POST /api/game/shot):
+//
+//   request   eclipse-shot 1
+//             set <b64 name>
+//             image <b64 jpeg or png>
+//
+//   answer    ok <pictures on the set> | unlinked | missing | set-full | account-full
+//             | busy | too-large | unreadable | bad-request | unavailable
+//
 // The migration's limits are repeated here so one bad set is refused alone. Left to
 // the database's checks, it would fail the batch and every set in it, on every retry.
 
@@ -138,4 +147,41 @@ export function parseLinkRequest(body: string): { code: string; label: string } 
     if (verb === "label" && value) label = (decode(value) ?? "").replace(/[\u0000-\u001f\u007f]/g, "").slice(0, MAX_NAME);
   }
   return code ? { code, label } : null;
+}
+
+export const SHOT_HEADER = "eclipse-shot 1";
+
+/** The picture as the game sends it, before the site compresses it. */
+export const MAX_SHOT_BYTES = 3 * 1024 * 1024;
+
+export type ShotStatus =
+  | "ok"
+  | "unlinked"
+  | "missing"
+  | "set-full"
+  | "account-full"
+  | "busy"
+  | "too-large"
+  | "unreadable"
+  | "bad-request"
+  | "unavailable";
+
+export function parseShotRequest(body: string): { name: string; image: Buffer } | null {
+  const [header, ...rest] = lines(body);
+  if (header !== SHOT_HEADER || rest.length !== 2) return null;
+  let name: string | null = null;
+  let image: Buffer | null = null;
+  for (const line of rest) {
+    const [verb, value, extra] = line.split(" ");
+    if (extra !== undefined || !value) return null;
+    if (verb === "set" && name === null) name = decode(value);
+    else if (verb === "image" && image === null && BASE64.test(value)) image = Buffer.from(value, "base64");
+    else return null;
+  }
+  if (name === null || !nameFits(name) || !image?.length) return null;
+  return { name, image };
+}
+
+export function formatShotAnswer(answer: { status: ShotStatus; count?: number }): string {
+  return answer.status === "ok" ? `ok ${answer.count ?? 0}` : answer.status;
 }

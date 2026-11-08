@@ -1,17 +1,26 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SYNC_HEADER } from "@/lib/game-sync/wire";
+import { SHOT_HEADER, SYNC_HEADER } from "@/lib/game-sync/wire";
 
 vi.mock("server-only", () => ({}));
 vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://stub.supabase.co");
 vi.stubEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "stub-key");
 
 const rpc = vi.fn();
-vi.mock("@/lib/supabase/anon", () => ({ createAnonSupabase: () => ({ rpc }) }));
+const upload = vi.fn();
+vi.mock("@/lib/supabase/anon", () => ({
+  createAnonSupabase: () => ({ rpc, storage: { from: () => ({ upload }) } }),
+}));
+const compress = vi.fn();
+vi.mock("@/lib/data/compress", async (original) => ({
+  ...(await original<typeof import("@/lib/data/compress")>()),
+  compressScreenshot: compress,
+}));
 
 const sync = (await import("./sync/route")).POST;
 const link = (await import("./link/route")).POST;
 const unlink = (await import("./unlink/route")).POST;
+const shot = (await import("./shot/route")).POST;
 
 const TOKEN = `ecl_${"a".repeat(43)}`;
 const b64 = (text: string) => Buffer.from(text, "utf8").toString("base64");
@@ -26,6 +35,10 @@ const ok = { status: "ok", cursor: 3, more: false, acks: [], rejected: [], sets:
 beforeEach(() => {
   rpc.mockReset();
   rpc.mockResolvedValue({ data: ok, error: null });
+  upload.mockReset();
+  upload.mockResolvedValue({ data: {}, error: null });
+  compress.mockReset();
+  compress.mockResolvedValue({ full: Buffer.from("full"), thumb: Buffer.from("thumb") });
 });
 
 describe("POST /api/game/sync", () => {
@@ -150,5 +163,88 @@ describe("POST /api/game/unlink", () => {
 
   it("needs a token", async () => {
     expect((await unlink(post("unlink", ""))).status).toBe(401);
+  });
+});
+
+describe("POST /api/game/shot", () => {
+  const PATH = "00000000-0000-0000-0000-000000000001/00000000-0000-0000-0000-0000000000aa.avif";
+  const request = [SHOT_HEADER, `set ${b64("Charnel")}`, `image ${Buffer.from("jpeg").toString("base64")}`].join("\n");
+
+  function answers(begin: object, attach: object = { status: "ok", count: 1 }) {
+    rpc.mockImplementation(async (name: string) => ({
+      data: name === "game_shot_begin" ? begin : attach,
+      error: null,
+    }));
+  }
+
+  it("files the picture on the set: a ticket, the thumbnail, the picture, then the attach", async () => {
+    answers({ status: "ok", path: PATH });
+    const response = await shot(post("shot", request, signed));
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("ok 1");
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(["game_shot_begin", "game_shot_attach"]);
+    expect(rpc.mock.calls[0][1]).toMatchObject({ p_name: "Charnel", p_ext: "avif" });
+    expect(rpc.mock.calls[1][1]).toMatchObject({ p_path: PATH });
+    expect(upload.mock.calls.map(([path]) => path)).toEqual([PATH.replace(".avif", "-thumb.avif"), PATH]);
+    expect(upload.mock.calls[0][2]).toMatchObject({ contentType: "image/avif" });
+    expect(JSON.stringify(rpc.mock.calls)).not.toContain(TOKEN);
+  });
+
+  it("needs a token, and reads nothing without one", async () => {
+    const response = await shot(post("shot", request));
+    expect(response.status).toBe(401);
+    expect(await response.text()).toBe("unlinked");
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("refuses an oversized body before reading it", async () => {
+    const response = await shot(post("shot", request, { ...signed, "content-length": String(64 * 1024 * 1024) }));
+    expect(response.status).toBe(413);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("refuses a body it cannot read", async () => {
+    const response = await shot(post("shot", `${SHOT_HEADER}\nset AAAA`, signed));
+    expect(response.status).toBe(400);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["unlinked", 401],
+    ["missing", 404],
+    ["set-full", 409],
+    ["account-full", 409],
+    ["busy", 429],
+  ])("passes on %s without storing anything", async (status, code) => {
+    answers({ status });
+    const response = await shot(post("shot", request, signed));
+    expect(response.status).toBe(code);
+    expect(await response.text()).toBe(status);
+    expect(compress).not.toHaveBeenCalled();
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it("checks the token before spending time on the picture", async () => {
+    answers({ status: "ok", path: PATH });
+    compress.mockResolvedValue(null);
+    const response = await shot(post("shot", request, signed));
+    expect(response.status).toBe(415);
+    expect(await response.text()).toBe("unreadable");
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(["game_shot_begin"]);
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it("says so when storing fails, and files nothing", async () => {
+    answers({ status: "ok", path: PATH });
+    upload.mockResolvedValueOnce({ data: null, error: { message: "denied" } });
+    const response = await shot(post("shot", request, signed));
+    expect(response.status).toBe(503);
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(["game_shot_begin"]);
+  });
+
+  it("says so when the database fails, so the game can try again", async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: "down" } });
+    const response = await shot(post("shot", request, signed));
+    expect(response.status).toBe(503);
   });
 });

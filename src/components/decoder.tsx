@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { inspectCode, publishOutfit, removeScreenshot, uploadScreenshot, type InspectResult } from "@/app/actions";
+import { inspectCode, publishOutfit, removeScreenshot, removeSetPicture, uploadScreenshot, type InspectResult } from "@/app/actions";
 import { CopyButton } from "@/components/copy-button";
 import { LoadoutFacts, SlotList } from "@/components/outfit-breakdown";
 import { Button } from "@/components/ui/button";
@@ -49,19 +49,29 @@ function Choice<T extends string>({
   );
 }
 
+/** A saved set and the pictures its game sent of it, offered to the publish form. */
+export interface SetPictures {
+  id: string;
+  gallery: string[];
+}
+
 /** The captures a post will carry, as storage paths, the cover first. */
 function Screenshots({
-  images, onChange,
+  images, onChange, fromSet,
 }: {
   images: string[];
   onChange: (images: string[]) => void;
+  fromSet: SetPictures | null;
 }) {
   const [uploading, startUpload] = useTransition();
   const full = images.length >= MAX_SCREENSHOTS;
 
   function remove(path: string) {
     onChange(images.filter((x) => x !== path));
-    void removeScreenshot(path);
+    // A game's picture belongs to its set until it is published: taking it off the
+    // form takes it off the set.
+    if (fromSet?.gallery.includes(path)) void removeSetPicture(fromSet.id, path);
+    else void removeScreenshot(path);
   }
 
   function upload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -84,6 +94,7 @@ function Screenshots({
     <div className="flex flex-col gap-2">
       <p className="text-xs text-ink-dim">
         Screenshots from the Showcase studio, up to {MAX_SCREENSHOTS}. The first is the cover.
+        {fromSet && fromSet.gallery.length > 0 && " The ones your game sent are already here."}
       </p>
       {images.length > 0 && (
         <ul className="flex flex-wrap gap-2">
@@ -125,7 +136,7 @@ export interface RemixOf {
   author: string | null;
 }
 
-function PublishForm({ code, remixOf }: { code: string; remixOf: RemixOf | null }) {
+function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixOf | null; fromSet: SetPictures | null }) {
   const [credit, setCredit] = useState(remixOf !== null);
   const [title, setTitle] = useState("");
   const [className, setClassName] = useState<ClassName | null>(null);
@@ -133,7 +144,7 @@ function PublishForm({ code, remixOf }: { code: string; remixOf: RemixOf | null 
   const [race, setRace] = useState<string | null>(null);
   const [category, setCategory] = useState<Category>("Armor");
   const [tags, setTags] = useState("");
-  const [gallery, setGallery] = useState<string[]>([]);
+  const [gallery, setGallery] = useState<string[]>(fromSet?.gallery ?? []);
   const [published, setPublished] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -195,7 +206,7 @@ function PublishForm({ code, remixOf }: { code: string; remixOf: RemixOf | null 
         <label htmlFor="outfit-tags" className="text-xs text-ink-dim">Tags, separated by commas</label>
         <Input id="outfit-tags" value={tags} onChange={(e) => setTags(e.target.value)} className="bg-surface" />
       </div>
-      <Screenshots images={gallery} onChange={setGallery} />
+      <Screenshots images={gallery} onChange={setGallery} fromSet={fromSet} />
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
       <Button type="submit" size="sm" disabled={pending} className="self-start">
         {pending && <Loader2 className="size-4 animate-spin" />}
@@ -205,7 +216,12 @@ function PublishForm({ code, remixOf }: { code: string; remixOf: RemixOf | null 
   );
 }
 
-function OutfitResultView({ result, canPublish, remixOf }: { result: OutfitResult; canPublish: boolean; remixOf: RemixOf | null }) {
+function OutfitResultView({ result, canPublish, remixOf, fromSet }: {
+  result: OutfitResult;
+  canPublish: boolean;
+  remixOf: RemixOf | null;
+  fromSet: SetPictures | null;
+}) {
   // Hand a slot back to the wearer's gear, as the game's own slot clear does.
   const [removed, setRemoved] = useState<number[]>([]);
   const code = useMemo(() => {
@@ -230,7 +246,8 @@ function OutfitResultView({ result, canPublish, remixOf }: { result: OutfitResul
       {canPublish && (
         <section className="flex flex-col gap-3 rounded-md border border-line bg-surface p-4" aria-label="Publish">
           <h2 className="text-base">Publish it</h2>
-          <PublishForm key={code} code={code} remixOf={remixOf} />
+          {/* A set's pictures show its look: an edited look starts with none. */}
+          <PublishForm key={code} code={code} remixOf={remixOf} fromSet={removed.length ? null : fromSet} />
         </section>
       )}
     </div>
@@ -271,10 +288,12 @@ function WorldResultView({ result, code }: { result: WorldResult; code: string }
   );
 }
 
-export function Decoder({ initial = "", canPublish = false, remixOf = null }: {
+export function Decoder({ initial = "", canPublish = false, remixOf = null, fromSet = null }: {
   initial?: string;
   canPublish?: boolean;
   remixOf?: RemixOf | null;
+  /** The saved set `initial` came from, whose pictures are offered while it is unchanged. */
+  fromSet?: SetPictures | null;
 }) {
   const [text, setText] = useState(initial);
   const [result, setResult] = useState<InspectResult | null>(null);
@@ -321,7 +340,15 @@ export function Decoder({ initial = "", canPublish = false, remixOf = null }: {
         {result?.kind === "error" && <p role="alert" className="text-sm text-bad">{result.error}</p>}
         {result && result.kind !== "error" && <p className="text-sm text-good">Valid {result.kind === "world" ? "world" : "loadout"} code</p>}
       </div>
-      {result?.kind === "outfit" && <OutfitResultView key={text} result={result} canPublish={canPublish} remixOf={remixOf} />}
+      {result?.kind === "outfit" && (
+        <OutfitResultView
+          key={text}
+          result={result}
+          canPublish={canPublish}
+          remixOf={remixOf}
+          fromSet={text === initial ? fromSet : null}
+        />
+      )}
       {result?.kind === "world" && <WorldResultView result={result} code={text.trim()} />}
     </div>
   );
