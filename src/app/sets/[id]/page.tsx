@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Decoder } from "@/components/decoder";
 import { RemoveGameSet } from "@/components/game-sync";
 import { HubTitle } from "@/components/hub";
+import { SignInOptions } from "@/components/sign-in-dialog";
 import { repository } from "@/lib/data";
 import { screenshotUrl, thumbOf } from "@/lib/screenshots";
 
@@ -20,6 +21,19 @@ export const metadata: Metadata = {
 // Decoder brings the breakdown, editing and the publish form, and publishing from
 // here writes a new public look. The private set stays as it was.
 export default async function SetPage({ params }: Props) {
+  // Signed out, the database refuses the read outright: ask for the sign-in instead.
+  if (!(await repository.getAccount())) {
+    return (
+      <main id="main" className="wrap flex flex-col gap-6 py-10">
+        <HubTitle title="Your set" blurb="Sign in to see the sets your game backed up." />
+        {repository.live && (
+          <div className="max-w-sm">
+            <SignInOptions />
+          </div>
+        )}
+      </main>
+    );
+  }
   const set = await repository.getGameSet((await params).id);
   if (!set) notFound();
   return (

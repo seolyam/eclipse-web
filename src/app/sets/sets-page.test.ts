@@ -185,6 +185,14 @@ describe("one set", () => {
     expect(await html(open(SET.id))).not.toContain("Your game sent");
   });
 
+  it("asks a signed-out visitor to sign in instead of reading the set", async () => {
+    data.account = null;
+    data.set = SET;
+    const page = await html(open(SET.id));
+    expect(page).toContain("Continue with Discord");
+    expect(page).not.toContain("Raid night");
+  });
+
   it("does not exist for anyone it does not belong to", async () => {
     await expect(html(open(SET.id))).rejects.toThrow("NOT_FOUND");
   });
