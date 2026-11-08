@@ -128,6 +128,14 @@ export async function removeGameSet(id: string) {
   return r;
 }
 
+/** One of the game's pictures taken off a set, from the set's publish form. */
+export async function removeSetPicture(setId: string, path: string) {
+  if (!UPLOAD_PATH.test(path)) return { ok: false as const, error: "That is not one of the set's pictures." };
+  const r = await repository.removeSetPicture(setId, path);
+  if (r.ok) revalidatePath(`/sets/${setId}`);
+  return r;
+}
+
 export async function upvoteOutfit(id: string) {
   const r = await repository.upvote(id);
   if (r.ok) revalidateHub();

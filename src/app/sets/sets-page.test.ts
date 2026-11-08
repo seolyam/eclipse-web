@@ -17,6 +17,7 @@ vi.mock("@/app/actions", () => ({
   publishOutfit: vi.fn(),
   removeGameSet: vi.fn(),
   removeScreenshot: vi.fn(),
+  removeSetPicture: vi.fn(),
   unlinkGame: vi.fn(),
   uploadScreenshot: vi.fn(),
 }));
@@ -29,6 +30,7 @@ const data = vi.hoisted(() => ({
   sets: [] as GameSet[],
   set: null as GameSet | null,
   live: true,
+  clear: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/data", () => ({
@@ -40,20 +42,34 @@ vi.mock("@/lib/data", () => ({
     listGameLinks: async () => data.links,
     listGameSets: async () => data.sets,
     getGameSet: async () => data.set,
+    clearOrphanPictures: data.clear,
   },
 }));
+
+// Clearing old pictures runs after the response, which only a real request has.
+const later = vi.hoisted(() => vi.fn());
+vi.mock("next/server", async (original) => ({ ...(await original<typeof import("next/server")>()), after: later }));
 
 const { default: SetsPage } = await import("./page");
 const { default: SetPage } = await import("./[id]/page");
 
 const ME: Account = { id: "me", name: "seolyam", avatar: null, provider: "discord", moderator: false };
 const CODE = `ECA1:${Buffer.from("slot 0 259306\nslot 4 1001735\n").toString("base64")}`;
-const SET: GameSet = { id: "11111111-1111-4111-8111-111111111111", name: "Raid night", code: CODE, updatedAt: new Date().toISOString() };
+const SET: GameSet = {
+  id: "11111111-1111-4111-8111-111111111111",
+  name: "Raid night",
+  code: CODE,
+  updatedAt: new Date().toISOString(),
+  gallery: [],
+};
+const PICTURE = "00000000-0000-0000-0000-000000000001/00000000-0000-0000-0000-0000000000aa.avif";
 
 const html = async (page: Promise<ReactElement>) => renderToStaticMarkup(await page);
 
 beforeEach(() => {
   Object.assign(data, { account: ME, links: [], sets: [], set: null, live: true });
+  later.mockReset();
+  data.clear.mockClear();
 });
 
 describe("Your sets", () => {
@@ -86,6 +102,24 @@ describe("Your sets", () => {
     expect(page).toContain("1 set");
     expect(page).toContain("Remove Raid night");
     expect(page).toContain("<img");
+  });
+
+  it("says how many pictures the game sent with a set", async () => {
+    data.sets = [{ ...SET, gallery: [PICTURE, PICTURE.replace("aa.avif", "bb.avif")] }];
+    expect(await html(SetsPage())).toContain("2 pictures from your game");
+    data.sets = [SET];
+    expect(await html(SetsPage())).not.toContain("from your game");
+  });
+
+  it("clears old set pictures after answering, and only for a signed-in owner", async () => {
+    await html(SetsPage());
+    expect(later).toHaveBeenCalledTimes(1);
+    await later.mock.calls[0][0]();
+    expect(data.clear).toHaveBeenCalledTimes(1);
+    later.mockReset();
+    data.account = null;
+    await html(SetsPage());
+    expect(later).not.toHaveBeenCalled();
   });
 
   it("does not fall over on a code this site cannot read", async () => {

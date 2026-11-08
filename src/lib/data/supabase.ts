@@ -50,9 +50,16 @@ interface GameSetRow {
   name: string;
   code: string;
   updated_at: string;
+  gallery: string[];
 }
 
-const toGameSet = (r: GameSetRow): GameSet => ({ id: r.id, name: r.name, code: r.code, updatedAt: r.updated_at });
+const toGameSet = (r: GameSetRow): GameSet => ({
+  id: r.id,
+  name: r.name,
+  code: r.code,
+  updatedAt: r.updated_at,
+  gallery: r.gallery,
+});
 
 // The hint is required: outfit_votes, outfit_reports and outfit_bookmarks also join
 // outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
@@ -402,7 +409,7 @@ export const supabaseRepository: Repository = {
     const db = await createServerSupabase();
     const { data, error } = await db
       .from("game_sets")
-      .select("id,name,code,updated_at")
+      .select("id,name,code,updated_at,gallery")
       .not("code", "is", null)
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -413,7 +420,7 @@ export const supabaseRepository: Repository = {
     const db = await createServerSupabase();
     const { data, error } = await db
       .from("game_sets")
-      .select("id,name,code,updated_at")
+      .select("id,name,code,updated_at,gallery")
       .eq("id", id)
       .not("code", "is", null)
       .maybeSingle();
@@ -446,6 +453,28 @@ export const supabaseRepository: Repository = {
     const db = await createServerSupabase();
     const { error } = await db.rpc("game_set_remove", { p_id: id });
     if (error) return { ok: false, error: "That set could not be removed. Try again." };
+    await supabaseRepository.clearOrphanPictures();
     return { ok: true, value: id };
+  },
+  async removeSetPicture(setId, path) {
+    if (!UUID.test(setId)) return { ok: false, error: "That picture could not be removed." };
+    const db = await createServerSupabase();
+    const { error } = await db.rpc("game_set_drop_shot", { p_set: setId, p_path: path });
+    if (error) return { ok: false, error: "That picture could not be removed. Try again." };
+    await supabaseRepository.clearOrphanPictures();
+    return { ok: true, value: path };
+  },
+  async clearOrphanPictures() {
+    // Best effort: an orphan left behind is tried again on the next visit to the sets.
+    const db = await createServerSupabase();
+    const { data, error } = await db.rpc("game_shot_orphans");
+    const paths = (data as string[] | null) ?? [];
+    if (error || !paths.length) return;
+    const removed = await db.storage.from(SCREENSHOT_BUCKET).remove(paths.flatMap((p) => [p, thumbOf(p)]));
+    if (removed.error) {
+      console.error("Clearing old set pictures failed:", removed.error.message);
+      return;
+    }
+    await db.rpc("game_shot_forget", { p_paths: paths });
   },
 };

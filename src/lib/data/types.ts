@@ -95,6 +95,8 @@ export interface GameSet {
   name: string;
   code: string;
   updatedAt: string;
+  /** Pictures the game's Showcase studio sent of this look: storage paths, as a post's. */
+  gallery: string[];
 }
 
 export const REPORT_REASONS = {
@@ -160,4 +162,8 @@ export interface Repository {
   /** Files a look with the player's sets, where their next sync picks it up. */
   sendToGame(title: string, code: string): Promise<WriteResult<{ name: string; linked: boolean }>>;
   removeGameSet(id: string): Promise<WriteResult<string>>;
+  /** Takes one of the game's pictures off a set and removes its file. */
+  removeSetPicture(setId: string, path: string): Promise<WriteResult<string>>;
+  /** Removes the files of pictures no set or look shows any more: the owner's own. */
+  clearOrphanPictures(): Promise<void>;
 }

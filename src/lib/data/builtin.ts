@@ -204,4 +204,8 @@ export const builtinRepository: Repository = {
   async removeGameSet() {
     return { ok: false, error: NOT_LIVE };
   },
+  async removeSetPicture() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async clearOrphanPictures() {},
 };

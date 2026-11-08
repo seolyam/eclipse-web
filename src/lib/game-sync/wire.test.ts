@@ -5,6 +5,9 @@ import {
   parseLinkRequest,
   parseSyncRequest,
   SYNC_HEADER,
+  SHOT_HEADER,
+  formatShotAnswer,
+  parseShotRequest,
 } from "./wire";
 
 const b64 = (text: string) => Buffer.from(text, "utf8").toString("base64");
@@ -134,5 +137,39 @@ describe("a set's name", () => {
 
   it("fits the column", () => {
     expect(cleanSetName("x".repeat(200))).toHaveLength(80);
+  });
+});
+
+describe("a picture from the game", () => {
+  const image = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+  const shot = (...lines: string[]) => [SHOT_HEADER, ...lines].join("\n");
+
+  it("reads the set's name and the picture", () => {
+    expect(parseShotRequest(shot(`set ${b64("Charnel")}`, `image ${image.toString("base64")}`))).toEqual({
+      name: "Charnel",
+      image,
+    });
+  });
+
+  it("refuses a request without both, or with anything else", () => {
+    expect(parseShotRequest(shot(`set ${b64("Charnel")}`))).toBeNull();
+    expect(parseShotRequest(shot(`image ${image.toString("base64")}`))).toBeNull();
+    expect(parseShotRequest(shot(`set ${b64("Charnel")}`, `image ${image.toString("base64")}`, "cursor 1"))).toBeNull();
+    expect(parseShotRequest(`${SYNC_HEADER}\nset ${b64("Charnel")}\nimage AAAA`)).toBeNull();
+  });
+
+  it("refuses a name the game could never have filed", () => {
+    expect(parseShotRequest(shot(`set ${b64("[x]")}`, `image ${image.toString("base64")}`))).toBeNull();
+    expect(parseShotRequest(shot(`set ${b64("")}`, `image ${image.toString("base64")}`))).toBeNull();
+  });
+
+  it("refuses a picture that is not base64 or is empty", () => {
+    expect(parseShotRequest(shot(`set ${b64("Charnel")}`, "image ***"))).toBeNull();
+    expect(parseShotRequest(shot(`set ${b64("Charnel")}`, "image "))).toBeNull();
+  });
+
+  it("answers with one word, and a count when the picture is filed", () => {
+    expect(formatShotAnswer({ status: "ok", count: 2 })).toBe("ok 2");
+    expect(formatShotAnswer({ status: "set-full" })).toBe("set-full");
   });
 });

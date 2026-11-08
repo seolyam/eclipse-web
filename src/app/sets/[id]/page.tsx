@@ -30,7 +30,7 @@ export default async function SetPage({ params }: Props) {
         <HubTitle title={set.name} blurb="Only you can see this set. Publish it below to share it with everyone." />
         <RemoveGameSet id={set.id} name={set.name} after="/sets" />
       </div>
-      <Decoder initial={set.code} canPublish={repository.live} />
+      <Decoder initial={set.code} canPublish={repository.live} fromSet={{ id: set.id, gallery: set.gallery }} />
     </main>
   );
 }

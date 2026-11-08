@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+// On glibc Linux without jemalloc, sharp runs libvips on one thread (sharp.concurrency()
+// is 1), and one 1920x1080 noise capture takes about 7 s to encode as AVIF there.
+vi.setConfig({ testTimeout: 30_000 });
+
 const { compressScreenshot, socialCard } = await import("./compress");
 
 const capture = (width: number, height: number) =>

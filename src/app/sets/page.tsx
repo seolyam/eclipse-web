@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { after } from "next/server";
 import { CopyButton } from "@/components/copy-button";
 import { LinkGame, RemoveGameSet, UnlinkGame } from "@/components/game-sync";
 import { HubTitle } from "@/components/hub";
@@ -59,6 +60,11 @@ function SetCard({ set, now }: { set: GameSet; now: number }) {
         <div className="min-w-0">
           <h3 className="line-clamp-2 font-serif text-lg leading-tight font-normal tracking-[-0.01em]">{set.name}</h3>
           <p className="text-xs text-ink-faint">Updated {ago(set.updatedAt, now)}</p>
+          {set.gallery.length > 0 && (
+            <p className="text-xs text-ink-dim">
+              {set.gallery.length === 1 ? "1 picture" : `${set.gallery.length} pictures`} from your game
+            </p>
+          )}
         </div>
         {pieces.length > 0 && (
           <div className="flex flex-wrap justify-center gap-1">
@@ -93,6 +99,8 @@ export default async function SetsPage() {
     );
   }
 
+  // Pictures of a look that changed or went: removed once this page has answered.
+  after(() => repository.clearOrphanPictures());
   const [links, sets] = await Promise.all([repository.listGameLinks(), repository.listGameSets()]);
   const now = Date.now();
 
