@@ -8,8 +8,9 @@ import type { Wearer } from "@/lib/viewer/figure";
 
 /**
  * A look on its character, drawn as soon as the look opens, with any studio captures one
- * switch away. Only a figure that would wear something is drawn: a bare stand-in for a
- * code whose pieces are not baked would show a look that is not there.
+ * switch away (in front, when the figure would miss a piece). Only a figure that would wear
+ * something is drawn: a bare stand-in for a code whose pieces are not baked would show a
+ * look that is not there.
  */
 export function LookModel({ pieces, wearer, gallery, backdrop, title }: {
   pieces: Record<number, number | null>;
@@ -34,8 +35,11 @@ export function LookModel({ pieces, wearer, gallery, backdrop, title }: {
 
   if (!gallery.length) return <ModelStage pieces={pieces} wearer={wearer} />;
 
+  // A figure missing a piece shows less than the captures do, so they come first.
+  const incomplete = Object.values(pieces).some((display) => display === null);
+
   return (
-    <Tabs defaultValue="3d" className="items-center">
+    <Tabs defaultValue={incomplete ? "shots" : "3d"} className="items-center">
       <TabsList aria-label="How to show this look">
         <TabsTrigger value="3d">3D</TabsTrigger>
         <TabsTrigger value="shots">Screenshots</TabsTrigger>
