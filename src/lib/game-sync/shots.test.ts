@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 const migration = (name: string) => readFileSync(join(process.cwd(), "supabase/migrations", name), "utf8");
 const SYNC = migration("20261101090000_game_sync.sql");
 const SHOTS = migration("20261108090000_game_set_shots.sql");
+const SHOT_OWNER = migration("20261108120000_game_shot_begin_owner.sql");
 
 const SUPABASE = `
   create role anon; create role authenticated;
@@ -28,9 +29,20 @@ const SUPABASE = `
   );
   create schema storage;
   grant usage on schema storage to anon, authenticated;
+  -- The real table's columns, not just the two these functions read: a plpgsql
+  -- variable named like one of them (owner) is ambiguous in production.
   create table storage.objects (
+    id uuid not null default gen_random_uuid(),
     bucket_id text not null,
     name text not null,
+    owner uuid,
+    owner_id text,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now(),
+    last_accessed_at timestamptz default now(),
+    metadata jsonb,
+    version text,
+    user_metadata jsonb,
     primary key (bucket_id, name)
   );
   alter table storage.objects enable row level security;
@@ -117,6 +129,7 @@ beforeEach(async () => {
   await db.exec(SUPABASE);
   await db.exec(SYNC);
   await db.exec(SHOTS);
+  await db.exec(SHOT_OWNER);
   await db.exec(`insert into public.profiles (id) values ('${ME}'), ('${STRANGER}');`);
   await link(ME, TOKEN);
   await link(STRANGER, STRANGER_TOKEN);
