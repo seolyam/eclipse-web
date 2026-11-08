@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 // The sync rules live in plpgsql, so they are proved on a real Postgres. Only the
 // parts Supabase provides are stubbed: its roles, its default grants and auth.uid().
-const MIGRATION = readFileSync(join(process.cwd(), "supabase/migrations/20261101090000_game_sync.sql"), "utf8");
+const migration = (name: string) => readFileSync(join(process.cwd(), "supabase/migrations", name), "utf8");
+const MIGRATION = migration("20261101090000_game_sync.sql");
+const SEND_WINS = migration("20261108150000_game_set_send_wins.sql");
 
 const SUPABASE = `
   create role anon; create role authenticated;
@@ -83,6 +85,7 @@ beforeEach(async () => {
   db = new PGlite();
   await db.exec(SUPABASE);
   await db.exec(MIGRATION);
+  await db.exec(SEND_WINS);
   await db.exec(`insert into public.profiles (id) values ('${ME}'), ('${STRANGER}');`);
 });
 
@@ -349,6 +352,16 @@ describe("the website's own writes", () => {
     await send("Dreadful", "ECA1:AA");
     expect(await send("Renamed post", "ECA1:AA")).toEqual({ name: "Dreadful", linked: true });
     expect(await liveNames()).toEqual(["Dreadful"]);
+  });
+
+  it("wins over a delete the game has not reported yet, and goes back to that game", async () => {
+    await send("Dreadful", "ECA1:AA");
+    const first = await sync(TOKEN, 0, []);
+    // Deleted in game, then sent again from the site before that game's next sync.
+    await send("Dreadful", "ECA1:AA");
+    const r = await sync(TOKEN, first.cursor, [{ name: "Dreadful", base: first.cursor, code: null }]);
+    expect(await liveNames()).toEqual(["Dreadful"]);
+    expect(r.sets.map((s) => [s.name, s.code])).toEqual([["Dreadful", "ECA1:AA"]]);
   });
 
   it("files a different look with the same name beside it", async () => {
