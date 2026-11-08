@@ -34,6 +34,8 @@ function Piece({ slot, piece, side }: { slot: number; piece: ResolvedSlot | unde
   const hidden = piece?.item === 0;
   const name = !piece ? "Your own gear" : hidden ? "Hidden" : (piece.name ?? `Item ${piece.item}`);
   const known = piece?.quality ?? null;
+  // A piece with no baked model is missing from the 3D figure, though it works in game.
+  const noModel = !!piece && !hidden && piece.display === null;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -57,7 +59,7 @@ function Piece({ slot, piece, side }: { slot: number; piece: ResolvedSlot | unde
                 </Link>
               ) : name}
             </p>
-            <p className="piece__slot">{SLOT_NAMES[slot]}</p>
+            <p className="piece__slot">{SLOT_NAMES[slot]}{noModel && " · not in 3D"}</p>
           </div>
         </li>
       </TooltipTrigger>
@@ -65,6 +67,7 @@ function Piece({ slot, piece, side }: { slot: number; piece: ResolvedSlot | unde
         {!piece && "This code leaves the slot to the wearer."}
         {hidden && "The code hides this slot on purpose."}
         {piece && !hidden && `Item ${piece.item}${known === null ? "" : `, ${QUALITY_NAME[known]}`}. Open it for every look that wears it.`}
+        {noModel && " The 3D preview cannot draw it yet; it still shows in game."}
       </TooltipContent>
     </Tooltip>
   );

@@ -30,6 +30,13 @@ describe("a look's stage", () => {
     expect(html).not.toContain(SHOT);
   });
 
+  it("opens on the screenshots when the figure would be missing a piece", () => {
+    const html = render({ pieces: { 0: 179769, 4: null }, gallery: [SHOT] });
+    expect(html).toMatch(/aria-selected="true"[^>]*>Screenshots</);
+    expect(html).toContain(">3D<");
+    expect(html).toContain(SHOT);
+  });
+
   it("shows the screenshots, with no switch, when the figure would wear nothing", () => {
     const html = render({ pieces: { 0: null, 4: null }, gallery: [SHOT] });
     expect(html).not.toContain("<canvas");
