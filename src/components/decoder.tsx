@@ -182,7 +182,7 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    <form id="publish" onSubmit={submit} className="flex scroll-mt-24 flex-col gap-3">
       {remixOf && (
         <label className="flex items-center gap-2 text-sm text-ink-dim">
           <input type="checkbox" checked={credit} onChange={(e) => setCredit(e.target.checked)} />
