@@ -14,31 +14,12 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { DISCORD_URL, GITHUB_URL } from "@/lib/site";
 import { useAccount } from "@/lib/use-account";
 
-// The logo is the way home, and the hub's tabs reach Showcase and the Dressing room.
+// The logo is the way home, and each section's pills reach its other views. Support
+// and Discord live in the account menu and on the home page.
 const NAV = [
-  { href: "/wardrobe", label: "Wardrobe", routes: ["/wardrobe", "/showcase", "/dressing-room", "/mounts"] },
-  { href: "/inspector", label: "Inspector", routes: ["/inspector"] },
-  { href: "/#download", label: "Download", section: "download" },
-  { href: "/#support", label: "Support", section: "support" },
+  { href: "/wardrobe", label: "Wardrobe", routes: ["/wardrobe", "/mounts"] },
+  { href: "/loadouts", label: "Loadouts", routes: ["/loadouts", "/dressing-room", "/sets"] },
 ];
-const SECTIONS = ["top", "features", "download", "support"];
-
-/** The section in the middle of the screen, on the one page that has sections. */
-function useCurrentSection(active: boolean) {
-  const [section, setSection] = useState("top");
-  useEffect(() => {
-    if (!active) return;
-    const seen = new IntersectionObserver((entries) => {
-      for (const e of entries) if (e.isIntersecting) setSection(e.target.id);
-    }, { rootMargin: "-45% 0px -50% 0px" });
-    for (const id of SECTIONS) {
-      const el = document.getElementById(id);
-      if (el) seen.observe(el);
-    }
-    return () => seen.disconnect();
-  }, [active]);
-  return section === "features" ? "top" : section;
-}
 
 function useScrolled() {
   const [scrolled, setScrolled] = useState(false);
@@ -75,13 +56,11 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
   const pathname = usePathname();
   const home = pathname === "/";
   const scrolled = useScrolled();
-  const section = useCurrentSection(home);
   const [menu, setMenu] = useState(false);
   const [account, setAccount, checking] = useAccount(signIn);
   useAuthNotice();
 
-  const isActive = (n: (typeof NAV)[number]) =>
-    n.section ? home && section === n.section : Boolean(n.routes?.some((r) => pathname.startsWith(r)));
+  const isActive = (n: (typeof NAV)[number]) => n.routes.some((r) => pathname.startsWith(r));
 
   return (
     <header className={`bar ${home ? "" : "bar--page"} ${!home || scrolled ? "is-solid" : ""}`}>
@@ -100,9 +79,9 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
         <div className="bar__actions">
           <SearchTrigger />
           {account ? <AccountMenu account={account} onNamed={(name) => setAccount({ ...account, name })} /> : signIn && <SignInDialog pending={checking} />}
-          <a className="btn btn--primary btn--sm" href={DISCORD_URL} target="_blank" rel="noopener" aria-label="Join the Discord">
-            <Icon id="i-discord" /><span>Discord</span>
-          </a>
+          <Link className="btn btn--primary btn--sm" href="/#download" aria-label="Download Eclipse">
+            <Icon id="i-download" /><span>Download</span>
+          </Link>
           <Sheet open={menu} onOpenChange={setMenu}>
             <SheetTrigger className="icon-btn bar__menu" aria-label="Open the menu">
               <Menu />
@@ -118,6 +97,12 @@ export function SiteHeader({ signIn }: { signIn: boolean }) {
                     {n.label}
                   </Link>
                 ))}
+                <Link href="/#support" onClick={() => setMenu(false)} className="rounded-md px-3 py-2 hover:bg-surface-high hover:text-ink">
+                  Support
+                </Link>
+                <a href={DISCORD_URL} target="_blank" rel="noopener" className="rounded-md px-3 py-2 hover:bg-surface-high hover:text-ink">
+                  Discord
+                </a>
                 <a href={GITHUB_URL} target="_blank" rel="noopener" className="rounded-md px-3 py-2 hover:bg-surface-high hover:text-ink">
                   GitHub
                 </a>

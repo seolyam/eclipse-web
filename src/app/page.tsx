@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 /** Real captures once players have posted them, and real looks until then. */
 async function FeaturedLooks() {
   const { posts: captures } = await repository.listOutfits({ sort: "top", captured: true, pageSize: 4 });
-  const looks = captures.length ? [] : (await repository.listOutfits({ sort: "top", pageSize: 4 })).posts;
+  const looks = captures.length ? [] : (await repository.listOutfits({ sort: "top", pageSize: 4, itemSets: true })).posts;
   if (!captures.length && !looks.length) return null;
   const community = captures.length > 0 || looks.some((post) => post.authorId);
   return (
@@ -32,8 +32,8 @@ async function FeaturedLooks() {
                 : "Real item sets from the game, every one a code away from your character."}
             </p>
           </header>
-          <Link href={captures.length ? "/showcase" : "/wardrobe"} className="btn btn--ghost btn--sm">
-            <span>{captures.length ? "See the Showcase" : "Open the Wardrobe"}</span><Icon id="i-arrow" />
+          <Link href={captures.length ? "/wardrobe?pictures=true" : "/wardrobe"} className="btn btn--ghost btn--sm">
+            <span>Open the Wardrobe</span><Icon id="i-arrow" />
           </Link>
         </div>
         <div className="featured">

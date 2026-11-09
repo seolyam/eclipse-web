@@ -20,7 +20,7 @@ interface OutfitRow {
   class_name: ClassName | null;
   armor: ArmorType | null;
   race: string | null;
-  category: Category;
+  categories: Category[];
   tags: string[];
   upvotes: number;
   created_at: string;
@@ -64,7 +64,7 @@ const toGameSet = (r: GameSetRow): GameSet => ({
 // The hint is required: outfit_votes, outfit_reports and outfit_bookmarks also join
 // outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,category,tags,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
+  "id,title,code,class_name,armor,race,categories,tags,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
   // outfits refers to itself, so the hint is the column: it picks the original, not the remixes.
   "remix:outfits!remixed_from(id,title,profiles!outfits_author_id_fkey(display_name))";
 
@@ -78,7 +78,7 @@ const toPost = (r: OutfitRow): OutfitPost => ({
   className: r.class_name,
   armor: r.armor,
   race: r.race,
-  category: r.category,
+  categories: r.categories,
   tags: r.tags,
   upvotes: r.upvotes,
   createdAt: r.created_at,
@@ -132,7 +132,8 @@ const outfitRows = (
   if (f.className) query = query.eq("class_name", f.className);
   if (f.race) query = query.eq("race", f.race);
   if (f.armor) query = query.eq("armor", f.armor);
-  if (f.category) query = query.eq("category", f.category);
+  // categories is written by a trigger from the code (the look_categories migration).
+  if (f.category) query = query.contains("categories", [f.category]);
   if (f.tag) query = query.contains("tags", [f.tag]);
   // items is written by a trigger from the code (the look_items migration).
   if (f.item) query = query.contains("items", [f.item]);
@@ -169,8 +170,9 @@ async function publishedOutfits(f: OutfitFilters): Promise<OutfitList> {
   return { posts: (data as unknown as OutfitRow[]).map(toPost), total: count ?? 0 };
 }
 
-/** Published looks, then the game's own sets, as one list to page through. */
+/** Published looks, then the game's own sets when asked for, as one list to page through. */
 async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
+  if (!f.itemSets) return publishedOutfits(f);
   const size = f.pageSize ?? LOOKS_PER_PAGE;
   const from = (Math.max(1, f.page ?? 1) - 1) * size;
   const published = await publishedOutfits(f);
@@ -244,7 +246,6 @@ export const supabaseRepository: Repository = {
         class_name: input.className ?? null,
         armor: input.armor ?? null,
         race: input.race ?? null,
-        category: input.category,
         tags: input.tags,
         gallery: input.gallery,
         remixed_from: input.remixedFrom ?? null,

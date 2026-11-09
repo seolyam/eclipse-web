@@ -60,7 +60,6 @@ function withCodeTags({ code, tags }: { code: string; tags: string[] }): string[
 
 function revalidateHub() {
   revalidatePath("/wardrobe");
-  revalidatePath("/showcase");
   revalidatePath("/");
 }
 
@@ -108,7 +107,7 @@ export async function sendLookToGame(id: string) {
     return { ok: false as const, error: "This look is too large to send. Copy its code instead." };
   }
   const r = await repository.sendToGame(post.title, post.code);
-  if (r.ok) revalidatePath("/sets");
+  if (r.ok) revalidatePath("/loadouts");
   return r;
 }
 
@@ -118,13 +117,13 @@ export async function createGameLinkCode() {
 
 export async function unlinkGame(id: string) {
   const r = await repository.unlinkGame(id);
-  if (r.ok) revalidatePath("/sets");
+  if (r.ok) revalidatePath("/loadouts");
   return r;
 }
 
 export async function removeGameSet(id: string) {
   const r = await repository.removeGameSet(id);
-  if (r.ok) revalidatePath("/sets");
+  if (r.ok) revalidatePath("/loadouts");
   return r;
 }
 

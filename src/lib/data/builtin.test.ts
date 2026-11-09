@@ -132,7 +132,7 @@ describe("the built-in looks", () => {
 
   it("refuses every write instead of pretending to keep it", async () => {
     const before = (await repo.listOutfits({ sort: "top" })).total;
-    const created = await repo.createOutfit({ title: "A look", code: "ECA1:c2xvdCAwIDEK", category: "Armor", tags: [], gallery: [] });
+    const created = await repo.createOutfit({ title: "A look", code: "ECA1:c2xvdCAwIDEK", tags: [], gallery: [] });
     expect(created.ok).toBe(false);
     expect((await repo.upvote("crystal-scholar")).ok).toBe(false);
     expect((await repo.uploadScreenshot(new File([], "a.png"))).ok).toBe(false);
@@ -149,7 +149,7 @@ describe("the built-in looks", () => {
 
 describe("submissions", () => {
   it("refuses one the game could not wear", () => {
-    const base = { title: "A look", category: "Armor", tags: [] };
+    const base = { title: "A look", tags: [] };
     expect(submitOutfitSchema.safeParse({ ...base, code: "hello" }).success).toBe(false);
     expect(submitOutfitSchema.safeParse({ ...base, code: "ECA1:c2xvdCAwIDEK" }).success).toBe(true);
     expect(submitOutfitSchema.safeParse({ ...base, title: "a", code: "ECA1:c2xvdCAwIDEK" }).success).toBe(false);

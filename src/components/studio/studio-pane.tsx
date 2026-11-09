@@ -115,7 +115,7 @@ export function StudioPane({
       <header className="flex items-center gap-3 p-5 pb-4">
         <Crest post={post} resolved={resolved} />
         <div className="min-w-0">
-          <p className="text-xs text-amber">{[line, post.category].filter(Boolean).join("  |  ")}</p>
+          <p className="text-xs text-amber">{[line, ...post.categories].filter(Boolean).join("  |  ")}</p>
           <Heading className="text-2xl leading-tight sm:text-3xl">{post.title}</Heading>
         </div>
       </header>

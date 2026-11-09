@@ -72,9 +72,9 @@ function Piece({ slot, rack, side, active, onChoose }: {
   );
 }
 
-/** The Inspector's publish form, holding this code and crediting the look it started from. */
+/** Import's publish form, holding this code and crediting the look it started from. */
 const publishHref = (code: string, from: string | null) =>
-  `/inspector?${new URLSearchParams(from ? { code, from } : { code })}`;
+  `/loadouts?${new URLSearchParams(from ? { code, from } : { code })}`;
 
 /** Pick pieces slot by slot, see them on a character, and take away a code. */
 export function DressingRoom({ itemCount, start, from = null, canPublish = false }: {
@@ -266,8 +266,8 @@ export function DressingRoom({ itemCount, start, from = null, canPublish = false
       </div>
       <p className="flex flex-wrap justify-between gap-x-4 gap-y-1 px-5 pb-4 text-[0.7rem] text-ink-faint">
         <span>
-          The preview draws the current game&apos;s models, and &quot;Your own race&quot; shows a human. A game without HD models or the race pack shows a simpler body of a close race. Import the code in the game to see it on your character. To publish a look, paste its code into the{" "}
-          <Link href="/inspector" className="underline underline-offset-2 hover:text-ink-dim">Inspector</Link>.
+          The preview draws the current game&apos;s models, and &quot;Your own race&quot; shows a human. A game without HD models or the race pack shows a simpler body of a close race. Import the code in the game to see it on your character. To publish a look, paste its code into{" "}
+          <Link href="/loadouts" className="underline underline-offset-2 hover:text-ink-dim">Import</Link>.
         </span>
         <span>
           Scene and rings:{" "}

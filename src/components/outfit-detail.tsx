@@ -27,7 +27,7 @@ export async function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost;
     post.className,
     post.race ? RACE_LABEL[post.race] : null,
     post.armor ? ARMOR_LABEL[post.armor] : null,
-    post.category,
+    ...post.categories,
     ...post.tags,
   ].filter((t): t is string => Boolean(t));
 

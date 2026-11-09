@@ -38,13 +38,13 @@ export default async function SetPage({ params }: Props) {
   if (!set) notFound();
   return (
     <main id="main" className="wrap flex flex-col gap-6 py-10">
-      <Link href="/sets" className="flex items-center gap-1.5 self-start text-sm text-ink-dim hover:text-ink">
+      <Link href="/loadouts" className="flex items-center gap-1.5 self-start text-sm text-ink-dim hover:text-ink">
         <ArrowLeft className="size-4" aria-hidden="true" />
-        Your sets
+        Loadouts
       </Link>
       <div className="flex items-start justify-between gap-3">
         <HubTitle title={set.name} blurb="Only you can see this set. Publish it below to share it with everyone." />
-        <RemoveGameSet id={set.id} name={set.name} after="/sets" />
+        <RemoveGameSet id={set.id} name={set.name} after="/loadouts" />
       </div>
       {set.gallery.length > 0 && (
         // What the studio sent, where the player lands: the form holding it is below the breakdown.

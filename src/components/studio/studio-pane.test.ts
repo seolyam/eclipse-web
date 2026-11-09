@@ -9,7 +9,7 @@ import { StudioPane } from "./studio-pane";
 const piece = (slot: number, display: number | null): ResolvedSlot =>
   ({ slot, label: "", item: 40000 + slot, name: `Piece ${slot}`, icon: null, quality: 4, display });
 
-const post = { id: "look-1", title: "Raid night", code: "", className: null, category: "Raid", gallery: [] } as unknown as OutfitPost;
+const post = { id: "look-1", title: "Raid night", code: "", className: null, categories: ["Armor"], gallery: [] } as unknown as OutfitPost;
 
 const render = (slots: ResolvedSlot[]) =>
   renderToStaticMarkup(

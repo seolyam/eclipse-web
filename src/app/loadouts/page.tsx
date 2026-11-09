@@ -3,25 +3,59 @@ import Image from "next/image";
 import Link from "next/link";
 import { after } from "next/server";
 import { CopyButton } from "@/components/copy-button";
+import { Decoder, type RemixOf } from "@/components/decoder";
 import { LinkGame, RemoveGameSet, UnlinkGame } from "@/components/game-sync";
-import { HubTitle } from "@/components/hub";
+import { DRESSING_TABS, HubTabs, HubTitle } from "@/components/hub";
 import { ItemRing } from "@/components/item-icon";
 import { SignInOptions } from "@/components/sign-in-dialog";
 import { Button } from "@/components/ui/button";
 import { resolveOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
-import { repository } from "@/lib/data";
+import { getOutfit, repository } from "@/lib/data";
 import type { GameLink, GameSet } from "@/lib/data/types";
 import { VISIBLE_SLOTS } from "@/lib/domain";
 import { screenshotUrl, thumbOf } from "@/lib/screenshots";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Your sets",
-  description: "The looks saved in your game, private to you.",
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = pageMetadata("/loadouts");
 
-const BLURB = "The looks saved in your game, backed up here and private to you. Publishing one is always your choice.";
+const BLURB = "Import a code to see what it holds, and keep the loadouts saved in your game backed up here, private to you.";
+
+type Props = { searchParams?: Promise<{ code?: string | string[]; from?: string | string[] }> };
+
+// Above any loadout the Dressing room writes, and far below what a URL can carry.
+const MAX_LINKED_CODE = 8192;
+
+/** Only a look someone published can be credited. A game set has nobody to credit. */
+async function original(id: unknown): Promise<RemixOf | null> {
+  if (typeof id !== "string" || !id) return null;
+  const post = await getOutfit(id);
+  return post?.authorId ? { id: post.id, title: post.title, author: post.author } : null;
+}
+
+/** A ?code= link opens on Import, crediting the published look it came from. */
+async function linkedCode({ searchParams }: Props) {
+  const { code, from } = (await searchParams) ?? {};
+  const linked = typeof code === "string" && code.length <= MAX_LINKED_CODE ? code : "";
+  const remixOf = linked && repository.live ? await original(from) : null;
+  return { linked, remixOf };
+}
+
+/** What the Inspector was on its own page: paste a code, see it, edit it, publish it. */
+function Import({ linked, remixOf }: { linked: string; remixOf: RemixOf | null }) {
+  return (
+    <section aria-labelledby="import-heading" className="flex flex-col gap-3">
+      <div>
+        <h2 id="import-heading" className="text-sm font-medium text-ink">Import</h2>
+        <p className="text-xs text-ink-dim">
+          Paste an ECA1: loadout or an ECW1: world code to see what it holds
+          {repository.live ? ", edit it, or publish it with your screenshots" : " and edit it"}. Use Share in the game to get one.
+        </p>
+      </div>
+      <Decoder initial={linked} canPublish={repository.live} remixOf={remixOf} />
+    </section>
+  );
+}
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["day", 86_400_000],
@@ -128,32 +162,46 @@ function SetCard({ set, now }: { set: GameSet; now: number }) {
   );
 }
 
-export default async function SetsPage() {
-  const account = await repository.getAccount();
+const SIGN_IN_NOTE = "Sign in to see the loadouts saved in your game.";
+
+export default async function LoadoutsPage({ searchParams }: Props) {
+  const [account, imported] = await Promise.all([repository.getAccount(), linkedCode({ searchParams })]);
+  const head = (
+    <>
+      <HubTitle title="Loadouts" blurb={BLURB} />
+      <HubTabs current="/loadouts" tabs={DRESSING_TABS} label="Loadouts views" />
+      <Import {...imported} />
+    </>
+  );
   if (!account) {
     return (
-      <main id="main" className="wrap flex flex-col gap-6 py-10">
-        <HubTitle title="Your sets" blurb={BLURB} />
-        {repository.live ? (
-          <div className="max-w-sm">
-            <SignInOptions />
-          </div>
-        ) : (
-          <p className="text-sm text-ink-dim">Sets are not open yet: the community database is not connected.</p>
-        )}
+      <main id="main" className="wrap flex flex-col gap-8 py-10">
+        {head}
+        <section aria-labelledby="sets-heading" className="flex flex-col gap-3">
+          <h2 id="sets-heading" className="text-xs font-medium text-ink-faint">Your loadouts</h2>
+          {repository.live ? (
+            <div className="flex max-w-sm flex-col gap-3">
+              <p className="text-sm text-ink-dim">{SIGN_IN_NOTE}</p>
+              <SignInOptions />
+            </div>
+          ) : (
+            <p className="text-sm text-ink-dim">Loadouts are not open yet: the community database is not connected.</p>
+          )}
+        </section>
       </main>
     );
   }
 
-  // Pictures of a look that changed or went: removed once this page has answered.
-  after(() => repository.clearOrphanPictures());
+  // Pictures of a look that changed or went: removed alongside this render, and awaited
+  // past the response. Started here, not in an after() callback, which cannot read cookies.
+  after(repository.clearOrphanPictures());
   const [links, sets] = await Promise.all([repository.listGameLinks(), repository.listGameSets()]);
   const now = Date.now();
   const waiting = sets.filter((set) => set.gallery.length > 0);
 
   return (
     <main id="main" className="wrap flex flex-col gap-8 py-10">
-      <HubTitle title="Your sets" blurb={BLURB} />
+      {head}
       {waiting.length > 0 && <ReadyToPublish sets={waiting} />}
 
       <section aria-labelledby="games-heading" className="flex max-w-xl flex-col gap-3">
@@ -172,7 +220,7 @@ export default async function SetsPage() {
 
       <section aria-labelledby="sets-heading" className="flex flex-col gap-3">
         <h2 id="sets-heading" className="text-xs font-medium text-ink-faint">
-          {sets.length === 1 ? "1 set" : `${sets.length} sets`}
+          {sets.length === 1 ? "1 loadout" : `${sets.length} loadouts`}
         </h2>
         {sets.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

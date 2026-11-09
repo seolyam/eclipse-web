@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { SearchParams } from "nuqs/server";
 import { BuiltinNotice, HubTabs, HubTitle, listFromSearch, NoLooks, Pager, PublishButton } from "@/components/hub";
-import { OutfitCard } from "@/components/outfit-card";
+import { OutfitCard, OutfitPoster } from "@/components/outfit-card";
 import { OutfitFilters } from "@/components/outfit-filters";
 import { itemName } from "@/lib/catalog";
 import { repository } from "@/lib/data";
@@ -16,7 +16,7 @@ export default async function WardrobePage({ searchParams }: { searchParams: Pro
   return (
     <main id="main" className="wrap flex flex-col gap-5 py-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <HubTitle title="Wardrobe" blurb="Copy a look, then use Import on the Loadout page in the game." />
+        <HubTitle title="Wardrobe" blurb="Loadouts the Eclipse community has published from their games. Find one you like, copy its code, and use Import on the Loadout page to wear it." />
         <PublishButton />
       </div>
       <HubTabs current="/wardrobe" />
@@ -40,11 +40,15 @@ export default async function WardrobePage({ searchParams }: { searchParams: Pro
         </p>
       )}
       <OutfitFilters count={total} live={repository.live} />
-      {posts.length ? (
+      {!posts.length ? <NoLooks /> : filters.pictures ? (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+          {posts.map((post) => <OutfitPoster key={post.id} post={post} />)}
+        </div>
+      ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => <OutfitCard key={post.id} post={post} />)}
         </div>
-      ) : <NoLooks />}
+      )}
       <Pager base="/wardrobe" filters={filters} total={total} />
     </main>
   );

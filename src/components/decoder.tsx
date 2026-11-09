@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { encodeOutfit } from "@/lib/codec/outfit";
 import { MAX_SCREENSHOT_BYTES, MAX_SCREENSHOTS, SCREENSHOT_TYPES } from "@/lib/codec/schema";
 import { WORLD_MODES, WORLD_ROWS } from "@/lib/codec/world";
-import { ARMOR_LABEL, ARMOR_TYPES, CATEGORIES, CLASSES, RACE_LABEL, toCss, type ArmorType, type Category, type ClassName } from "@/lib/domain";
+import { ARMOR_LABEL, ARMOR_TYPES, CLASSES, RACE_LABEL, toCss, type ArmorType, type ClassName } from "@/lib/domain";
 import { screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { shrinkForUpload } from "@/lib/shrink-upload";
 
@@ -142,7 +142,6 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
   const [className, setClassName] = useState<ClassName | null>(null);
   const [armor, setArmor] = useState<ArmorType | null>(null);
   const [race, setRace] = useState<string | null>(null);
-  const [category, setCategory] = useState<Category>("Armor");
   const [tags, setTags] = useState("");
   const [gallery, setGallery] = useState<string[]>(fromSet?.gallery ?? []);
   const [published, setPublished] = useState<string | null>(null);
@@ -159,7 +158,6 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
         className: className ?? undefined,
         armor: armor ?? undefined,
         race: race ?? undefined,
-        category,
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6),
         gallery,
         remixedFrom: credit && remixOf ? remixOf.id : undefined,
@@ -200,7 +198,6 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
         <Choice id="outfit-class" label="Class" value={className} options={CLASSES} onChange={setClassName} />
         <Choice id="outfit-armor" label="Armor" value={armor} options={ARMOR_TYPES} format={(a) => ARMOR_LABEL[a]} onChange={setArmor} />
         <Choice id="outfit-race" label="Race" value={race} options={Object.keys(RACE_LABEL)} format={(k) => RACE_LABEL[k]} onChange={setRace} />
-        <Choice id="outfit-category" label="Category" value={category} options={CATEGORIES} required onChange={(c) => c && setCategory(c)} />
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="outfit-tags" className="text-xs text-ink-dim">Tags, separated by commas</label>

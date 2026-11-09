@@ -33,15 +33,28 @@ function Crest({ post, resolved }: { post: OutfitPost; resolved: ResolvedOutfit 
 export function OutfitCard({ post }: { post: OutfitPost }) {
   const resolved = resolve(post);
   const tags = [
-    post.category,
+    ...post.categories,
     post.race ? RACE_LABEL[post.race] : null,
     post.armor ? ARMOR_LABEL[post.armor] : null,
   ].filter((t): t is string => Boolean(t));
+  const capture = post.gallery[0];
 
   return (
     <article className="card-stroke corona-rim relative isolate flex flex-col overflow-hidden rounded-lg border border-line bg-surface transition-colors hover:bg-surface-raised">
       <div aria-hidden className="absolute inset-0 -z-10 bg-cover bg-center opacity-[0.14]" style={{ backgroundImage: `url(${backdropFor(post.id)})` }} />
-      <Link href={`/wardrobe/${post.id}`} className="flex flex-1 flex-col gap-3 p-4" aria-label={`Open ${post.title}`}>
+      <Link href={`/wardrobe/${post.id}`} className="group flex flex-1 flex-col gap-3 p-4" aria-label={`Open ${post.title}`}>
+        {/* A real capture beats a row of icons; only looks with one show it. */}
+        {capture && (
+          <div className="relative -mx-4 -mt-4 aspect-[16/10] overflow-hidden bg-[#0d0c0b]">
+            <Image src={thumbOf(capture)} alt="" fill unoptimized sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover transition-transform duration-[1.2s] group-hover:scale-[1.03]" />
+            <div aria-hidden className="absolute inset-0 bg-linear-to-t from-[rgba(10,8,6,0.85)] via-transparent to-transparent" />
+            <div className="absolute bottom-2.5 left-3 flex -space-x-2">
+              {pieces(resolved).slice(0, 6).map((p) => (
+                <ItemRing key={p.slot} icon={p.icon} slot={p.slot} quality={p.quality} size={34} hidden={p.item === 0} />
+              ))}
+            </div>
+          </div>
+        )}
         <div className="flex items-center gap-2.5">
           <Crest post={post} resolved={resolved} />
           <div className="min-w-0">
@@ -52,11 +65,13 @@ export function OutfitCard({ post }: { post: OutfitPost }) {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap justify-center gap-1">
-          {pieces(resolved).slice(0, 8).map((p) => (
-            <ItemRing key={p.slot} icon={p.icon} slot={p.slot} quality={p.quality} size={52} hidden={p.item === 0} />
-          ))}
-        </div>
+        {!capture && (
+          <div className="flex flex-wrap justify-center gap-1">
+            {pieces(resolved).slice(0, 8).map((p) => (
+              <ItemRing key={p.slot} icon={p.icon} slot={p.slot} quality={p.quality} size={52} hidden={p.item === 0} />
+            ))}
+          </div>
+        )}
         <ul className="mt-auto flex flex-wrap gap-1">
           {tags.map((t) => (
             <li key={t} className="rounded-full bg-surface-high px-2 py-0.5 text-xs text-ink-dim">{t}</li>
@@ -86,7 +101,7 @@ export function OutfitPoster({ post }: { post: OutfitPost }) {
             ))}
           </div>
           <h3 className="font-serif text-lg leading-tight font-normal tracking-[-0.01em]">{post.title}</h3>
-          <p className="truncate text-xs text-ink-dim">{line || post.category}</p>
+          <p className="truncate text-xs text-ink-dim">{line || post.categories.join(", ")}</p>
         </div>
       </Link>
       {/* Stacked: side by side they overlap on a phone's two-column grid. */}

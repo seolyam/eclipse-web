@@ -4,7 +4,7 @@ The official site for the Eclipse overlay: landing page, community Wardrobe and 
 
 This repo is public. Keep secrets, project IDs and personal details out of commits and this file.
 
-`GOALS.md` (product intent) and `TASKS.md` (open work) are gitignored local notes. They can lag the code, so confirm a claim against the code before acting on it.
+`.notes/GOALS.md` (product intent) and `.notes/TASKS.md` (open work) are local notes, linked in from the private dev-notes repo and excluded from git. They can lag the code, so confirm a claim against the code before acting on it.
 
 ## Verify
 
@@ -62,7 +62,7 @@ Use the CLIs: `pnpm exec supabase` and the global `vercel`. Reach for an MCP onl
 
 - **sharp** is pinned to 0.34.5 with a pnpm override, because 0.35 builds fine and then fails to load on Vercel. Raising it needs a real screenshot upload on production as proof. Keep it lazily imported in `src/lib/data/compress.ts`; a top-level import took every data page down.
 - **Data layer:** `src/lib/data/index.ts` uses Supabase when configured and `builtin.ts` otherwise, so a clone runs with no setup. Builtin refuses writes.
-- **Untrusted data comes from the database:** what a look wears (`outfits.items`) is written by a trigger from its code, never by the client. Derive anything that filters or ranks other people's content the same way.
+- **Untrusted data comes from the database:** what a look wears (`outfits.items`) and what it changes (`outfits.categories`, mirrored in `src/lib/codec/categories.ts`) are written by triggers from its code, never by the client. Derive anything that filters or ranks other people's content the same way.
 - **The Wardrobe drawer:** `wardrobe/@modal` intercepts `/wardrobe/[id]`. Every route the drawer can link back to needs a `@modal` page that renders nothing, or the drawer stays open after a soft navigation.
 - **Weekly Discord post:** `vercel.json` runs `/api/cron/look-of-the-week` on Mondays. It needs `CRON_SECRET` and `DISCORD_WEBHOOK_URL` in production, posts only when a look has earned it, and never pings anyone.
 - **Sign-in** is Discord only. A sign-in that seems to do nothing is usually an address missing from Supabase's Redirect URLs, which silently falls back to the Site URL. Check `auth.users.last_sign_in_at` first, then the auth logs.

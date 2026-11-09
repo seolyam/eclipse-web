@@ -1,6 +1,7 @@
 import "server-only";
 import setsJson from "@/data/catalog/sets.json";
 import { itemIcon } from "@/lib/catalog";
+import { lookCategories } from "@/lib/codec/categories";
 import { decodeOutfit, emptyOutfit, encodeOutfit } from "@/lib/codec/outfit";
 import { ARMOR_CLASSES, ARMOR_TYPES, LOOKS_PER_PAGE, type ArmorType } from "@/lib/domain";
 import type { OutfitFilters, OutfitPost, Repository } from "./types";
@@ -43,7 +44,7 @@ function setLook(set: SetRow): OutfitPost {
     className: null,
     armor: set.armor,
     race: null,
-    category: "Armor",
+    categories: lookCategories(outfit),
     tags: [
       ...(/gladiator/i.test(set.name) ? ["pvp"] : []),
       ...(Object.values(set.pieces).some((i) => i > 200000) ? ["retail"] : []),
@@ -69,7 +70,7 @@ function crystalScholar(): OutfitPost {
     className: null,
     armor: "cloth",
     race: null,
-    category: "Armor",
+    categories: lookCategories(outfit),
     tags: ["saved look", "retail", "mount"],
     upvotes: null,
     createdAt: null,
@@ -115,7 +116,7 @@ function matches(o: OutfitPost, f: OutfitFilters): boolean {
   if (f.className && !wornBy(o, f.className)) return false;
   if (f.race && o.race !== f.race) return false;
   if (f.armor && o.armor !== f.armor) return false;
-  if (f.category && o.category !== f.category) return false;
+  if (f.category && !o.categories.includes(f.category)) return false;
   if (f.tag && !o.tags.includes(f.tag)) return false;
   if (f.item && !wears(o, f.item)) return false;
   if (f.q) {

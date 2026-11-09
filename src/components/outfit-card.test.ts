@@ -6,7 +6,7 @@ import type { OutfitPost } from "@/lib/data/types";
 vi.mock("server-only", () => ({}));
 vi.mock("@/app/actions", () => ({ upvoteOutfit: vi.fn() }));
 
-import { OutfitPoster } from "./outfit-card";
+import { OutfitCard, OutfitPoster } from "./outfit-card";
 
 const POST: OutfitPost = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -18,7 +18,7 @@ const POST: OutfitPost = {
   className: null,
   armor: null,
   race: null,
-  category: "Armor",
+  categories: ["Armor"],
   tags: [],
   upvotes: 12,
   createdAt: "2026-11-01T00:00:00.000Z",
@@ -37,6 +37,20 @@ describe("a Showcase poster", () => {
   it("shows no count nobody could have recorded", () => {
     const html = render({ ...POST, upvotes: null });
     expect(html).not.toContain("Upvote");
+    expect(html).toContain('aria-label="Copy code"');
+  });
+});
+
+describe("a Wardrobe card", () => {
+  const card = (post: OutfitPost) => renderToStaticMarkup(createElement(OutfitCard, { post }));
+
+  it("leads with the look's own capture when it has one", () => {
+    expect(card(POST)).toContain("capture-thumb.webp");
+  });
+
+  it("shows no picture for a look that has none", () => {
+    const html = card({ ...POST, gallery: [] });
+    expect(html).not.toContain("capture");
     expect(html).toContain('aria-label="Copy code"');
   });
 });

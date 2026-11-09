@@ -14,15 +14,21 @@ export function HubTitle({ title, blurb }: { title: string; blurb: string }) {
   );
 }
 
-const TABS = [
+type Tab = { href: string; label: string };
+
+const TABS: Tab[] = [
   { href: "/wardrobe", label: "Wardrobe" },
-  { href: "/showcase", label: "Showcase" },
-  { href: "/dressing-room", label: "Dressing room" },
   { href: "/mounts", label: "Mounts" },
 ];
 
-/** The filters both post views read from the URL. */
-export async function listFromSearch(searchParams: Promise<SearchParams>, { captured = false } = {}) {
+/** The Dressing room's views: your loadouts with a code to import, and the builder. */
+export const DRESSING_TABS: Tab[] = [
+  { href: "/loadouts", label: "Loadouts" },
+  { href: "/dressing-room", label: "Dressing room" },
+];
+
+/** The filters the Wardrobe reads from the URL. */
+export async function listFromSearch(searchParams: Promise<SearchParams>) {
   const f = await wardrobeCache.parse(searchParams);
   const list = await repository.listOutfits({
     q: f.q,
@@ -34,7 +40,8 @@ export async function listFromSearch(searchParams: Promise<SearchParams>, { capt
     authorId: f.author,
     saved: f.saved,
     item: f.item !== null && f.item > 0 ? f.item : null,
-    captured,
+    captured: f.pictures,
+    itemSets: f.sets,
     sort: f.sort,
     page: f.page,
   });
@@ -44,7 +51,7 @@ export async function listFromSearch(searchParams: Promise<SearchParams>, { capt
 export function PublishButton() {
   if (!repository.live) return null;
   return (
-    <Link href="/inspector" className="btn btn--ghost btn--sm">
+    <Link href="/loadouts" className="btn btn--ghost btn--sm">
       <span>Publish a look</span>
     </Link>
   );
@@ -68,16 +75,7 @@ export function NoLooks() {
   return (
     <p className={EMPTY}>
       Nothing here yet. Clear a filter, or{" "}
-      <Link href="/inspector" className="text-amber underline underline-offset-2">publish the first look</Link>.
-    </p>
-  );
-}
-
-export function NoCaptures() {
-  return (
-    <p className={EMPTY}>
-      No studio captures have been published yet. The Showcase lists only real in-game screenshots, and the looks themselves are in the{" "}
-      <Link href="/wardrobe" className="text-amber underline underline-offset-2">Wardrobe</Link>.
+      <Link href="/loadouts" className="text-amber underline underline-offset-2">publish the first look</Link>.
     </p>
   );
 }
@@ -109,11 +107,11 @@ export function Pager({ base, filters, total }: { base: string; filters: Filters
   );
 }
 
-/** The hub's views: the same posts by code or by picture, and the dressing room. */
-export function HubTabs({ current }: { current: string }) {
+/** A section's views as pills: the Wardrobe's by default, or the Dressing room's. */
+export function HubTabs({ current, tabs = TABS, label = "Wardrobe views" }: { current: string; tabs?: Tab[]; label?: string }) {
   return (
-    <nav aria-label="Wardrobe views" className="flex flex-wrap gap-1.5">
-      {TABS.map((t) => (
+    <nav aria-label={label} className="flex flex-wrap gap-1.5">
+      {tabs.map((t) => (
         <Link key={t.href} href={t.href} className="pill" aria-current={t.href === current ? "page" : undefined}>
           {t.label}
         </Link>

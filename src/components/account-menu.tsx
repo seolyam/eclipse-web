@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, ChevronDown, Flag, Layers, LogOut, Settings, Shirt } from "lucide-react";
+import { Bookmark, ChevronDown, Flag, Heart, Layers, LogOut, Settings, Shirt } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { AccountDialog } from "@/components/account-dialog";
@@ -12,7 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Icon } from "@/components/site/icons";
 import { PROVIDER_NAMES } from "@/lib/account";
+import { DISCORD_URL } from "@/lib/site";
 import type { Account } from "@/lib/data/types";
 
 /** The header's signed-in control. Settings opens by itself until a name is chosen. */
@@ -47,7 +49,7 @@ export function AccountMenu({ account, onNamed }: { account: Account; onNamed: (
             <Link href="/wardrobe?saved=true&sort=newest"><Bookmark />Bookmarks</Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/sets"><Layers />Your sets</Link>
+            <Link href="/loadouts"><Layers />Loadouts</Link>
           </DropdownMenuItem>
           {account.moderator && (
             <DropdownMenuItem asChild>
@@ -55,6 +57,13 @@ export function AccountMenu({ account, onNamed }: { account: Account; onNamed: (
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onSelect={() => setSettings(true)}><Settings />Settings</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/#support"><Heart />Support Eclipse</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href={DISCORD_URL} target="_blank" rel="noopener"><Icon id="i-discord" />Join the Discord</a>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => signOut.current?.requestSubmit()}><LogOut />Sign out</DropdownMenuItem>
         </DropdownMenuContent>

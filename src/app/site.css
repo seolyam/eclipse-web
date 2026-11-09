@@ -339,6 +339,8 @@
   text-wrap: balance;
 }
 .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.7rem; margin-top: 1.75rem; }
+/* A second row, such as the Discord invite under Download, sits close to the first. */
+.cta + .cta { margin-top: 0.7rem; }
 
 .hero__stage {
   position: relative;

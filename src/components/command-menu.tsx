@@ -10,8 +10,8 @@ import type { SearchEntry } from "@/lib/data/types";
 
 const PAGES = [
   { href: "/wardrobe", label: "Wardrobe", icon: Shirt },
-  { href: "/showcase", label: "Showcase", icon: Images },
-  { href: "/inspector", label: "Inspect a code", icon: Braces },
+  { href: "/wardrobe?pictures=true", label: "Looks with pictures", icon: Images },
+  { href: "/loadouts", label: "Import a code", icon: Braces },
   { href: "/dressing-room", label: "Dressing room", icon: Shirt },
   { href: "/mounts", label: "Mounts", icon: Rabbit },
   { href: "/guide", label: "Setup guide", icon: BookOpen },
