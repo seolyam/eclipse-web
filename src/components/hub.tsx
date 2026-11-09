@@ -41,6 +41,7 @@ export async function listFromSearch(searchParams: Promise<SearchParams>) {
     saved: f.saved,
     item: f.item !== null && f.item > 0 ? f.item : null,
     captured: f.pictures,
+    itemSets: f.sets,
     sort: f.sort,
     page: f.page,
   });

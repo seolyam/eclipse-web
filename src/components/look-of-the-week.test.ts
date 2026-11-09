@@ -20,7 +20,7 @@ const post: OutfitPost = {
   className: null,
   armor: null,
   race: null,
-  category: "Armor",
+  categories: ["Armor"],
   tags: [],
   upvotes: 12,
   createdAt: "2026-11-01T00:00:00.000Z",

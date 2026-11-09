@@ -104,6 +104,11 @@ export function OutfitFilters({ count, live }: { count: number; live: boolean })
               With pictures
             </button>
           )}
+          {live && (
+            <button type="button" className="pill" aria-pressed={f.sets} title="The game's own armor sets, not published by players" onClick={() => set({ sets: !f.sets })}>
+              Item sets
+            </button>
+          )}
           {live && CATEGORIES.map((c) => (
             <button
               key={c}

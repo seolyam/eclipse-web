@@ -14,7 +14,8 @@ export interface OutfitPost {
   armor: ArmorType | null;
   /** A key of RACE_LABEL. */
   race: string | null;
-  category: Category;
+  /** What the look changes, read from its code by the database, never by its author. */
+  categories: Category[];
   tags: string[];
   /** Null where nobody can vote: the site never shows a count it did not record. */
   upvotes: number | null;
@@ -44,6 +45,9 @@ export interface OutfitFilters {
   tag?: string | null;
   /** Only looks with a real studio capture: what the Showcase lists. */
   captured?: boolean;
+  /** Also list the game's own item sets after the published looks. Without a
+   *  database they are all there is, so the builtin repository always lists them. */
+  itemSets?: boolean;
   /** Only looks this account published. */
   authorId?: string | null;
   /** Only looks the signed-in account bookmarked. */

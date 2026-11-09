@@ -22,6 +22,8 @@ export const wardrobeParsers = {
   saved: parseAsBoolean.withDefault(false),
   /** Only looks with a studio picture from the game, shown picture first. */
   pictures: parseAsBoolean.withDefault(false),
+  /** Also the game's own item sets, which are hidden so the Wardrobe reads as the community's. */
+  sets: parseAsBoolean.withDefault(false),
   /** Looks wearing one item, by its id. */
   item: parseAsInteger,
   sort: parseAsStringLiteral(SORTS).withDefault("trending"),

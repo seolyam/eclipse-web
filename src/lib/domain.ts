@@ -38,9 +38,11 @@ export const ARMOR_CLASSES: Record<ArmorType, readonly ClassName[]> = {
   plate: ["Death Knight", "Paladin", "Warrior"],
 };
 
-// What a post is about, chosen by its author. Retail and PvP looks are Armor with
-// a tag.
-export const CATEGORIES = ["Armor", "Race morph", "Creature morph", "Incarnations", "Spell visuals", "3D effects"] as const;
+// What a look changes, read from its code (src/lib/codec/categories.ts), in the order
+// it is listed. Only what a code carries: the overlay keeps incarnations and spell
+// visuals in their own files, so a look can never hand them on. Retail and PvP looks
+// are Armor with a tag.
+export const CATEGORIES = ["Armor", "Race morph", "Creature morph", "Cosmetics", "Mounted"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const SORTS = ["trending", "newest", "top"] as const;

@@ -13,12 +13,19 @@ describe("the overlay's feature grid", () => {
 
   it("deep-links only to routes and filters that exist", () => {
     const linked = FEATURES.flatMap((f) => (f.href ? [f.href] : []));
-    expect(linked.length).toBeGreaterThanOrEqual(10);
+    expect(linked.length).toBeGreaterThanOrEqual(7);
     for (const href of linked) {
       const url = new URL(href, "https://eclipse.test");
       expect(["/wardrobe", "/loadouts"], href).toContain(url.pathname);
       const category = url.searchParams.get("category");
       if (category) expect(CATEGORIES as readonly string[], href).toContain(category);
+    }
+  });
+
+  it("links nothing a look code cannot carry", () => {
+    // The overlay keeps these in their own files, so no Wardrobe look can show them.
+    for (const title of ["Incarnations", "Spell visuals", "Procs"]) {
+      expect(FEATURES.find((f) => f.title === title)?.href, title).toBeUndefined();
     }
   });
 });
