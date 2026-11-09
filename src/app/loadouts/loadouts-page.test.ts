@@ -159,10 +159,11 @@ describe("Loadouts", () => {
     expect(await html(SetsPage({}))).not.toContain("Ready to publish");
   });
 
-  it("clears old set pictures after answering, and only for a signed-in owner", async () => {
+  it("clears old set pictures past the response, and only for a signed-in owner", async () => {
     await html(SetsPage({}));
+    // after() gets the running cleanup, not a callback: a callback could not read cookies.
     expect(later).toHaveBeenCalledTimes(1);
-    await later.mock.calls[0][0]();
+    expect(later.mock.calls[0][0]).toBeInstanceOf(Promise);
     expect(data.clear).toHaveBeenCalledTimes(1);
     later.mockReset();
     data.account = null;

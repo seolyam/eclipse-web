@@ -32,7 +32,7 @@ export default async function DressingRoomPage({ searchParams }: Props) {
   return (
     <main id="main" className="wrap flex flex-col gap-5 py-10">
       <HubTitle title="Dressing room" blurb="Choose a piece for each slot, copy the code, then use Import on the Loadout page in the game." />
-      <HubTabs current="/dressing-room" tabs={DRESSING_TABS} label="Dressing room views" />
+      <HubTabs current="/dressing-room" tabs={DRESSING_TABS} label="Loadouts views" />
       {opened && (
         <p className="text-sm text-ink-dim">
           Started from{" "}

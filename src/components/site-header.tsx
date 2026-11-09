@@ -18,7 +18,7 @@ import { useAccount } from "@/lib/use-account";
 // and Discord live in the account menu and on the home page.
 const NAV = [
   { href: "/wardrobe", label: "Wardrobe", routes: ["/wardrobe", "/mounts"] },
-  { href: "/loadouts", label: "Dressing room", routes: ["/loadouts", "/dressing-room", "/sets"] },
+  { href: "/loadouts", label: "Loadouts", routes: ["/loadouts", "/dressing-room", "/sets"] },
 ];
 
 function useScrolled() {

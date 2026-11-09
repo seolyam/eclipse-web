@@ -6,7 +6,7 @@ export const PAGES = {
   "/wardrobe": {
     title: "Wardrobe: WoW 3.3.5a looks to copy",
     description:
-      "Browse World of Warcraft 3.3.5a looks by class, race and armor type. Copy a look's code and import it with the free Eclipse overlay.",
+      "World of Warcraft 3.3.5a loadouts published by the Eclipse community. Filter by class, race and armor, copy a code, and import it with the free overlay.",
   },
   "/loadouts": {
     title: "Loadouts: import Eclipse codes",

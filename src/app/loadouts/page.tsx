@@ -169,7 +169,7 @@ export default async function LoadoutsPage({ searchParams }: Props) {
   const head = (
     <>
       <HubTitle title="Loadouts" blurb={BLURB} />
-      <HubTabs current="/loadouts" tabs={DRESSING_TABS} label="Dressing room views" />
+      <HubTabs current="/loadouts" tabs={DRESSING_TABS} label="Loadouts views" />
       <Import {...imported} />
     </>
   );
@@ -192,8 +192,9 @@ export default async function LoadoutsPage({ searchParams }: Props) {
     );
   }
 
-  // Pictures of a look that changed or went: removed once this page has answered.
-  after(() => repository.clearOrphanPictures());
+  // Pictures of a look that changed or went: removed alongside this render, and awaited
+  // past the response. Started here, not in an after() callback, which cannot read cookies.
+  after(repository.clearOrphanPictures());
   const [links, sets] = await Promise.all([repository.listGameLinks(), repository.listGameSets()]);
   const now = Date.now();
   const waiting = sets.filter((set) => set.gallery.length > 0);

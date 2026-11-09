@@ -16,7 +16,7 @@ export default async function WardrobePage({ searchParams }: { searchParams: Pro
   return (
     <main id="main" className="wrap flex flex-col gap-5 py-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <HubTitle title="Wardrobe" blurb="Copy a look, then use Import on the Loadout page in the game." />
+        <HubTitle title="Wardrobe" blurb="Loadouts the Eclipse community has published from their games. Find one you like, copy its code, and use Import on the Loadout page to wear it." />
         <PublishButton />
       </div>
       <HubTabs current="/wardrobe" />
