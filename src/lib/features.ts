@@ -27,6 +27,6 @@ export const FEATURES: Feature[] = [
   { title: "Colour", body: "Recolour units and the world around you, and outline units by type." },
   { title: "World", body: "Time of day, weather, sky, fog, draw distance and field of view." },
   { title: "Font", body: "Sharp text at any resolution, and restyled floating combat text." },
-  { title: "Loadouts", body: "Save complete looks, share them as a code, and assign one to each specialization.", href: "/inspector" },
+  { title: "Loadouts", body: "Save complete looks, share them as a code, and assign one to each specialization.", href: "/loadouts" },
   { title: "Multiplayer", body: "Other Eclipse users see your look, and you see theirs. You choose what is shared." },
 ];

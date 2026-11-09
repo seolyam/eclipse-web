@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DressingRoom } from "@/components/dressing-room";
-import { HubTabs, HubTitle } from "@/components/hub";
+import { DRESSING_TABS, HubTabs, HubTitle } from "@/components/hub";
 import { catalogCounts, resolveOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
 import { getOutfit, repository } from "@/lib/data";
@@ -32,7 +32,7 @@ export default async function DressingRoomPage({ searchParams }: Props) {
   return (
     <main id="main" className="wrap flex flex-col gap-5 py-10">
       <HubTitle title="Dressing room" blurb="Choose a piece for each slot, copy the code, then use Import on the Loadout page in the game." />
-      <HubTabs current="/dressing-room" />
+      <HubTabs current="/dressing-room" tabs={DRESSING_TABS} label="Dressing room views" />
       {opened && (
         <p className="text-sm text-ink-dim">
           Started from{" "}

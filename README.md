@@ -4,7 +4,7 @@
 
 **The official website for Eclipse, a free overlay for World of Warcraft 3.3.5a.**
 
-Landing page, setup guide, and a community Wardrobe and Showcase for sharing looks.
+Landing page, setup guide, and a community Wardrobe for sharing looks.
 
 ![Next.js](https://img.shields.io/badge/Next.js-App_Router-black) ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6) ![Non-commercial](https://img.shields.io/badge/use-non--commercial-orange)
 
@@ -14,12 +14,11 @@ Landing page, setup guide, and a community Wardrobe and Showcase for sharing loo
 
 ## Features
 
-- **Wardrobe:** browse looks and copy their share codes.
-- **Showcase:** a picture-first gallery of community captures.
-- **Inspector:** decode and edit share codes.
-- **Dressing room:** build a look slot by slot on a 3D character and copy its code.
+- **Wardrobe:** browse looks and copy their share codes, or filter to looks with in-game pictures.
+- **Dressing room:** two views.
+  - **Loadouts:** Import decodes and edits share codes; below it, a private backup of the loadouts in a linked game, with Send to game on any look.
+  - **Dressing room:** build a look slot by slot on a 3D character and copy its code.
 - **Setup guide:** getting the overlay running.
-- **Your sets:** a private backup of the loadouts in a linked game, with Send to game on any look.
 
 ## Share codes
 

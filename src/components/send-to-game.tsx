@@ -27,7 +27,7 @@ export function SendToGame({ id }: { id: string }) {
         });
       } else {
         toast.success(`Saved to your sets as "${r.value.name}"`, {
-          description: <Link href="/sets" className="underline underline-offset-2">Link your game to get it there.</Link>,
+          description: <Link href="/loadouts"className="underline underline-offset-2">Link your game to get it there.</Link>,
         });
       }
     });

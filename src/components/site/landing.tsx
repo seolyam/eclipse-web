@@ -7,7 +7,7 @@ import { SupportLinks } from "@/components/site/support-links";
 import { WalletSection } from "@/components/site/wallets";
 import { FEATURES } from "@/lib/features";
 import { TALL_MEDIA, TALL_SIZES, WIDE_SIZES, tallArt, wideArt } from "@/lib/hero-art";
-import { dllUrl, downloadUrl } from "@/lib/site";
+import { DISCORD_URL, dllUrl, downloadUrl } from "@/lib/site";
 
 // The official page's sections, word for word: only the links are new.
 
@@ -32,6 +32,11 @@ export function Hero() {
         <div className="cta">
           <a className="btn btn--primary" href="#download">Download</a>
           <a className="btn btn--ghost" href="#features">Explore features</a>
+        </div>
+        <div className="cta">
+          <a className="btn btn--ghost" href={DISCORD_URL} target="_blank" rel="noopener">
+            <Icon id="i-discord" /><span>Join the Discord</span>
+          </a>
         </div>
       </div>
       <div className="wrap hero__stage" id="showcase">

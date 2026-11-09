@@ -23,7 +23,7 @@ const STEPS = [
   },
   {
     title: "Share yours",
-    body: "Share on the Loadout page, or on any styled place in Colors > World, copies a code. Paste it in the Inspector to see what it holds.",
+    body: "Share on the Loadout page, or on any styled place in Colors > World, copies a code. Paste it into Import, on the Loadouts page of the Dressing room, to see what it holds.",
   },
 ];
 

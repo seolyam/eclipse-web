@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NOT_FOUND");
   },
-  usePathname: () => "/sets",
+  usePathname: () => "/loadouts",
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock("@/app/actions", () => ({
@@ -51,7 +51,7 @@ const later = vi.hoisted(() => vi.fn());
 vi.mock("next/server", async (original) => ({ ...(await original<typeof import("next/server")>()), after: later }));
 
 const { default: SetsPage } = await import("./page");
-const { default: SetPage } = await import("./[id]/page");
+const { default: SetPage } = await import("../sets/[id]/page");
 
 const ME: Account = { id: "me", name: "seolyam", avatar: null, provider: "discord", moderator: false };
 const CODE = `ECA1:${Buffer.from("slot 0 259306\nslot 4 1001735\n").toString("base64")}`;
@@ -72,49 +72,74 @@ beforeEach(() => {
   data.clear.mockClear();
 });
 
-describe("Your sets", () => {
+describe("Loadouts", () => {
   it("offers a visitor sign-in, and no sets", async () => {
     data.account = null;
-    const page = await html(SetsPage());
+    const page = await html(SetsPage({}));
     expect(page).toContain("Continue with Discord");
     expect(page).not.toContain("Link a game");
   });
 
+  it("lets anyone import a code, signed in or not", async () => {
+    data.account = null;
+    expect(await html(SetsPage({}))).toContain('id="import-heading"');
+    data.account = ME;
+    expect(await html(SetsPage({}))).toContain('id="import-heading"');
+  });
+
+  it("puts Import first and the loadouts below it", async () => {
+    data.sets = [SET];
+    const page = await html(SetsPage({}));
+    expect(page.indexOf("import-heading")).toBeGreaterThan(-1);
+    expect(page.indexOf("import-heading")).toBeLessThan(page.indexOf("Raid night"));
+  });
+
+  it("switches between Loadouts and the Dressing room with pills", async () => {
+    const page = await html(SetsPage({}));
+    expect(page).toMatch(/<a [^>]*aria-current="page"[^>]*>Loadouts<\/a>/);
+    expect(page).toContain('href="/dressing-room"');
+  });
+
+  it("opens Import on a linked code", async () => {
+    const page = await html(SetsPage({ searchParams: Promise.resolve({ code: CODE }) }));
+    expect(page).toContain(CODE);
+  });
+
   it("says so when there is no database to sign in to", async () => {
     Object.assign(data, { account: null, live: false });
-    const page = await html(SetsPage());
+    const page = await html(SetsPage({}));
     expect(page).toContain("not connected");
     expect(page).not.toContain("Continue with Discord");
   });
 
   it("explains itself to an account with nothing linked", async () => {
-    const page = await html(SetsPage());
+    const page = await html(SetsPage({}));
     expect(page).toContain("Link a game");
     expect(page).toContain("Nothing here yet");
-    expect(page).toContain("0 sets");
+    expect(page).toContain("0 loadouts");
   });
 
   it("lists a set with its pieces, a way in and a way to remove it", async () => {
     data.sets = [SET];
-    const page = await html(SetsPage());
+    const page = await html(SetsPage({}));
     expect(page).toContain("Raid night");
     expect(page).toContain(`href="/sets/${SET.id}"`);
-    expect(page).toContain("1 set");
+    expect(page).toContain("1 loadout");
     expect(page).toContain("Remove Raid night");
     expect(page).toContain("<img");
   });
 
   it("says how many pictures the game sent with a set", async () => {
     data.sets = [{ ...SET, gallery: [PICTURE, PICTURE.replace("aa.avif", "bb.avif")] }];
-    expect(await html(SetsPage())).toContain("2 pictures from your game");
+    expect(await html(SetsPage({}))).toContain("2 pictures from your game");
     data.sets = [SET];
-    expect(await html(SetsPage())).not.toContain("from your game");
+    expect(await html(SetsPage({}))).not.toContain("from your game");
   });
 
   it("puts what the game sent up top, with the picture and a way to publish it", async () => {
     const SENT = { ...SET, id: "22222222-2222-4222-8222-222222222222", name: "Nightmare", gallery: [PICTURE] };
     data.sets = [SET, SENT];
-    const page = await html(SetsPage());
+    const page = await html(SetsPage({}));
     const ready = page.slice(page.indexOf("Ready to publish"), page.indexOf("Linked games"));
     expect(ready).toContain("Nightmare");
     expect(ready).not.toContain("Raid night");
@@ -124,35 +149,35 @@ describe("Your sets", () => {
 
   it("shows the game's picture on its set's card", async () => {
     data.sets = [{ ...SET, gallery: [PICTURE] }];
-    const page = await html(SetsPage());
-    const card = page.slice(page.indexOf("1 set<"));
+    const page = await html(SetsPage({}));
+    const card = page.slice(page.indexOf("1 loadout<"));
     expect(card).toContain(PICTURE.replace(".avif", "-thumb.avif"));
   });
 
   it("has no call to publish when the game sent nothing", async () => {
     data.sets = [SET];
-    expect(await html(SetsPage())).not.toContain("Ready to publish");
+    expect(await html(SetsPage({}))).not.toContain("Ready to publish");
   });
 
   it("clears old set pictures after answering, and only for a signed-in owner", async () => {
-    await html(SetsPage());
+    await html(SetsPage({}));
     expect(later).toHaveBeenCalledTimes(1);
     await later.mock.calls[0][0]();
     expect(data.clear).toHaveBeenCalledTimes(1);
     later.mockReset();
     data.account = null;
-    await html(SetsPage());
+    await html(SetsPage({}));
     expect(later).not.toHaveBeenCalled();
   });
 
   it("does not fall over on a code this site cannot read", async () => {
     data.sets = [{ ...SET, code: "ECA1:!!!" }];
-    expect(await html(SetsPage())).toContain("Raid night");
+    expect(await html(SetsPage({}))).toContain("Raid night");
   });
 
   it("names a linked game by the character that last synced", async () => {
     data.links = [{ id: "l", label: "Lee - Icecrown", linkedAt: SET.updatedAt, lastSyncAt: SET.updatedAt }];
-    const page = await html(SetsPage());
+    const page = await html(SetsPage({}));
     expect(page).toContain("Lee - Icecrown");
     expect(page).toContain("Synced just now");
     expect(page).toContain("Unlink");
@@ -160,7 +185,7 @@ describe("Your sets", () => {
 
   it("does not invent a name for a game that has never synced", async () => {
     data.links = [{ id: "l", label: "", linkedAt: SET.updatedAt, lastSyncAt: null }];
-    expect(await html(SetsPage())).toContain("Waiting for its first sync");
+    expect(await html(SetsPage({}))).toContain("Waiting for its first sync");
   });
 });
 

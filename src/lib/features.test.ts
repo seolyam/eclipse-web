@@ -16,7 +16,7 @@ describe("the overlay's feature grid", () => {
     expect(linked.length).toBeGreaterThanOrEqual(10);
     for (const href of linked) {
       const url = new URL(href, "https://eclipse.test");
-      expect(["/wardrobe", "/inspector"], href).toContain(url.pathname);
+      expect(["/wardrobe", "/loadouts"], href).toContain(url.pathname);
       const category = url.searchParams.get("category");
       if (category) expect(CATEGORIES as readonly string[], href).toContain(category);
     }

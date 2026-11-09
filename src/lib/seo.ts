@@ -8,15 +8,10 @@ export const PAGES = {
     description:
       "Browse World of Warcraft 3.3.5a looks by class, race and armor type. Copy a look's code and import it with the free Eclipse overlay.",
   },
-  "/showcase": {
-    title: "Showcase: WoW 3.3.5a screenshots",
+  "/loadouts": {
+    title: "Loadouts: import Eclipse codes",
     description:
-      "Studio screenshots of World of Warcraft 3.3.5a looks from Eclipse players. Each one opens on its exact equipment, with a code to copy.",
-  },
-  "/inspector": {
-    title: "Inspector: read Eclipse codes",
-    description:
-      "Paste an Eclipse loadout or world code to see what it holds, edit it, or publish it with your screenshots. Use Share in the game to get one.",
+      "Paste an Eclipse loadout or world code to see what it holds, edit it, or publish it with your screenshots, and back up the loadouts saved in your game.",
   },
   "/dressing-room": {
     title: "Dressing room: build a WoW 3.3.5a look",

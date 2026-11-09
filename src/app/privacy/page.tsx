@@ -66,7 +66,7 @@ const SECTIONS = [
     points: [
       "Change your public name at any time, from Settings in your account menu.",
       "Delete any look you published, from the look's page. Its screenshots are deleted with it.",
-      "Unlink a game, or remove any of your saved loadouts, from Your sets in your account menu.",
+      "Unlink a game, or remove any of your saved loadouts, from Loadouts in your account menu.",
       "To delete your whole account, ask us on Discord. We keep your data until you delete it or ask us to.",
       "Remove a bookmark from the look's page.",
       "Moderators can remove looks that break the community's rules, and review every report.",

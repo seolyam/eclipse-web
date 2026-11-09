@@ -70,7 +70,7 @@ export function UnlinkGame({ id }: { id: string }) {
         toast.error(r.error);
         return;
       }
-      toast.success("Game unlinked", { description: "Your sets stay here. It keeps its own copies." });
+      toast.success("Game unlinked", { description: "Your loadouts stay here. It keeps its own copies." });
       router.refresh();
     });
   }

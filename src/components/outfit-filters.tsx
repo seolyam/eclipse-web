@@ -47,7 +47,7 @@ export function OutfitFilters({ count, live }: { count: number; live: boolean })
   // A new filter changes what the pages hold, so it starts from the first.
   const set: typeof setQuery = (values, options) =>
     setQuery(typeof values === "function" ? values : { ...values, page: null }, options);
-  const active = f.q || f.class || f.race || f.armor || f.category || f.tag;
+  const active = f.q || f.class || f.race || f.armor || f.category || f.tag || f.pictures;
   const raceKeys = Object.keys(RACE_LABEL);
 
   return (
@@ -99,6 +99,11 @@ export function OutfitFilters({ count, live }: { count: number; live: boolean })
 
       <div className="flex flex-wrap items-center gap-1.5">
         <div role="group" aria-label="Category" className="flex flex-wrap gap-1.5">
+          {live && (
+            <button type="button" className="pill" aria-pressed={f.pictures} onClick={() => set({ pictures: !f.pictures })}>
+              With pictures
+            </button>
+          )}
           {live && CATEGORIES.map((c) => (
             <button
               key={c}
@@ -121,7 +126,7 @@ export function OutfitFilters({ count, live }: { count: number; live: boolean })
           {active && (
             <button
               type="button"
-              onClick={() => set({ q: "", class: null, race: null, armor: null, category: null, tag: null })}
+              onClick={() => set({ q: "", class: null, race: null, armor: null, category: null, tag: null, pictures: false })}
               className="flex items-center gap-1 text-ink-dim hover:text-ink"
             >
               <X className="size-3" /> Clear

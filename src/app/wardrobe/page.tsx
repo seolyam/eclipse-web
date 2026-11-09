@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { SearchParams } from "nuqs/server";
 import { BuiltinNotice, HubTabs, HubTitle, listFromSearch, NoLooks, Pager, PublishButton } from "@/components/hub";
-import { OutfitCard } from "@/components/outfit-card";
+import { OutfitCard, OutfitPoster } from "@/components/outfit-card";
 import { OutfitFilters } from "@/components/outfit-filters";
 import { itemName } from "@/lib/catalog";
 import { repository } from "@/lib/data";
@@ -40,11 +40,15 @@ export default async function WardrobePage({ searchParams }: { searchParams: Pro
         </p>
       )}
       <OutfitFilters count={total} live={repository.live} />
-      {posts.length ? (
+      {!posts.length ? <NoLooks /> : filters.pictures ? (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+          {posts.map((post) => <OutfitPoster key={post.id} post={post} />)}
+        </div>
+      ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => <OutfitCard key={post.id} post={post} />)}
         </div>
-      ) : <NoLooks />}
+      )}
       <Pager base="/wardrobe" filters={filters} total={total} />
     </main>
   );

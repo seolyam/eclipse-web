@@ -32,8 +32,8 @@ async function FeaturedLooks() {
                 : "Real item sets from the game, every one a code away from your character."}
             </p>
           </header>
-          <Link href={captures.length ? "/showcase" : "/wardrobe"} className="btn btn--ghost btn--sm">
-            <span>{captures.length ? "See the Showcase" : "Open the Wardrobe"}</span><Icon id="i-arrow" />
+          <Link href={captures.length ? "/wardrobe?pictures=true" : "/wardrobe"} className="btn btn--ghost btn--sm">
+            <span>Open the Wardrobe</span><Icon id="i-arrow" />
           </Link>
         </div>
         <div className="featured">
