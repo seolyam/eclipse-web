@@ -8,7 +8,7 @@ export default async function OutfitDrawerPage({ params }: { params: Promise<{ i
   if (!post) notFound();
   return (
     <OutfitDrawer title={post.title}>
-      <OutfitDetail post={post} heading="h2" />
+      <OutfitDetail post={post} heading="h2" inDrawer />
     </OutfitDrawer>
   );
 }
