@@ -18,7 +18,16 @@ import { ARMOR_LABEL, RACE_LABEL, VISIBLE_SLOTS } from "@/lib/domain";
 /** The Dressing room dresses visible slots only, so a pure morph or mount has nothing to open. */
 const hasArmor = (r: ResolvedOutfit) => r.slots.some((s) => (VISIBLE_SLOTS as readonly number[]).includes(s.slot));
 
-export async function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost; heading?: "h1" | "h2" }) {
+export async function OutfitDetail({
+  post,
+  heading = "h1",
+  inDrawer = false,
+}: {
+  post: OutfitPost;
+  heading?: "h1" | "h2";
+  /** Shown in the Wardrobe drawer, which then offers the look's own page. */
+  inDrawer?: boolean;
+}) {
   // Only a published look has an author, and only those can be bookmarked or reported.
   const saved = post.authorId ? await repository.isBookmarked(post.id) : false;
   const decoded = decodeOutfit(post.code);
@@ -55,6 +64,13 @@ export async function OutfitDetail({ post, heading = "h1" }: { post: OutfitPost;
           <Link href={`/dressing-room?look=${encodeURIComponent(post.id)}`} className="pill">
             Open in Dressing room
           </Link>
+        )}
+        {inDrawer && (
+          // A plain link on purpose: a <Link> from the Wardrobe is intercepted again
+          // and reopens this drawer, while a full load reaches the look's own page.
+          <a href={`/wardrobe/${encodeURIComponent(post.id)}`} className="pill">
+            Open full page
+          </a>
         )}
         {post.authorId && <ReportLook id={post.id} authorId={post.authorId} />}
         {post.authorId && <DeleteLook id={post.id} authorId={post.authorId} />}
