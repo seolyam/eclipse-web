@@ -44,9 +44,9 @@ function Filter<T extends string>({
 export function OutfitFilters({ count, live }: { count: number; live: boolean }) {
   const [pending, startTransition] = useTransition();
   const [f, setQuery] = useQueryStates(wardrobeParsers, { shallow: false, startTransition });
-  // A new filter changes what the pages hold, so it starts from the first.
+  // A new filter changes what the pages hold, so both lists start from their first.
   const set: typeof setQuery = (values, options) =>
-    setQuery(typeof values === "function" ? values : { ...values, page: null }, options);
+    setQuery(typeof values === "function" ? values : { ...values, page: null, setsPage: null }, options);
   const active = f.q || f.class || f.race || f.armor || f.category || f.tag || f.pictures;
   const raceKeys = Object.keys(RACE_LABEL);
 
@@ -102,11 +102,6 @@ export function OutfitFilters({ count, live }: { count: number; live: boolean })
           {live && (
             <button type="button" className="pill" aria-pressed={f.pictures} onClick={() => set({ pictures: !f.pictures })}>
               With pictures
-            </button>
-          )}
-          {live && (
-            <button type="button" className="pill" aria-pressed={f.sets} title="The game's own armor sets, not published by players" onClick={() => set({ sets: !f.sets })}>
-              Item sets
             </button>
           )}
           {live && CATEGORIES.map((c) => (
