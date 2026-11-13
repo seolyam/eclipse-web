@@ -21,6 +21,10 @@ const TABS: Tab[] = [
   { href: "/mounts", label: "Mounts" },
 ];
 
+/** What the Loadouts page is for, shared with its loading outline. */
+export const LOADOUTS_BLURB =
+  "Import a code to see what it holds, and keep the loadouts saved in your game backed up here, private to you.";
+
 /** The Dressing room's views: your loadouts with a code to import, and the builder. */
 export const DRESSING_TABS: Tab[] = [
   { href: "/loadouts", label: "Loadouts" },

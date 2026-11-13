@@ -556,6 +556,8 @@ describe("the Supabase adapter", () => {
   });
 });
 
+const PICTURE = "https://cdn.discordapp.com/avatars/123456789/0123abcdef.png";
+
 describe("comments", () => {
   const comment = {
     id: "55555555-5555-4555-8555-555555555555",
@@ -563,11 +565,11 @@ describe("comments", () => {
     author_id: row.author_id,
     body: "Love the cape.",
     created_at: row.created_at,
-    profiles: { display_name: "Kira", verified: true },
+    profiles: { display_name: "Kira", verified: true, avatar_url: PICTURE },
   };
   const said = {
     id: comment.id, outfitId: row.id, authorId: row.author_id, author: "Kira", authorVerified: true,
-    body: "Love the cape.", createdAt: row.created_at,
+    authorAvatar: PICTURE, body: "Love the cape.", createdAt: row.created_at,
   };
 
   it("lists a look's comments oldest first, with the writer's public name", async () => {
@@ -577,7 +579,12 @@ describe("comments", () => {
     expect(q.get("outfit_id")).toBe(`eq.${row.id}`);
     expect(q.get("order")).toBe("created_at.asc");
     // Names the key: the reports table also joins comments to profiles.
-    expect(q.get("select")).toContain("profiles!outfit_comments_author_id_fkey(display_name,verified)");
+    expect(q.get("select")).toContain("profiles!outfit_comments_author_id_fkey(display_name,verified,avatar_url)");
+  });
+
+  it("shows a writer with no picture by their initial", async () => {
+    reply = () => Response.json([{ ...comment, profiles: { display_name: "Kira", verified: true, avatar_url: null } }]);
+    expect(await repo.listComments(row.id)).toEqual([{ ...said, authorAvatar: null }]);
   });
 
   it("has no comments for a built-in set, and asks the database nothing", async () => {

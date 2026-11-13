@@ -29,7 +29,7 @@ interface OutfitRow {
   author_id: string | null;
   discord_name: string | null;
   gallery: string[];
-  profiles: { display_name: string | null; verified: boolean } | null;
+  profiles: { display_name: string | null; verified: boolean; avatar_url?: string | null } | null;
   remix?: { id: string; title: string; discord_name?: string | null; profiles: { display_name: string | null } | null } | null;
 }
 
@@ -47,7 +47,7 @@ interface CommentRow {
   author_id: string;
   body: string;
   created_at: string;
-  profiles: { display_name: string | null; verified: boolean } | null;
+  profiles: { display_name: string | null; verified: boolean; avatar_url?: string | null } | null;
 }
 
 interface ReportedCommentRow {
@@ -62,7 +62,7 @@ interface ReportedCommentRow {
 }
 
 // outfit_comment_reports also joins comments to profiles, so the embed names its key.
-const COMMENT_COLUMNS = "id,outfit_id,author_id,body,created_at,profiles!outfit_comments_author_id_fkey(display_name,verified)";
+const COMMENT_COLUMNS = "id,outfit_id,author_id,body,created_at,profiles!outfit_comments_author_id_fkey(display_name,verified,avatar_url)";
 
 const toComment = (r: CommentRow): LookComment => ({
   id: r.id,
@@ -70,6 +70,7 @@ const toComment = (r: CommentRow): LookComment => ({
   authorId: r.author_id,
   author: r.profiles?.display_name ?? null,
   authorVerified: r.profiles?.verified ?? false,
+  authorAvatar: safeAvatar(r.profiles?.avatar_url),
   body: r.body,
   createdAt: r.created_at,
 });
@@ -100,7 +101,7 @@ const toGameSet = (r: GameSetRow): GameSet => ({
 // The hint is required: outfit_votes, outfit_reports and outfit_bookmarks also join
 // outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,categories,tags,description,upvotes,created_at,author_id,discord_name,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
+  "id,title,code,class_name,armor,race,categories,tags,description,upvotes,created_at,author_id,discord_name,gallery,profiles!outfits_author_id_fkey(display_name,verified,avatar_url)," +
   // outfits refers to itself. Embedding through the column itself reaches the original (one
   // row, or null); `outfits!remixed_from` reached the other way, the remixes, as an array.
   "remix:remixed_from(id,title,discord_name,profiles!outfits_author_id_fkey(display_name))";
@@ -113,6 +114,7 @@ const toPost = (r: OutfitRow): OutfitPost => ({
   authorId: r.author_id,
   authorVerified: r.profiles?.verified ?? false,
   sharedOnDiscord: r.author_id === null && Boolean(r.discord_name),
+  authorAvatar: safeAvatar(r.profiles?.avatar_url),
   code: r.code,
   className: r.class_name,
   armor: r.armor,

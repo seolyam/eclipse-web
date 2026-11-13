@@ -169,7 +169,7 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
               outfitId={post.id}
               lookAuthorId={post.authorId}
               caption={post.description
-                ? { body: post.description, author: post.author, verified: post.authorVerified, createdAt: post.createdAt }
+                ? { body: post.description, author: post.author, avatar: post.authorAvatar ?? null, verified: post.authorVerified, createdAt: post.createdAt }
                 : null}
             />
           </aside>

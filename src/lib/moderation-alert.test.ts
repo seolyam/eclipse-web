@@ -34,6 +34,7 @@ const said: LookComment = {
   authorId: "44444444-4444-4444-8444-444444444444",
   author: "Spammer\_1",
   authorVerified: false,
+  authorAvatar: null,
   body: "@here buy **gold** at example dot com",
   createdAt: "2026-11-13T00:00:00.000Z",
 };
