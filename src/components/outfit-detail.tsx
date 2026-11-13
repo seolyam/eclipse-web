@@ -58,6 +58,8 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
   const facts = [post.className, post.race ? RACE_LABEL[post.race] : null, post.armor ? ARMOR_LABEL[post.armor] : null]
     .filter((t): t is string => Boolean(t));
   const tags = [...post.categories, ...post.tags];
+  // Only a published look has an author to talk to, and only a live site stores what is said.
+  const social = repository.live && Boolean(post.authorId);
 
   return (
     <article className="flex flex-col gap-8">
@@ -89,27 +91,38 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
 
       {!resolved && <p className="text-sm text-bad">This look&apos;s code no longer decodes.</p>}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-        <LookModel
-          pieces={resolved ? worn(resolved) : {}}
-          wearer={decoded.ok ? wearerOf(decoded.outfit.look) : null}
-          gallery={post.gallery}
-          backdrop={backdropFor(post.id)}
-          title={post.title}
-        />
+      {/*
+        As a photo on a social app: the picture with the conversation beside it, and
+        everything about the look under the picture.
+      */}
+      <div className={`grid gap-x-8 gap-y-6 ${social ? "lg:grid-cols-[minmax(0,1fr)_24rem]" : ""}`}>
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+          <LookModel
+            pieces={resolved ? worn(resolved) : {}}
+            wearer={decoded.ok ? wearerOf(decoded.outfit.look) : null}
+            gallery={post.gallery}
+            backdrop={backdropFor(post.id)}
+            title={post.title}
+          />
+        </div>
 
-        <aside className="flex flex-col gap-6" aria-label="Use this look">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              <CopyButton code={post.code} className="h-[2.9rem] flex-1 px-6 text-[0.95rem]" />
-              {repository.live && <SendToGame id={post.id} />}
-            </div>
-            {(post.upvotes !== null || (repository.live && post.authorId)) && (
-              <div className="flex items-center gap-2">
-                {post.upvotes !== null && <UpvoteButton id={post.id} count={post.upvotes} />}
-                {repository.live && post.authorId && <BookmarkButton id={post.id} saved={saved} />}
-              </div>
-            )}
+        <div className="flex min-w-0 flex-col gap-6 lg:col-start-1 lg:row-start-2">
+          <div className="flex flex-wrap items-center gap-2 border-b border-line pb-5" aria-label="Use this look" role="group">
+            <CopyButton code={post.code} className="h-[2.9rem] px-6 text-[0.95rem]" />
+            {repository.live && <SendToGame id={post.id} />}
+            {post.upvotes !== null && <UpvoteButton id={post.id} count={post.upvotes} />}
+            {social && <BookmarkButton id={post.id} saved={saved} />}
+            <span className="flex flex-wrap items-center gap-2 sm:ml-auto">
+              {resolved && hasArmor(resolved) && (
+                <Link href={`/dressing-room?look=${encodeURIComponent(post.id)}`} className="pill">
+                  <Shirt className="size-4" strokeWidth={1.5} aria-hidden />Open in Dressing room
+                </Link>
+              )}
+              {post.authorId && <ReportLook id={post.id} authorId={post.authorId} />}
+              {post.authorId && (
+                <DeleteLook id={post.id} authorId={post.authorId} triggerClassName="pill hover:border-bad/50 hover:text-bad" />
+              )}
+            </span>
           </div>
 
           {resolved && <LookPieces resolved={resolved} />}
@@ -131,28 +144,16 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
               </ul>
             </section>
           )}
-
-          {((resolved && hasArmor(resolved)) || post.authorId) && (
-            <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
-              {resolved && hasArmor(resolved) && (
-                <Link href={`/dressing-room?look=${encodeURIComponent(post.id)}`} className="pill">
-                  <Shirt className="size-4" strokeWidth={1.5} aria-hidden />Open in Dressing room
-                </Link>
-              )}
-              {post.authorId && <ReportLook id={post.id} authorId={post.authorId} />}
-              {post.authorId && (
-                <DeleteLook id={post.id} authorId={post.authorId} triggerClassName="pill hover:border-bad/50 hover:text-bad" />
-              )}
-            </div>
-          )}
-        </aside>
-      </div>
-
-      {repository.live && post.authorId && (
-        <div className="border-t border-line pt-8">
-          <LookComments outfitId={post.id} lookAuthorId={post.authorId} />
         </div>
-      )}
+
+        {social && post.authorId && (
+          // Last on a phone, after the look. Beside the picture on a wide screen, and
+          // exactly its height: the box fills the row the picture sets, never stretches it.
+          <aside className="relative order-last lg:order-none lg:col-start-2 lg:row-start-1 lg:min-h-[26rem]" aria-label="Comments">
+            <LookComments outfitId={post.id} lookAuthorId={post.authorId} />
+          </aside>
+        )}
+      </div>
 
       <footer className="flex flex-col gap-4 border-t border-line pt-6">
         <details className="group rounded-lg border border-line bg-surface">
