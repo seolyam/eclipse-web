@@ -27,9 +27,19 @@ export const DRESSING_TABS: Tab[] = [
   { href: "/dressing-room", label: "Dressing room" },
 ];
 
-/** The filters the Wardrobe reads from the URL. */
-export async function listFromSearch(searchParams: Promise<SearchParams>) {
+type Query = Awaited<ReturnType<typeof wardrobeCache.parse>>;
+
+/** Everyone's looks, seen signed in, leave out your own, which the page shows on their own. */
+export const listsOthers = (f: Query, viewerId: string | null): boolean =>
+  viewerId !== null && !f.author && !f.saved;
+
+/**
+ * The filters the Wardrobe reads from the URL. Given the signed-in account, everyone's
+ * looks leave out its own; one person's looks and bookmarks stay whole.
+ */
+export async function listFromSearch(searchParams: Promise<SearchParams>, viewerId: string | null = null) {
   const f = await wardrobeCache.parse(searchParams);
+  const community = listsOthers(f, viewerId);
   const list = await repository.listOutfits({
     q: f.q,
     className: f.class,
@@ -38,13 +48,14 @@ export async function listFromSearch(searchParams: Promise<SearchParams>) {
     category: f.category,
     tag: f.tag,
     authorId: f.author,
+    excludeAuthorId: community ? viewerId : null,
     saved: f.saved,
     item: f.item !== null && f.item > 0 ? f.item : null,
     captured: f.pictures,
     sort: f.sort,
     page: f.page,
   });
-  return { ...list, filters: f };
+  return { ...list, filters: f, community };
 }
 
 export function PublishButton() {
@@ -67,10 +78,12 @@ export function BuiltinNotice() {
 
 const EMPTY = "rounded-lg border border-dashed border-line p-10 text-center text-sm text-ink-dim";
 
-export function NoLooks() {
+export function NoLooks({ others = false }: { others?: boolean }) {
   if (!repository.live) {
     return <p className={EMPTY}>Nothing matches. Only armor sets are listed until community publishing opens, so try clearing a filter.</p>;
   }
+  // Your own looks are listed above, so "the first look" would not be true.
+  if (others) return <p className={EMPTY}>No one else&apos;s looks match yet. Clear a filter, or check back as more players publish.</p>;
   return (
     <p className={EMPTY}>
       Nothing here yet. Clear a filter, or{" "}

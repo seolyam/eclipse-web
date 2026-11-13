@@ -1,4 +1,4 @@
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, ChevronDown, Code, Shirt } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { BookmarkButton } from "@/components/bookmark-button";
@@ -28,8 +28,6 @@ const hasArmor = (r: ResolvedOutfit) => r.slots.some((s) => VISIBLE.includes(s.s
 /** Slot -> baked model for each visible piece the code wears, for the 3D preview. */
 const worn = (r: ResolvedOutfit) =>
   Object.fromEntries(r.slots.filter((s) => s.item !== 0 && VISIBLE.includes(s.slot)).map((s) => [s.slot, s.display]));
-
-const quiet = "text-xs text-ink-dim underline-offset-4 transition-colors hover:text-ink hover:underline";
 
 /** The look's class crest, or its race's portrait, in the studio's artifact ring. */
 function Crest({ post, resolved }: { post: OutfitPost; resolved: ResolvedOutfit | null }) {
@@ -124,35 +122,52 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
         </aside>
       </div>
 
-      <footer className="flex flex-col gap-4 border-t border-line pt-5">
-        {tags.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
-            {tags.map((t) => (
-              <li key={t} className="rounded-full bg-surface-high px-2.5 py-0.5 text-xs text-ink-dim">{t}</li>
-            ))}
-          </ul>
-        )}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          {resolved && hasArmor(resolved) && (
-            <Link href={`/dressing-room?look=${encodeURIComponent(post.id)}`} className={quiet}>Open in Dressing room</Link>
+      <footer className="flex flex-col gap-6 border-t border-line pt-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          {tags.length > 0 && (
+            <section aria-labelledby="tags-heading" className="flex min-w-0 flex-col gap-2">
+              <h2 id="tags-heading" className="font-sans text-sm font-medium text-ink">Tags</h2>
+              <ul className="flex flex-wrap gap-2">
+                {tags.map((t) => (
+                  <li key={t} className="rounded-full border border-line bg-surface-raised px-3 py-1 text-sm text-ink-dim">{t}</li>
+                ))}
+              </ul>
+            </section>
           )}
-          {post.authorId && <ReportLook id={post.id} authorId={post.authorId} triggerClassName={quiet} />}
-          {post.authorId && <DeleteLook id={post.id} authorId={post.authorId} triggerClassName={quiet} />}
-          <p className="text-[0.7rem] text-ink-faint sm:ml-auto">
-            Scene and rings:{" "}
-            <a href={NARCISSUS_URL} target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-ink-dim">Narcissus</a>
-            {" "}by Peterodox, CC BY-NC-SA 4.0
-          </p>
+          {((resolved && hasArmor(resolved)) || post.authorId) && (
+            <div className="flex flex-wrap items-center gap-2 sm:ml-auto sm:justify-end sm:self-end">
+              {resolved && hasArmor(resolved) && (
+                <Link href={`/dressing-room?look=${encodeURIComponent(post.id)}`} className="pill">
+                  <Shirt className="size-4" strokeWidth={1.5} aria-hidden />Open in Dressing room
+                </Link>
+              )}
+              {post.authorId && <ReportLook id={post.id} authorId={post.authorId} />}
+              {post.authorId && (
+                <DeleteLook id={post.id} authorId={post.authorId} triggerClassName="pill hover:border-bad/50 hover:text-bad" />
+              )}
+            </div>
+          )}
         </div>
-        <details className="group">
-          <summary className={`${quiet} w-fit cursor-pointer list-none`}>
-            <span className="group-open:hidden">Show the code</span>
-            <span className="hidden group-open:inline">Hide the code</span>
+
+        <details className="group rounded-lg border border-line bg-surface">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-ink-dim transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+            <Code className="size-4" strokeWidth={1.5} aria-hidden />
+            Look code
+            <ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" strokeWidth={1.5} aria-hidden />
           </summary>
-          <pre className="mt-2 max-h-28 overflow-auto rounded-md border border-line bg-surface p-2.5 font-mono text-xs leading-[18px] break-all whitespace-pre-wrap text-ink-dim">
-            {post.code}
-          </pre>
+          <div className="flex flex-col gap-3 border-t border-line p-4">
+            <pre className="max-h-40 overflow-auto rounded-md border border-line bg-void p-3 font-mono text-xs leading-[18px] break-all whitespace-pre-wrap text-ink-dim">
+              {post.code}
+            </pre>
+            <CopyButton code={post.code} variant="outline" className="self-start" />
+          </div>
         </details>
+
+        <p className="text-xs text-ink-faint">
+          Scene and rings:{" "}
+          <a href={NARCISSUS_URL} target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-ink-dim">Narcissus</a>
+          {" "}by Peterodox, CC BY-NC-SA 4.0
+        </p>
       </footer>
     </article>
   );

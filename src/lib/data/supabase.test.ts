@@ -492,6 +492,11 @@ describe("the Supabase adapter", () => {
     expect(requests[0].searchParams.get("author_id")).toBe(`eq.${row.id}`);
   });
 
+  it("leaves out one author's looks, for the community list beside your own", async () => {
+    await repo.listOutfits({ sort: "top", excludeAuthorId: row.id });
+    expect(requests[0].searchParams.get("author_id")).toBe(`neq.${row.id}`);
+  });
+
   it("treats a page past the end as empty, not as a crash", async () => {
     reply = (_, init) => init?.method === "HEAD"
       ? new Response(null, { headers: { "Content-Range": `*/3` } })

@@ -113,6 +113,7 @@ function matches(o: OutfitPost, f: OutfitFilters): boolean {
   if (f.saved) return false;
   if (f.captured && !o.gallery.length) return false;
   if (f.authorId && o.authorId !== f.authorId) return false;
+  if (f.excludeAuthorId && o.authorId === f.excludeAuthorId) return false;
   if (f.className && !wornBy(o, f.className)) return false;
   if (f.race && o.race !== f.race) return false;
   if (f.armor && o.armor !== f.armor) return false;

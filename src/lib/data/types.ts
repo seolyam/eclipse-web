@@ -47,6 +47,8 @@ export interface OutfitFilters {
   captured?: boolean;
   /** Only looks this account published. */
   authorId?: string | null;
+  /** Every look but this account's: the community list beside your own. */
+  excludeAuthorId?: string | null;
   /** Only looks the signed-in account bookmarked. */
   saved?: boolean;
   /** Only looks wearing this item. */

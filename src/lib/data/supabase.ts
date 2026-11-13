@@ -129,6 +129,8 @@ const outfitRows = (
     : db.from("outfits").select(columns, options);
   if (f.captured) query = query.neq("gallery", "{}");
   if (f.authorId) query = query.eq("author_id", f.authorId);
+  // author_id is not null, so neq keeps every other look.
+  if (f.excludeAuthorId) query = query.neq("author_id", f.excludeAuthorId);
   if (f.className) query = query.eq("class_name", f.className);
   if (f.race) query = query.eq("race", f.race);
   if (f.armor) query = query.eq("armor", f.armor);

@@ -59,6 +59,12 @@ describe("the built-in looks", () => {
     expect(found).toEqual([]);
   });
 
+  it("keeps every look when leaving out one account's, since none has an author", async () => {
+    const all = (await everything()).length;
+    const { total } = await repo.listOutfits({ sort: "top", excludeAuthorId: "00000000-0000-4000-8000-000000000000" });
+    expect(total).toBe(all);
+  });
+
   it("carries no invented person, vote or date", async () => {
     for (const post of await everything()) {
       expect(post.upvotes, post.title).toBeNull();
