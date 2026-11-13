@@ -44,9 +44,9 @@ function Filter<T extends string>({
 export function OutfitFilters({ count, live }: { count: number; live: boolean }) {
   const [pending, startTransition] = useTransition();
   const [f, setQuery] = useQueryStates(wardrobeParsers, { shallow: false, startTransition });
-  // A new filter changes what the pages hold, so both lists start from their first.
+  // A new filter changes what the pages hold, so it starts from the first.
   const set: typeof setQuery = (values, options) =>
-    setQuery(typeof values === "function" ? values : { ...values, page: null, setsPage: null }, options);
+    setQuery(typeof values === "function" ? values : { ...values, page: null }, options);
   const active = f.q || f.class || f.race || f.armor || f.category || f.tag || f.pictures;
   const raceKeys = Object.keys(RACE_LABEL);
 

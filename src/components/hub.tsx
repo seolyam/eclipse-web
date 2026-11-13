@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { createSerializer, type SearchParams } from "nuqs/server";
-import { listPremadeSets, repository } from "@/lib/data";
+import { repository } from "@/lib/data";
 import { LOOKS_PER_PAGE } from "@/lib/domain";
 import { wardrobeCache, wardrobeParsers } from "@/lib/search-params";
 
@@ -47,28 +47,6 @@ export async function listFromSearch(searchParams: Promise<SearchParams>) {
   return { ...list, filters: f };
 }
 
-/**
- * The game's own sets under the same filters, paged on their own. Empty without a
- * database, where they are already the whole list.
- */
-export async function premadeFromSearch(f: Filters) {
-  if (!repository.live) return { posts: [], total: 0 };
-  return listPremadeSets({
-    q: f.q,
-    className: f.class,
-    race: f.race,
-    armor: f.armor,
-    category: f.category,
-    tag: f.tag,
-    authorId: f.author,
-    saved: f.saved,
-    item: f.item !== null && f.item > 0 ? f.item : null,
-    captured: f.pictures,
-    sort: f.sort,
-    page: f.setsPage,
-  });
-}
-
 export function PublishButton() {
   if (!repository.live) return null;
   return (
@@ -105,21 +83,12 @@ const serialize = createSerializer(wardrobeParsers);
 
 type Filters = Awaited<ReturnType<typeof listFromSearch>>["filters"];
 
-/**
- * Plain links, so every page of looks works without JavaScript and can be crawled.
- * Pages through `param`, and lands on `hash` when a list sits further down the page.
- */
-export function Pager({ base, filters, total, param = "page", hash = "" }: {
-  base: string;
-  filters: Filters;
-  total: number;
-  param?: "page" | "setsPage";
-  hash?: string;
-}) {
+/** Plain links, so every page of looks works without JavaScript and can be crawled. */
+export function Pager({ base, filters, total }: { base: string; filters: Filters; total: number }) {
   const pages = Math.ceil(total / LOOKS_PER_PAGE);
   if (pages < 2) return null;
-  const page = Math.max(1, filters[param]);
-  const href = (to: number) => serialize(base, { ...filters, [param]: to }) + hash;
+  const page = Math.max(1, filters.page);
+  const href = (to: number) => serialize(base, { ...filters, page: to });
   return (
     <nav aria-label="Pages" className="flex items-center justify-center gap-3 pt-2">
       {page > 1 ? (
