@@ -521,7 +521,9 @@ describe("the Supabase adapter", () => {
 
   it("leaves out one author's looks, for the community list beside your own", async () => {
     await repo.listOutfits({ sort: "top", excludeAuthorId: row.id });
-    expect(requests[0].searchParams.get("author_id")).toBe(`neq.${row.id}`);
+    // Not neq: a look from the Discord showcase has no author yet, and `null <> id` is
+    // unknown, which would drop it from every signed-in visitor's Wardrobe.
+    expect(requests[0].searchParams.get("author_id")).toBe(`isdistinct.${row.id}`);
   });
 
   it("treats a page past the end as empty, not as a crash", async () => {
