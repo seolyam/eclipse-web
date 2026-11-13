@@ -65,8 +65,9 @@ const toGameSet = (r: GameSetRow): GameSet => ({
 // outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
   "id,title,code,class_name,armor,race,categories,tags,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
-  // outfits refers to itself, so the hint is the column: it picks the original, not the remixes.
-  "remix:outfits!remixed_from(id,title,profiles!outfits_author_id_fkey(display_name))";
+  // outfits refers to itself. Embedding through the column itself reaches the original (one
+  // row, or null); `outfits!remixed_from` reached the other way, the remixes, as an array.
+  "remix:remixed_from(id,title,profiles!outfits_author_id_fkey(display_name))";
 
 const toPost = (r: OutfitRow): OutfitPost => ({
   id: r.id,

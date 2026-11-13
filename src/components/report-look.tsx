@@ -15,7 +15,7 @@ import { REPORT_REASONS, type ReportReason } from "@/lib/data/types";
 import { useAccount } from "@/lib/use-account";
 
 /** Shown to signed-in people other than the author. Moderators decide what happens. */
-export function ReportLook({ id, authorId }: { id: string; authorId: string }) {
+export function ReportLook({ id, authorId, triggerClassName = "pill" }: { id: string; authorId: string; triggerClassName?: string }) {
   const [account] = useAccount();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason | null>(null);
@@ -38,7 +38,7 @@ export function ReportLook({ id, authorId }: { id: string; authorId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="pill">Report</DialogTrigger>
+      <DialogTrigger className={triggerClassName}>Report</DialogTrigger>
       <DialogContent className="gap-5 border-line bg-surface p-6">
         <DialogHeader>
           <DialogTitle>Report this look?</DialogTitle>

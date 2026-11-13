@@ -5,25 +5,18 @@ import Image from "next/image";
 import { useState } from "react";
 import { thumbOf } from "@/lib/screenshots";
 
+const SIZES = "(min-width: 1024px) 40rem, 100vw";
+
 /**
- * The post's studio captures, one at a time. A post with none shows its Narcissus
- * scene and says so: a code holds no picture, and the site will not invent one.
+ * The look's studio captures, one at a time and never cropped: captures come in any shape
+ * (the game's studio is near square, a desktop screenshot is wide), so each is shown whole
+ * over a blurred copy of itself.
  */
-export function StudioGallery({ images, backdrop, title }: { images: string[]; backdrop: string; title: string }) {
+export function StudioGallery({ images, title }: { images: string[]; title: string }) {
   const [index, setIndex] = useState(0);
   const count = images.length;
   const step = (by: number) => setIndex((i) => (i + by + count) % count);
-
-  if (!count) {
-    return (
-      <div className="gallery__frame">
-        <Image src={backdrop} alt="" fill unoptimized sizes="22rem" className="object-cover" />
-        <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-10 text-center text-xs text-ink-dim">
-          No studio capture yet
-        </p>
-      </div>
-    );
-  }
+  const src = images[index];
 
   return (
     <div
@@ -38,13 +31,15 @@ export function StudioGallery({ images, backdrop, title }: { images: string[]; b
       }}
     >
       <div className="gallery__frame">
+        <Image src={src} alt="" aria-hidden fill unoptimized sizes={SIZES} className="gallery__fill" />
         <Image
-          src={images[index]}
-          alt={`${title}, screenshot ${index + 1} of ${count}`}
+          src={src}
+          alt={count > 1 ? `${title}, screenshot ${index + 1} of ${count}` : `${title}, screenshot`}
           fill
           unoptimized
-          sizes="22rem"
-          className="object-cover"
+          priority
+          sizes={SIZES}
+          className="object-contain"
         />
         {count > 1 && (
           <>
@@ -59,16 +54,16 @@ export function StudioGallery({ images, backdrop, title }: { images: string[]; b
       </div>
       {count > 1 && (
         <div className="gallery__thumbs">
-          {images.map((src, i) => (
+          {images.map((image, i) => (
             <button
-              key={src}
+              key={image}
               type="button"
               className="gallery__thumb"
               aria-label={`Show screenshot ${i + 1}`}
               aria-current={i === index}
               onClick={() => setIndex(i)}
             >
-              <Image src={thumbOf(src)} alt="" fill unoptimized sizes="3rem" className="object-cover" />
+              <Image src={thumbOf(image)} alt="" fill unoptimized sizes="4rem" className="object-cover" />
             </button>
           ))}
         </div>

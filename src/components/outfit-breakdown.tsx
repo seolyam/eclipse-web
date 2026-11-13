@@ -75,10 +75,13 @@ const mountName = (m: ResolvedMount) => m.name ?? `Display ${m.id}`;
 /** The baked file when there is one, the concept's art when the row names none. */
 const mountArt = (m: ResolvedMount) => (m.icon ? iconSources(m.icon, 0)[0] : concept("mount"));
 
+/** Whether a code holds anything besides its pieces: a body, a mount, a glow and the like. */
+export const hasLoadoutFacts = (r: ResolvedOutfit) =>
+  Boolean(r.race || r.morph || r.mount || r.mountFly || r.mountHidden || r.scale
+    || r.glows.length || r.sheathe.length || r.colours.length || r.tints || r.cosmetics);
+
 export function LoadoutFacts({ resolved: r }: { resolved: ResolvedOutfit }) {
-  const none = !r.race && !r.morph && !r.mount && !r.mountFly && !r.mountHidden && !r.scale
-    && !r.glows.length && !r.sheathe.length && !r.colours.length && !r.tints && !r.cosmetics;
-  if (none) return <p className="py-2 text-sm text-ink-faint">Only pieces: no body, mount or glow in this code.</p>;
+  if (!hasLoadoutFacts(r)) return <p className="py-2 text-sm text-ink-faint">Only pieces: no body, mount or glow in this code.</p>;
   return (
     <dl className="grid grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] gap-2">
       {r.race && (

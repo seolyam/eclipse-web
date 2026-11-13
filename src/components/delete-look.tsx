@@ -15,7 +15,7 @@ import {
 import { useAccount } from "@/lib/use-account";
 
 /** Shown to the look's author and to moderators. The database decides either way. */
-export function DeleteLook({ id, authorId }: { id: string; authorId: string }) {
+export function DeleteLook({ id, authorId, triggerClassName = "pill" }: { id: string; authorId: string; triggerClassName?: string }) {
   const [account] = useAccount();
   const [open, setOpen] = useState(false);
   const [deleting, startDeleting] = useTransition();
@@ -38,7 +38,7 @@ export function DeleteLook({ id, authorId }: { id: string; authorId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="pill">Delete</DialogTrigger>
+      <DialogTrigger className={triggerClassName}>Delete</DialogTrigger>
       <DialogContent className="gap-5 border-line bg-surface p-6">
         <DialogHeader>
           <DialogTitle>Delete this look?</DialogTitle>
