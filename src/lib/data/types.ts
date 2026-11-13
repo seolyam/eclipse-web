@@ -121,6 +121,39 @@ export interface ReportedLook {
   lastReport: string;
 }
 
+/** Something said under a look. Never edited; removed by its writer, the look's author or a moderator. */
+export interface LookComment {
+  id: string;
+  outfitId: string;
+  authorId: string;
+  /** Null only if the writer has since cleared their name. */
+  author: string | null;
+  authorVerified: boolean;
+  body: string;
+  createdAt: string;
+}
+
+export const COMMENT_REPORT_REASONS = {
+  spam: "Spam or advertising",
+  offensive: "Offensive or abusive",
+  other: "Something else",
+} as const;
+
+export type CommentReportReason = keyof typeof COMMENT_REPORT_REASONS;
+
+/** A comment with reports no moderator has reviewed yet. Moderators only. */
+export interface ReportedComment {
+  id: string;
+  outfitId: string;
+  /** The look it was said under. */
+  title: string;
+  body: string;
+  author: string | null;
+  reports: number;
+  reasons: CommentReportReason[];
+  lastReport: string;
+}
+
 export type WriteResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 /** The seam: pages know this and nothing about where the rows live. */
@@ -148,6 +181,18 @@ export interface Repository {
   listReports(): Promise<ReportedLook[]>;
   /** Moderators only: keeps a reported look and marks its reports so far as read. */
   dismissReports(id: string): Promise<WriteResult<string>>;
+  /** A look's comments, oldest first. */
+  listComments(outfitId: string): Promise<LookComment[]>;
+  getComment(id: string): Promise<LookComment | null>;
+  addComment(outfitId: string, body: string): Promise<WriteResult<LookComment>>;
+  /** The writer's own, any on the signed-in author's look, or any for a moderator. */
+  deleteComment(id: string): Promise<WriteResult<string>>;
+  /** True when it is this person's first report of the comment. */
+  reportComment(id: string, reason: CommentReportReason): Promise<WriteResult<boolean>>;
+  /** Moderators only: everything else gets an empty list. */
+  listCommentReports(): Promise<ReportedComment[]>;
+  /** Moderators only: keeps a reported comment and marks its reports so far as read. */
+  dismissCommentReports(id: string): Promise<WriteResult<string>>;
   /** Compresses and stores a screenshot, and returns its storage path. */
   uploadScreenshot(file: File): Promise<WriteResult<string>>;
   removeScreenshot(path: string): Promise<WriteResult<string>>;

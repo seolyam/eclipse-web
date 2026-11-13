@@ -170,6 +170,27 @@ export const builtinRepository: Repository = {
   async dismissReports() {
     return { ok: false, error: NOT_LIVE };
   },
+  async listComments() {
+    return [];
+  },
+  async getComment() {
+    return null;
+  },
+  async addComment() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async deleteComment() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async reportComment() {
+    return { ok: false, error: NOT_LIVE };
+  },
+  async listCommentReports() {
+    return [];
+  },
+  async dismissCommentReports() {
+    return { ok: false, error: NOT_LIVE };
+  },
   async uploadScreenshot() {
     return { ok: false, error: NOT_LIVE };
   },

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { CopyButton } from "@/components/copy-button";
 import { DeleteLook } from "@/components/delete-look";
+import { LookComments } from "@/components/look-comments";
 import { LookPieces } from "@/components/look-pieces";
 import { ModeratorReports } from "@/components/moderator-reports";
 import { hasLoadoutFacts, LoadoutFacts } from "@/components/outfit-breakdown";
@@ -119,23 +120,20 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
               <LoadoutFacts resolved={resolved} />
             </section>
           )}
-        </aside>
-      </div>
 
-      <footer className="flex flex-col gap-6 border-t border-line pt-6">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           {tags.length > 0 && (
-            <section aria-labelledby="tags-heading" className="flex min-w-0 flex-col gap-2">
+            <section aria-labelledby="tags-heading" className="flex flex-col gap-2">
               <h2 id="tags-heading" className="font-sans text-sm font-medium text-ink">Tags</h2>
-              <ul className="flex flex-wrap gap-2">
+              <ul className="flex flex-wrap gap-1.5">
                 {tags.map((t) => (
-                  <li key={t} className="rounded-full border border-line bg-surface-raised px-3 py-1 text-sm text-ink-dim">{t}</li>
+                  <li key={t} className="rounded-full border border-line bg-surface-raised px-2.5 py-0.5 text-xs text-ink-dim">{t}</li>
                 ))}
               </ul>
             </section>
           )}
+
           {((resolved && hasArmor(resolved)) || post.authorId) && (
-            <div className="flex flex-wrap items-center gap-2 sm:ml-auto sm:justify-end sm:self-end">
+            <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
               {resolved && hasArmor(resolved) && (
                 <Link href={`/dressing-room?look=${encodeURIComponent(post.id)}`} className="pill">
                   <Shirt className="size-4" strokeWidth={1.5} aria-hidden />Open in Dressing room
@@ -147,8 +145,16 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
               )}
             </div>
           )}
-        </div>
+        </aside>
+      </div>
 
+      {repository.live && post.authorId && (
+        <div className="border-t border-line pt-8">
+          <LookComments outfitId={post.id} lookAuthorId={post.authorId} />
+        </div>
+      )}
+
+      <footer className="flex flex-col gap-4 border-t border-line pt-6">
         <details className="group rounded-lg border border-line bg-surface">
           <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-ink-dim transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
             <Code className="size-4" strokeWidth={1.5} aria-hidden />

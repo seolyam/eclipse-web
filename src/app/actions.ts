@@ -9,9 +9,12 @@ import {
 } from "@/lib/codec/schema";
 import { decodeWorld, OUTFIT_WORLD_TAG } from "@/lib/codec/world";
 import { repository } from "@/lib/data";
-import { REPORT_REASONS, type ReportReason } from "@/lib/data/types";
+import {
+  COMMENT_REPORT_REASONS, REPORT_REASONS, type CommentReportReason, type ReportReason,
+} from "@/lib/data/types";
+import { commentSchema } from "@/lib/comments";
 import { announceLook } from "@/lib/look-feed";
-import { alertModerators } from "@/lib/moderation-alert";
+import { alertCommentReport, alertModerators } from "@/lib/moderation-alert";
 import { UPLOAD_PATH } from "@/lib/screenshots";
 
 export type InspectResult =
@@ -165,6 +168,37 @@ export async function openReportsFor(id: string) {
 
 export async function dismissLookReports(id: string) {
   const r = await repository.dismissReports(id);
+  if (r.ok) revalidatePath("/moderation");
+  return r;
+}
+
+export async function postComment(outfitId: string, body: string) {
+  const parsed = commentSchema.safeParse(body);
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message };
+  const r = await repository.addComment(outfitId, parsed.data);
+  if (r.ok) revalidatePath(`/wardrobe/${outfitId}`);
+  return r;
+}
+
+export async function removeComment(id: string, outfitId: string) {
+  const r = await repository.deleteComment(id);
+  if (r.ok) {
+    revalidatePath(`/wardrobe/${outfitId}`);
+    revalidatePath("/moderation");
+  }
+  return r;
+}
+
+export async function reportComment(id: string, reason: string) {
+  if (!Object.hasOwn(COMMENT_REPORT_REASONS, reason)) return { ok: false as const, error: "Choose a reason first." };
+  const r = await repository.reportComment(id, reason as CommentReportReason);
+  if (r.ok) revalidatePath("/moderation");
+  if (r.ok && r.value) after(() => alertCommentReport(id, reason as CommentReportReason));
+  return r;
+}
+
+export async function dismissCommentReports(id: string) {
+  const r = await repository.dismissCommentReports(id);
   if (r.ok) revalidatePath("/moderation");
   return r;
 }

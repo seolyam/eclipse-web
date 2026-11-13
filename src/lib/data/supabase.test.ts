@@ -526,3 +526,85 @@ describe("the Supabase adapter", () => {
     expect(requests).toEqual([]);
   });
 });
+
+describe("comments", () => {
+  const comment = {
+    id: "55555555-5555-4555-8555-555555555555",
+    outfit_id: row.id,
+    author_id: row.author_id,
+    body: "Love the cape.",
+    created_at: row.created_at,
+    profiles: { display_name: "Kira", verified: true },
+  };
+  const said = {
+    id: comment.id, outfitId: row.id, authorId: row.author_id, author: "Kira", authorVerified: true,
+    body: "Love the cape.", createdAt: row.created_at,
+  };
+
+  it("lists a look's comments oldest first, with the writer's public name", async () => {
+    reply = () => Response.json([comment]);
+    expect(await repo.listComments(row.id)).toEqual([said]);
+    const q = requests[0].searchParams;
+    expect(q.get("outfit_id")).toBe(`eq.${row.id}`);
+    expect(q.get("order")).toBe("created_at.asc");
+    // Names the key: the reports table also joins comments to profiles.
+    expect(q.get("select")).toContain("profiles!outfit_comments_author_id_fkey(display_name,verified)");
+  });
+
+  it("has no comments for a built-in set, and asks the database nothing", async () => {
+    expect(await repo.listComments("set-1074")).toEqual([]);
+    expect(requests).toEqual([]);
+  });
+
+  it("posts as the signed-in account", async () => {
+    user = { id: row.author_id };
+    let sent: unknown;
+    reply = (_, init) => {
+      sent = JSON.parse(String(init?.body));
+      return Response.json(comment, { status: 201 });
+    };
+    expect(await repo.addComment(row.id, "Love the cape.")).toEqual({ ok: true, value: said });
+    expect(sent).toEqual({ outfit_id: row.id, author_id: row.author_id, body: "Love the cape." });
+  });
+
+  it("asks a visitor to sign in, and asks the database nothing", async () => {
+    expect(await repo.addComment(row.id, "hi")).toEqual({ ok: false, error: "Sign in to comment." });
+    expect(requests).toEqual([]);
+  });
+
+  it("asks for a name, and explains the limit, when the database refuses", async () => {
+    user = { id: row.author_id };
+    reply = failWith("42501", 403);
+    expect(await repo.addComment(row.id, "hi")).toEqual({ ok: false, error: "Choose a public name first, from the account button." });
+    reply = failWith("EC002", 400);
+    expect((await repo.addComment(row.id, "hi")).ok).toBe(false);
+  });
+
+  it("says when a removal was refused, which RLS answers with no rows", async () => {
+    reply = () => Response.json([]);
+    expect(await repo.deleteComment(comment.id)).toEqual({
+      ok: false, error: "You can only remove your own comments, or those on your looks.",
+    });
+    reply = () => Response.json([{ id: comment.id }]);
+    expect(await repo.deleteComment(comment.id)).toEqual({ ok: true, value: comment.id });
+  });
+
+  it("files a report through report_comment, and says when it is new", async () => {
+    reply = () => Response.json(true);
+    expect(await repo.reportComment(comment.id, "spam")).toEqual({ ok: true, value: true });
+    expect(requests[0].pathname).toBe("/rest/v1/rpc/report_comment");
+  });
+
+  it("lists reported comments for a moderator and nothing for anyone else", async () => {
+    reply = () => Response.json([{
+      comment_id: comment.id, outfit_id: row.id, title: "A real post", body: "spam", author: "Kira",
+      reports: 2, reasons: ["spam"], last_report: row.created_at,
+    }]);
+    expect(await repo.listCommentReports()).toEqual([{
+      id: comment.id, outfitId: row.id, title: "A real post", body: "spam", author: "Kira",
+      reports: 2, reasons: ["spam"], lastReport: row.created_at,
+    }]);
+    reply = failWith("42501", 403);
+    expect(await repo.listCommentReports()).toEqual([]);
+  });
+});
