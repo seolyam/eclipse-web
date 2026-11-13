@@ -13,3 +13,13 @@ export function ago(iso: string, now: number) {
   }
   return "just now";
 }
+
+const WEEK = 7 * 86_400_000;
+// Read on the server, so one zone for everyone; a date is only shown past a week old.
+const DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/** "3 hours ago" for the first week, as a feed reads, then the date: "Nov 1, 2026". */
+export function posted(iso: string, now: number) {
+  const time = new Date(iso).getTime();
+  return now - time < WEEK ? ago(iso, now) : DATE.format(time);
+}

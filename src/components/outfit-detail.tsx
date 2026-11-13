@@ -12,6 +12,7 @@ import { ReportLook } from "@/components/report-look";
 import { SendToGame } from "@/components/send-to-game";
 import { LookModel } from "@/components/studio/look-model";
 import { UpvoteButton } from "@/components/upvote-button";
+import { posted } from "@/lib/ago";
 import { resolveOutfit, type ResolvedOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
 import { repository } from "@/lib/data";
@@ -78,6 +79,15 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
               ) : (post.author ?? "The game's own set")}
               {post.authorVerified && <BadgeCheck className="size-3.5 text-amber" strokeWidth={1.5} aria-label="Verified" />}
             </span>
+            {/* Only what was recorded: a look with no date shows none. */}
+            {post.createdAt && (
+              <>
+                <span aria-hidden className="text-ink-faint">·</span>
+                <time dateTime={post.createdAt} title={new Date(post.createdAt).toUTCString()}>
+                  {posted(post.createdAt, Date.now())}
+                </time>
+              </>
+            )}
           </p>
           {post.remixedFrom && (
             <p className="mt-0.5 text-sm text-ink-faint">

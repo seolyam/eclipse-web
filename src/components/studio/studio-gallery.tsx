@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import { ScreenshotViewer } from "@/components/studio/screenshot-viewer";
 import { thumbOf } from "@/lib/screenshots";
 
 const SIZES = "(min-width: 1024px) 40rem, 100vw";
@@ -14,6 +15,7 @@ const SIZES = "(min-width: 1024px) 40rem, 100vw";
  */
 export function StudioGallery({ images, title }: { images: string[]; title: string }) {
   const [index, setIndex] = useState(0);
+  const [zoomed, setZoomed] = useState(false);
   const count = images.length;
   const step = (by: number) => setIndex((i) => (i + by + count) % count);
   const src = images[index];
@@ -41,6 +43,16 @@ export function StudioGallery({ images, title }: { images: string[]; title: stri
           sizes={SIZES}
           className="object-contain"
         />
+        {/* The whole picture opens it full screen, to zoom in; the arrows sit above it. */}
+        <button
+          type="button"
+          aria-label="View full screen and zoom"
+          className="absolute inset-0 cursor-zoom-in"
+          onClick={() => setZoomed(true)}
+        />
+        <span aria-hidden className="gallery__nav pointer-events-none" style={{ top: "0.5rem", right: "0.5rem", transform: "none" }}>
+          <Maximize2 className="size-3.5" />
+        </span>
         {count > 1 && (
           <>
             <button type="button" aria-label="Previous screenshot" onClick={() => step(-1)} className="gallery__nav left-2">
@@ -52,6 +64,7 @@ export function StudioGallery({ images, title }: { images: string[]; title: stri
           </>
         )}
       </div>
+      <ScreenshotViewer images={images} index={index} onIndex={setIndex} title={title} open={zoomed} onOpenChange={setZoomed} />
       {count > 1 && (
         <div className="gallery__thumbs">
           {images.map((image, i) => (
