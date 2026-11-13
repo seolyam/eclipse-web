@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { NAME_MAX } from "@/lib/account";
+import { descriptionSchema } from "@/lib/comments";
 import { ARMOR_TYPES, CLASSES, RACE_LABEL } from "@/lib/domain";
 import { UPLOAD_PATH } from "@/lib/screenshots";
 import { decodeOutfit } from "./outfit";
@@ -24,7 +25,10 @@ export const submitOutfitSchema = z.object({
   className: z.enum(CLASSES).optional(),
   armor: z.enum(ARMOR_TYPES).optional(),
   race: z.enum(Object.keys(RACE_LABEL) as [string, ...string[]]).optional(),
-  tags: z.array(z.string().trim().min(1).max(24)).max(6),
+  // No longer typed on the publish form; the code's own tags (Mounts, Enchants) are added on publish.
+  tags: z.array(z.string().trim().min(1).max(24)).max(6).default([]),
+  /** The author's caption, shown with the comments. */
+  description: descriptionSchema.optional(),
   gallery: z.array(upload).max(MAX_SCREENSHOTS, `Keep it to ${MAX_SCREENSHOTS} screenshots.`).default([]),
   /** The published look this was made from, credited on the new one. */
   remixedFrom: z.uuid().optional(),

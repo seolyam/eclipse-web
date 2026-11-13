@@ -21,12 +21,13 @@ export function LookPieces({ resolved }: { resolved: ResolvedOutfit }) {
       <h2 id="pieces-heading" className="flex items-baseline gap-2 font-sans text-sm font-medium text-ink">
         Pieces <span className="nums text-xs font-normal text-ink-faint">{worn.length}</span>
       </h2>
-      <ul className="flex flex-col">
+      {/* Two columns under the picture, where a single one would run long. */}
+      <ul className="grid sm:grid-cols-2 sm:gap-x-6">
         {worn.map((s) => {
           const hidden = s.item === 0;
           const name = hidden ? "Hidden" : (s.name ?? `Item ${s.item}`);
           return (
-            <li key={s.slot} className="flex items-center gap-3 border-b border-line py-1.5 last:border-b-0">
+            <li key={s.slot} className="flex items-center gap-3 border-b border-line py-1.5">
               <ItemRing icon={s.icon} slot={s.slot} quality={s.quality} size={40} hidden={hidden} />
               <div className="min-w-0 flex-1">
                 {hidden ? (

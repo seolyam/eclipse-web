@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CommentReportActions } from "@/components/comment-report-actions";
 import { repository } from "@/lib/data";
-import { REPORT_REASONS } from "@/lib/data/types";
+import { COMMENT_REPORT_REASONS, REPORT_REASONS } from "@/lib/data/types";
 
 export const metadata: Metadata = { title: "Reports", robots: { index: false, follow: false } };
 
-/** Looks with reports nobody has reviewed. Each opens on the look, where Dismiss and Delete are. */
+/**
+ * Looks and comments with reports nobody has reviewed. A look opens on its page, where
+ * Dismiss and Delete are; a comment is shown whole, with its answers beside it.
+ */
 export default async function ModerationPage() {
   const account = await repository.getAccount();
   if (!account?.moderator) notFound();
-  const reported = await repository.listReports();
+  const [reported, comments] = await Promise.all([repository.listReports(), repository.listCommentReports()]);
 
   return (
     <main id="main" className="wrap flex flex-col gap-5 py-10">
@@ -35,6 +39,35 @@ export default async function ModerationPage() {
       ) : (
         <p className="rounded-lg border border-dashed border-line p-10 text-center text-sm text-ink-dim">
           No reports waiting.
+        </p>
+      )}
+
+      <h2 className="pt-4 text-xl">Reported comments</h2>
+      {comments.length ? (
+        <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-surface">
+          {comments.map((c) => (
+            <li key={c.id} className="flex flex-col gap-2 p-3">
+              <p className="flex flex-wrap items-baseline gap-x-2 text-sm text-ink-dim">
+                <span className="text-ink">{c.author ?? "Someone"}</span>
+                on
+                <Link href={`/wardrobe/${c.outfitId}#comment-${c.id}`} className="text-ink underline-offset-2 hover:underline">
+                  {c.title}
+                </Link>
+                <span className="nums ml-auto text-xs">{c.reports} {c.reports === 1 ? "report" : "reports"}</span>
+              </p>
+              <blockquote className="border-l-2 border-line pl-3 text-sm break-words whitespace-pre-wrap text-ink-dim">
+                {c.body}
+              </blockquote>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-ink-faint">{c.reasons.map((k) => COMMENT_REPORT_REASONS[k]).join(" · ")}</span>
+                <CommentReportActions id={c.id} outfitId={c.outfitId} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-lg border border-dashed border-line p-10 text-center text-sm text-ink-dim">
+          No reported comments.
         </p>
       )}
     </main>

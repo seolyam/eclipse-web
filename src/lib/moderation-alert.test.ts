@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { OutfitPost } from "@/lib/data/types";
+import type { LookComment, OutfitPost } from "@/lib/data/types";
 
 vi.mock("server-only", () => ({}));
 
 let look: OutfitPost | null = null;
-vi.mock("@/lib/data", () => ({ repository: { getOutfit: async () => look } }));
+let comment: LookComment | null = null;
+vi.mock("@/lib/data", () => ({ repository: { getOutfit: async () => look, getComment: async () => comment } }));
 
-const { alertModerators } = await import("./moderation-alert");
+const { alertCommentReport, alertModerators } = await import("./moderation-alert");
 const { siteUrl } = await import("@/lib/site");
 
 const HOOK = "https://discord.test/api/webhooks/2/mods";
@@ -27,10 +28,21 @@ const post: OutfitPost = {
   gallery: ["https://stub.supabase.co/storage/v1/object/public/showcase/a/b.avif"],
 };
 
+const said: LookComment = {
+  id: "55555555-5555-4555-8555-555555555555",
+  outfitId: post.id,
+  authorId: "44444444-4444-4444-8444-444444444444",
+  author: "Spammer\_1",
+  authorVerified: false,
+  body: "@here buy **gold** at example dot com",
+  createdAt: "2026-11-13T00:00:00.000Z",
+};
+
 const sent: { url: string; body: Record<string, unknown> }[] = [];
 
 beforeEach(() => {
   look = post;
+  comment = said;
   sent.length = 0;
   vi.stubEnv("DISCORD_MOD_WEBHOOK_URL", HOOK);
   vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
@@ -81,5 +93,34 @@ describe("the moderators' Discord alert", () => {
     await alertModerators(post.id, "spam");
     const [embed] = sent[0].body.embeds as Record<string, unknown>[];
     expect(embed.thumbnail).toBeUndefined();
+  });
+});
+
+describe("the moderators' alert for a comment", () => {
+  it("quotes the comment as typed, names the look and the reason, and pings nobody", async () => {
+    await alertCommentReport(said.id, "offensive");
+    expect(sent).toHaveLength(1);
+    expect(sent[0].body.allowed_mentions).toEqual({ parse: [] });
+    const [embed] = sent[0].body.embeds as Record<string, unknown>[];
+    expect(embed.title).toBe("Reported comment on @everyone *free gold*");
+    expect(embed.url).toBe(`${siteUrl}/wardrobe/${post.id}#comment-${said.id}`);
+    expect(embed.description).toContain("Offensive or abusive");
+    expect(embed.description).toContain(String.raw`Spammer\_1`);
+    expect(embed.description).toContain(String.raw`buy \*\*gold\*\*`);
+    expect(embed.description).toContain(`${siteUrl}/moderation`);
+  });
+
+  it("never says who sent the report", async () => {
+    await alertCommentReport(said.id, "spam");
+    expect(JSON.stringify(sent[0].body)).not.toMatch(/reporter|reported by/i);
+  });
+
+  it("sends nothing for a comment that is already gone, or with no channel set up", async () => {
+    comment = null;
+    await alertCommentReport(said.id, "spam");
+    comment = said;
+    vi.stubEnv("DISCORD_MOD_WEBHOOK_URL", "");
+    await alertCommentReport(said.id, "spam");
+    expect(sent).toEqual([]);
   });
 });

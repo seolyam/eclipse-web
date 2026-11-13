@@ -1,9 +1,10 @@
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, ChevronDown, Code, Shirt } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { CopyButton } from "@/components/copy-button";
 import { DeleteLook } from "@/components/delete-look";
+import { LookComments } from "@/components/look-comments";
 import { LookPieces } from "@/components/look-pieces";
 import { ModeratorReports } from "@/components/moderator-reports";
 import { hasLoadoutFacts, LoadoutFacts } from "@/components/outfit-breakdown";
@@ -11,6 +12,7 @@ import { ReportLook } from "@/components/report-look";
 import { SendToGame } from "@/components/send-to-game";
 import { LookModel } from "@/components/studio/look-model";
 import { UpvoteButton } from "@/components/upvote-button";
+import { posted } from "@/lib/ago";
 import { resolveOutfit, type ResolvedOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
 import { repository } from "@/lib/data";
@@ -28,8 +30,6 @@ const hasArmor = (r: ResolvedOutfit) => r.slots.some((s) => VISIBLE.includes(s.s
 /** Slot -> baked model for each visible piece the code wears, for the 3D preview. */
 const worn = (r: ResolvedOutfit) =>
   Object.fromEntries(r.slots.filter((s) => s.item !== 0 && VISIBLE.includes(s.slot)).map((s) => [s.slot, s.display]));
-
-const quiet = "text-xs text-ink-dim underline-offset-4 transition-colors hover:text-ink hover:underline";
 
 /** The look's class crest, or its race's portrait, in the studio's artifact ring. */
 function Crest({ post, resolved }: { post: OutfitPost; resolved: ResolvedOutfit | null }) {
@@ -59,6 +59,8 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
   const facts = [post.className, post.race ? RACE_LABEL[post.race] : null, post.armor ? ARMOR_LABEL[post.armor] : null]
     .filter((t): t is string => Boolean(t));
   const tags = [...post.categories, ...post.tags];
+  // Only a published look has an author to talk to, and only a live site stores what is said.
+  const social = repository.live && Boolean(post.authorId);
 
   return (
     <article className="flex flex-col gap-8">
@@ -77,6 +79,15 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
               ) : (post.author ?? "The game's own set")}
               {post.authorVerified && <BadgeCheck className="size-3.5 text-amber" strokeWidth={1.5} aria-label="Verified" />}
             </span>
+            {/* Only what was recorded: a look with no date shows none. */}
+            {post.createdAt && (
+              <>
+                <span aria-hidden className="text-ink-faint">·</span>
+                <time dateTime={post.createdAt} title={new Date(post.createdAt).toUTCString()}>
+                  {posted(post.createdAt, Date.now())}
+                </time>
+              </>
+            )}
           </p>
           {post.remixedFrom && (
             <p className="mt-0.5 text-sm text-ink-faint">
@@ -90,27 +101,38 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
 
       {!resolved && <p className="text-sm text-bad">This look&apos;s code no longer decodes.</p>}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-        <LookModel
-          pieces={resolved ? worn(resolved) : {}}
-          wearer={decoded.ok ? wearerOf(decoded.outfit.look) : null}
-          gallery={post.gallery}
-          backdrop={backdropFor(post.id)}
-          title={post.title}
-        />
+      {/*
+        As a photo on a social app: the picture with the conversation beside it, and
+        everything about the look under the picture.
+      */}
+      <div className={`grid gap-x-8 gap-y-6 ${social ? "lg:grid-cols-[minmax(0,1fr)_24rem]" : ""}`}>
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+          <LookModel
+            pieces={resolved ? worn(resolved) : {}}
+            wearer={decoded.ok ? wearerOf(decoded.outfit.look) : null}
+            gallery={post.gallery}
+            backdrop={backdropFor(post.id)}
+            title={post.title}
+          />
+        </div>
 
-        <aside className="flex flex-col gap-6" aria-label="Use this look">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              <CopyButton code={post.code} className="h-[2.9rem] flex-1 px-6 text-[0.95rem]" />
-              {repository.live && <SendToGame id={post.id} />}
-            </div>
-            {(post.upvotes !== null || (repository.live && post.authorId)) && (
-              <div className="flex items-center gap-2">
-                {post.upvotes !== null && <UpvoteButton id={post.id} count={post.upvotes} />}
-                {repository.live && post.authorId && <BookmarkButton id={post.id} saved={saved} />}
-              </div>
-            )}
+        <div className="flex min-w-0 flex-col gap-6 lg:col-start-1 lg:row-start-2">
+          <div className="flex flex-wrap items-center gap-2 border-b border-line pb-5" aria-label="Use this look" role="group">
+            <CopyButton code={post.code} className="h-[2.9rem] px-6 text-[0.95rem]" />
+            {repository.live && <SendToGame id={post.id} />}
+            {post.upvotes !== null && <UpvoteButton id={post.id} count={post.upvotes} />}
+            {social && <BookmarkButton id={post.id} saved={saved} />}
+            <span className="flex flex-wrap items-center gap-2 sm:ml-auto">
+              {resolved && hasArmor(resolved) && (
+                <Link href={`/dressing-room?look=${encodeURIComponent(post.id)}`} className="pill">
+                  <Shirt className="size-4" strokeWidth={1.5} aria-hidden />Open in Dressing room
+                </Link>
+              )}
+              {post.authorId && <ReportLook id={post.id} authorId={post.authorId} />}
+              {post.authorId && (
+                <DeleteLook id={post.id} authorId={post.authorId} triggerClassName="pill hover:border-bad/50 hover:text-bad" />
+              )}
+            </span>
           </div>
 
           {resolved && <LookPieces resolved={resolved} />}
@@ -121,38 +143,54 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
               <LoadoutFacts resolved={resolved} />
             </section>
           )}
-        </aside>
+
+          {tags.length > 0 && (
+            <section aria-labelledby="tags-heading" className="flex flex-col gap-2">
+              <h2 id="tags-heading" className="font-sans text-sm font-medium text-ink">Tags</h2>
+              <ul className="flex flex-wrap gap-1.5">
+                {tags.map((t) => (
+                  <li key={t} className="rounded-full border border-line bg-surface-raised px-2.5 py-0.5 text-xs text-ink-dim">{t}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+
+        {social && post.authorId && (
+          // Last on a phone, after the look. Beside the picture on a wide screen, and
+          // exactly its height: the box fills the row the picture sets, never stretches it.
+          <aside className="relative order-last lg:order-none lg:col-start-2 lg:row-start-1 lg:min-h-[26rem]" aria-label="Comments">
+            <LookComments
+              outfitId={post.id}
+              lookAuthorId={post.authorId}
+              caption={post.description
+                ? { body: post.description, author: post.author, verified: post.authorVerified, createdAt: post.createdAt }
+                : null}
+            />
+          </aside>
+        )}
       </div>
 
-      <footer className="flex flex-col gap-4 border-t border-line pt-5">
-        {tags.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5" aria-label="Tags">
-            {tags.map((t) => (
-              <li key={t} className="rounded-full bg-surface-high px-2.5 py-0.5 text-xs text-ink-dim">{t}</li>
-            ))}
-          </ul>
-        )}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          {resolved && hasArmor(resolved) && (
-            <Link href={`/dressing-room?look=${encodeURIComponent(post.id)}`} className={quiet}>Open in Dressing room</Link>
-          )}
-          {post.authorId && <ReportLook id={post.id} authorId={post.authorId} triggerClassName={quiet} />}
-          {post.authorId && <DeleteLook id={post.id} authorId={post.authorId} triggerClassName={quiet} />}
-          <p className="text-[0.7rem] text-ink-faint sm:ml-auto">
-            Scene and rings:{" "}
-            <a href={NARCISSUS_URL} target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-ink-dim">Narcissus</a>
-            {" "}by Peterodox, CC BY-NC-SA 4.0
-          </p>
-        </div>
-        <details className="group">
-          <summary className={`${quiet} w-fit cursor-pointer list-none`}>
-            <span className="group-open:hidden">Show the code</span>
-            <span className="hidden group-open:inline">Hide the code</span>
+      <footer className="flex flex-col gap-4 border-t border-line pt-6">
+        <details className="group rounded-lg border border-line bg-surface">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-ink-dim transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+            <Code className="size-4" strokeWidth={1.5} aria-hidden />
+            Look code
+            <ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" strokeWidth={1.5} aria-hidden />
           </summary>
-          <pre className="mt-2 max-h-28 overflow-auto rounded-md border border-line bg-surface p-2.5 font-mono text-xs leading-[18px] break-all whitespace-pre-wrap text-ink-dim">
-            {post.code}
-          </pre>
+          <div className="flex flex-col gap-3 border-t border-line p-4">
+            <pre className="max-h-40 overflow-auto rounded-md border border-line bg-void p-3 font-mono text-xs leading-[18px] break-all whitespace-pre-wrap text-ink-dim">
+              {post.code}
+            </pre>
+            <CopyButton code={post.code} variant="outline" className="self-start" />
+          </div>
         </details>
+
+        <p className="text-xs text-ink-faint">
+          Scene and rings:{" "}
+          <a href={NARCISSUS_URL} target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-ink-dim">Narcissus</a>
+          {" "}by Peterodox, CC BY-NC-SA 4.0
+        </p>
       </footer>
     </article>
   );

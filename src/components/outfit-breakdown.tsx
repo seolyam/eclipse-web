@@ -81,7 +81,14 @@ export const hasLoadoutFacts = (r: ResolvedOutfit) =>
     || r.glows.length || r.sheathe.length || r.colours.length || r.tints || r.cosmetics);
 
 export function LoadoutFacts({ resolved: r }: { resolved: ResolvedOutfit }) {
-  if (!hasLoadoutFacts(r)) return <p className="py-2 text-sm text-ink-faint">Only pieces: no body, mount or glow in this code.</p>;
+  if (!hasLoadoutFacts(r)) {
+    return (
+      <p className="py-2 text-sm text-ink-faint">
+        This code holds pieces only. When a code carries a race or creature morph, a mount, enchant glows, colours or
+        3D effects, they are listed here.
+      </p>
+    );
+  }
   return (
     <dl className="grid grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] gap-2">
       {r.race && (

@@ -6,7 +6,8 @@ import { SCREENSHOT_BUCKET, screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { compressScreenshot, SCREENSHOT_EXTENSION, SCREENSHOT_TYPE } from "./compress";
 import type {
-  GameLink, GameSet, OutfitFilters, OutfitList, OutfitPost, ReportReason, Repository, WriteResult,
+  CommentReportReason, GameLink, GameSet, LookComment, OutfitFilters, OutfitList, OutfitPost, ReportReason, Repository,
+  WriteResult,
 } from "./types";
 
 // The same seam as builtin.ts, over supabase/migrations. RLS is what protects the
@@ -21,6 +22,7 @@ interface OutfitRow {
   race: string | null;
   categories: Category[];
   tags: string[];
+  description: string | null;
   upvotes: number;
   created_at: string;
   author_id: string;
@@ -36,6 +38,39 @@ interface ReportedRow {
   reasons: ReportReason[];
   last_report: string;
 }
+
+interface CommentRow {
+  id: string;
+  outfit_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+  profiles: { display_name: string | null; verified: boolean } | null;
+}
+
+interface ReportedCommentRow {
+  comment_id: string;
+  outfit_id: string;
+  title: string;
+  body: string;
+  author: string | null;
+  reports: number;
+  reasons: CommentReportReason[];
+  last_report: string;
+}
+
+// outfit_comment_reports also joins comments to profiles, so the embed names its key.
+const COMMENT_COLUMNS = "id,outfit_id,author_id,body,created_at,profiles!outfit_comments_author_id_fkey(display_name,verified)";
+
+const toComment = (r: CommentRow): LookComment => ({
+  id: r.id,
+  outfitId: r.outfit_id,
+  authorId: r.author_id,
+  author: r.profiles?.display_name ?? null,
+  authorVerified: r.profiles?.verified ?? false,
+  body: r.body,
+  createdAt: r.created_at,
+});
 
 interface GameLinkRow {
   id: string;
@@ -63,7 +98,7 @@ const toGameSet = (r: GameSetRow): GameSet => ({
 // The hint is required: outfit_votes, outfit_reports and outfit_bookmarks also join
 // outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,categories,tags,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
+  "id,title,code,class_name,armor,race,categories,tags,description,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
   // outfits refers to itself. Embedding through the column itself reaches the original (one
   // row, or null); `outfits!remixed_from` reached the other way, the remixes, as an array.
   "remix:remixed_from(id,title,profiles!outfits_author_id_fkey(display_name))";
@@ -80,6 +115,7 @@ const toPost = (r: OutfitRow): OutfitPost => ({
   race: r.race,
   categories: r.categories,
   tags: r.tags,
+  description: r.description,
   upvotes: r.upvotes,
   createdAt: r.created_at,
   gallery: r.gallery.map(screenshotUrl),
@@ -101,7 +137,11 @@ const SIGNED_OUT = "28000";
 const REFUSED_BY_POLICY = "42501";
 // The errcode limit_publishing raises (the names_and_limits migration).
 const PUBLISHING_LIMIT = "EC001";
+// The errcode limit_commenting raises (the look_comments migration).
+const COMMENTING_LIMIT = "EC002";
 const UNIQUE_VIOLATION = "23505";
+// A comment on a look deleted while it was being written.
+const FOREIGN_KEY_VIOLATION = "23503";
 
 // Storage reports a refused upload by message. Past the folder check, which the
 // site's own path always passes, the policy's only reason to refuse is the limit.
@@ -129,6 +169,8 @@ const outfitRows = (
     : db.from("outfits").select(columns, options);
   if (f.captured) query = query.neq("gallery", "{}");
   if (f.authorId) query = query.eq("author_id", f.authorId);
+  // author_id is not null, so neq keeps every other look.
+  if (f.excludeAuthorId) query = query.neq("author_id", f.excludeAuthorId);
   if (f.className) query = query.eq("class_name", f.className);
   if (f.race) query = query.eq("race", f.race);
   if (f.armor) query = query.eq("armor", f.armor);
@@ -233,6 +275,7 @@ export const supabaseRepository: Repository = {
         armor: input.armor ?? null,
         race: input.race ?? null,
         tags: input.tags,
+        description: input.description ?? null,
         gallery: input.gallery,
         remixed_from: input.remixedFrom ?? null,
       })
@@ -301,6 +344,81 @@ export const supabaseRepository: Repository = {
     if (!UUID.test(id)) return { ok: false, error: "That look has no reports to dismiss." };
     const db = await createServerSupabase();
     const { error } = await db.rpc("dismiss_reports", { target: id });
+    if (error?.code === REFUSED_BY_POLICY) return { ok: false, error: "Only moderators can dismiss reports." };
+    if (error) return { ok: false, error: "Those reports could not be dismissed. Try again." };
+    return { ok: true, value: id };
+  },
+  async listComments(outfitId) {
+    if (!UUID.test(outfitId)) return [];
+    const db = await createServerSupabase();
+    const { data, error } = await db
+      .from("outfit_comments")
+      .select(COMMENT_COLUMNS)
+      .eq("outfit_id", outfitId)
+      .order("created_at")
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return (data as unknown as CommentRow[]).map(toComment);
+  },
+  async getComment(id) {
+    if (!UUID.test(id)) return null;
+    const db = await createServerSupabase();
+    const { data } = await db.from("outfit_comments").select(COMMENT_COLUMNS).eq("id", id).maybeSingle();
+    return data ? toComment(data as unknown as CommentRow) : null;
+  },
+  async addComment(outfitId, body) {
+    if (!UUID.test(outfitId)) return { ok: false, error: "That look cannot be commented on." };
+    const db = await createServerSupabase();
+    const { data: auth } = await db.auth.getUser();
+    if (!auth.user) return { ok: false, error: "Sign in to comment." };
+    const { data, error } = await db
+      .from("outfit_comments")
+      .insert({ outfit_id: outfitId, author_id: auth.user.id, body })
+      .select(COMMENT_COLUMNS)
+      .single();
+    if (error?.code === REFUSED_BY_POLICY) return { ok: false, error: "Choose a public name first, from the account button." };
+    if (error?.code === COMMENTING_LIMIT) return { ok: false, error: "That is a lot of comments at once. Try again in a few minutes." };
+    if (error?.code === FOREIGN_KEY_VIOLATION) return { ok: false, error: "That look is gone." };
+    if (error) return { ok: false, error: "That comment could not be posted. Try again." };
+    return { ok: true, value: toComment(data as unknown as CommentRow) };
+  },
+  async deleteComment(id) {
+    if (!UUID.test(id)) return { ok: false, error: "That comment cannot be removed." };
+    const db = await createServerSupabase();
+    const { data, error } = await db.from("outfit_comments").delete().eq("id", id).select("id");
+    if (error) return { ok: false, error: "That comment could not be removed. Try again." };
+    // RLS answers a delete it refuses with no rows, not with an error.
+    if (!data.length) return { ok: false, error: "You can only remove your own comments, or those on your looks." };
+    return { ok: true, value: id };
+  },
+  async reportComment(id, reason) {
+    if (!UUID.test(id)) return { ok: false, error: "That comment cannot be reported." };
+    const db = await createServerSupabase();
+    const { data, error } = await db.rpc("report_comment", { target: id, why: reason });
+    if (error?.code === SIGNED_OUT) return { ok: false, error: "Sign in to report a comment." };
+    if (error) return { ok: false, error: "That report could not be sent. Try again." };
+    return { ok: true, value: data === true };
+  },
+  async listCommentReports() {
+    const db = await createServerSupabase();
+    const { data, error } = await db.rpc("comment_moderation_queue");
+    if (error?.code === REFUSED_BY_POLICY) return [];
+    if (error) throw new Error(error.message);
+    return (data as ReportedCommentRow[]).map((r) => ({
+      id: r.comment_id,
+      outfitId: r.outfit_id,
+      title: r.title,
+      body: r.body,
+      author: r.author,
+      reports: Number(r.reports),
+      reasons: r.reasons,
+      lastReport: r.last_report,
+    }));
+  },
+  async dismissCommentReports(id) {
+    if (!UUID.test(id)) return { ok: false, error: "That comment has no reports to dismiss." };
+    const db = await createServerSupabase();
+    const { error } = await db.rpc("dismiss_comment_reports", { target: id });
     if (error?.code === REFUSED_BY_POLICY) return { ok: false, error: "Only moderators can dismiss reports." };
     if (error) return { ok: false, error: "Those reports could not be dismissed. Try again." };
     return { ok: true, value: id };

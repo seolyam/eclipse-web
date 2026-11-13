@@ -1,6 +1,8 @@
 import "server-only";
 import { repository } from "@/lib/data";
-import { REPORT_REASONS, type ReportReason } from "@/lib/data/types";
+import {
+  COMMENT_REPORT_REASONS, REPORT_REASONS, type CommentReportReason, type ReportReason,
+} from "@/lib/data/types";
 import { AMBER, plain, postWebhook } from "@/lib/discord";
 import { siteUrl } from "@/lib/site";
 
@@ -22,6 +24,29 @@ export async function alertModerators(id: string, reason: ReportReason) {
     description: `A look${by} was reported for **${REPORT_REASONS[reason]}**.\n[Review it in moderation](${siteUrl}/moderation)`,
     color: AMBER,
     ...(post.gallery.length ? { thumbnail: { url: `${url}/cover` } } : {}),
+    footer: { text: "Report" },
+  }]);
+}
+
+// The same channel, for a comment. The comment is quoted as typed, so moderators can
+// judge it from Discord; mentions stay off, so nothing in it pings anyone.
+export async function alertCommentReport(id: string, reason: CommentReportReason) {
+  const hook = process.env.DISCORD_MOD_WEBHOOK_URL;
+  if (!hook) return;
+  const comment = await repository.getComment(id);
+  if (!comment) return;
+  const post = await repository.getOutfit(comment.outfitId);
+  if (!post) return;
+
+  const by = comment.author ? ` by ${plain(comment.author)}` : "";
+  const quote = plain(comment.body.slice(0, 1000)).replace(/^/gm, "> ");
+  await postWebhook(hook, [{
+    title: `Reported comment on ${post.title}`.slice(0, 256),
+    url: `${siteUrl}/wardrobe/${post.id}#comment-${comment.id}`,
+    description:
+      `A comment${by} was reported for **${COMMENT_REPORT_REASONS[reason]}**.\n${quote}\n` +
+      `[Review it in moderation](${siteUrl}/moderation)`,
+    color: AMBER,
     footer: { text: "Report" },
   }]);
 }
