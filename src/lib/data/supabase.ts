@@ -25,10 +25,12 @@ interface OutfitRow {
   description: string | null;
   upvotes: number;
   created_at: string;
-  author_id: string;
+  /** Null on a look from the Discord showcase until its player signs in. */
+  author_id: string | null;
+  discord_name: string | null;
   gallery: string[];
   profiles: { display_name: string | null; verified: boolean } | null;
-  remix?: { id: string; title: string; profiles: { display_name: string | null } | null } | null;
+  remix?: { id: string; title: string; discord_name?: string | null; profiles: { display_name: string | null } | null } | null;
 }
 
 interface ReportedRow {
@@ -98,17 +100,19 @@ const toGameSet = (r: GameSetRow): GameSet => ({
 // The hint is required: outfit_votes, outfit_reports and outfit_bookmarks also join
 // outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,categories,tags,description,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
+  "id,title,code,class_name,armor,race,categories,tags,description,upvotes,created_at,author_id,discord_name,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
   // outfits refers to itself. Embedding through the column itself reaches the original (one
   // row, or null); `outfits!remixed_from` reached the other way, the remixes, as an array.
-  "remix:remixed_from(id,title,profiles!outfits_author_id_fkey(display_name))";
+  "remix:remixed_from(id,title,discord_name,profiles!outfits_author_id_fkey(display_name))";
 
 const toPost = (r: OutfitRow): OutfitPost => ({
   id: r.id,
   title: r.title,
-  author: r.profiles?.display_name ?? null,
+  // Once claimed, the profile's name wins over the one the player had on Discord.
+  author: r.profiles?.display_name ?? r.discord_name ?? null,
   authorId: r.author_id,
   authorVerified: r.profiles?.verified ?? false,
+  sharedOnDiscord: r.author_id === null && Boolean(r.discord_name),
   code: r.code,
   className: r.class_name,
   armor: r.armor,
@@ -119,7 +123,7 @@ const toPost = (r: OutfitRow): OutfitPost => ({
   upvotes: r.upvotes,
   createdAt: r.created_at,
   gallery: r.gallery.map(screenshotUrl),
-  remixedFrom: r.remix ? { id: r.remix.id, title: r.remix.title, author: r.remix.profiles?.display_name ?? null } : null,
+  remixedFrom: r.remix ? { id: r.remix.id, title: r.remix.title, author: r.remix.profiles?.display_name ?? r.remix.discord_name ?? null } : null,
 });
 
 // A search term goes into PostgREST's filter text, where , ( ) are syntax.

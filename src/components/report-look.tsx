@@ -15,7 +15,7 @@ import { REPORT_REASONS, type ReportReason } from "@/lib/data/types";
 import { useAccount } from "@/lib/use-account";
 
 /** Shown to signed-in people other than the author. Moderators decide what happens. */
-export function ReportLook({ id, authorId, triggerClassName = "pill" }: { id: string; authorId: string; triggerClassName?: string }) {
+export function ReportLook({ id, authorId, triggerClassName = "pill" }: { id: string; authorId: string | null; triggerClassName?: string }) {
   const [account] = useAccount();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason | null>(null);

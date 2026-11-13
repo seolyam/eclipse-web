@@ -35,7 +35,7 @@ export function CommentActions({ id, outfitId, writerId, lookAuthorId }: {
   id: string;
   outfitId: string;
   writerId: string;
-  lookAuthorId: string;
+  lookAuthorId: string | null;
 }) {
   const { account } = useViewer();
   if (!account) return null;

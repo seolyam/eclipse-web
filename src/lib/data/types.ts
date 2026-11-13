@@ -6,8 +6,14 @@ export interface OutfitPost {
   title: string;
   /** Who published it. Null on a set from the game's catalogue: nobody did. */
   author: string | null;
+  /** Null on a game set, and on a look from the Discord showcase its player has not claimed. */
   authorId: string | null;
   authorVerified: boolean;
+  /**
+   * Shared in the Discord showcase and credited by the player's Discord name, before they
+   * have signed in here. A community look like any other, only with no account to link.
+   */
+  sharedOnDiscord?: boolean;
   /** The ECA1: code exactly as published. Everything else is about it. */
   code: string;
   className: ClassName | null;
