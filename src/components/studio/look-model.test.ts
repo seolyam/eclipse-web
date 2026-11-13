@@ -11,42 +11,41 @@ const render = (props: Partial<Parameters<typeof LookModel>[0]>) =>
     createElement(LookModel, { pieces: {}, wearer: null, gallery: [], backdrop: BACKDROP, title: "Raid night", ...props }),
   );
 
+// The 3D figure streams its models from the viewer's pack host, which is slow and is not
+// ours to spend, so nothing about it loads until a visitor asks for it.
 describe("a look's stage", () => {
-  it("dresses the figure as soon as the look opens, with no button to press", () => {
+  it("shows the game's screenshots first, with the 3D preview one click away", () => {
+    const html = render({ pieces: { 0: 179769 }, gallery: [SHOT] });
+    expect(html).toContain(SHOT);
+    expect(html).not.toContain("<canvas");
+    expect(html).toContain("Show 3D preview");
+  });
+
+  it("draws no figure on open for a look without screenshots, only offers one", () => {
     const html = render({ pieces: { 0: 179769, 4: 168954 } });
-    expect(html).toContain("<canvas");
+    expect(html).not.toContain("<canvas");
+    expect(html).toContain("Show 3D preview");
+  });
+
+  it("offers a look's own body even when none of its pieces are baked", () => {
+    expect(render({ pieces: { 0: null }, wearer: { race: 1, gender: 1 } })).toContain("Show 3D preview");
+  });
+
+  it("warns before the preview that it will miss pieces", () => {
+    expect(render({ pieces: { 0: 179769, 4: null } })).toContain("Some pieces");
+    expect(render({ pieces: { 0: 179769 } })).not.toContain("Some pieces");
+  });
+
+  it("offers no preview when the figure would wear nothing", () => {
+    const html = render({ pieces: { 0: null, 4: null }, gallery: [SHOT] });
+    expect(html).toContain(SHOT);
     expect(html).not.toContain("Show 3D preview");
   });
 
-  it("draws a look's own body even when none of its pieces are baked", () => {
-    expect(render({ pieces: { 0: null }, wearer: { race: 1, gender: 1 } })).toContain("<canvas");
-  });
-
-  it("puts the figure first and the screenshots behind a switch", () => {
-    const html = render({ pieces: { 0: 179769 }, gallery: [SHOT] });
-    expect(html).toContain("<canvas");
-    expect(html).toMatch(/aria-selected="true"[^>]*>3D</);
-    expect(html).toContain(">Screenshots<");
-    expect(html).not.toContain(SHOT);
-  });
-
-  it("opens on the screenshots when the figure would be missing a piece", () => {
-    const html = render({ pieces: { 0: 179769, 4: null }, gallery: [SHOT] });
-    expect(html).toMatch(/aria-selected="true"[^>]*>Screenshots</);
-    expect(html).toContain(">3D<");
-    expect(html).toContain(SHOT);
-  });
-
-  it("shows the screenshots, with no switch, when the figure would wear nothing", () => {
-    const html = render({ pieces: { 0: null, 4: null }, gallery: [SHOT] });
-    expect(html).not.toContain("<canvas");
-    expect(html).not.toContain("role=\"tablist\"");
-    expect(html).toContain(SHOT);
-  });
-
-  it("does not draw a bare stand-in for a look the preview cannot dress", () => {
+  it("says so when there is neither a screenshot nor anything to preview", () => {
     const html = render({ pieces: { 0: null, 4: null } });
     expect(html).not.toContain("<canvas");
+    expect(html).not.toContain("Show 3D preview");
     expect(html).toContain("not in the 3D preview");
   });
 });

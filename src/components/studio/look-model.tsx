@@ -1,15 +1,22 @@
 "use client";
 
+import { Box, Images } from "lucide-react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
-import { ModelStage } from "@/components/model-stage";
+import { useState } from "react";
 import { StudioGallery } from "@/components/studio/studio-gallery";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Wearer } from "@/lib/viewer/figure";
 
+// The figure's code and the models it streams load only once a visitor asks for them.
+const ModelStage = dynamic(() => import("@/components/model-stage").then((m) => m.ModelStage), {
+  ssr: false,
+  loading: () => <div className="gallery__frame animate-pulse" aria-label="Loading the 3D preview" />,
+});
+
 /**
- * A look on its character, drawn as soon as the look opens, with any studio captures one
- * switch away (in front, when the figure would miss a piece). Only a figure that would wear
- * something is drawn: a bare stand-in for a code whose pieces are not baked would show a
+ * A look as the game drew it: its studio screenshots first. The 3D figure is one click away,
+ * because it is slow to load and spends the viewer's pack host, and it only offers itself when
+ * it would wear something: a bare stand-in for a code whose pieces are not baked would show a
  * look that is not there.
  */
 export function LookModel({ pieces, wearer, gallery, backdrop, title }: {
@@ -19,37 +26,54 @@ export function LookModel({ pieces, wearer, gallery, backdrop, title }: {
   backdrop: string;
   title: string;
 }) {
+  const [figure, setFigure] = useState(false);
   const drawable = wearer !== null || Object.values(pieces).some(Boolean);
+  const incomplete = Object.values(pieces).some((display) => display === null);
 
-  if (!drawable) {
-    if (gallery.length) return <StudioGallery images={gallery} backdrop={backdrop} title={title} />;
+  if (figure && drawable) {
     return (
-      <div className="gallery__frame">
-        <Image src={backdrop} alt="" fill unoptimized sizes="22rem" className="object-cover" />
-        <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-10 text-center text-xs text-ink-dim">
-          These pieces are not in the 3D preview yet. The code still works in game.
-        </p>
+      <div className="flex w-full flex-col gap-3">
+        <ModelStage pieces={pieces} wearer={wearer} />
+        {gallery.length > 0 && (
+          <button type="button" className="pill self-center" onClick={() => setFigure(false)}>
+            <Images className="size-3.5" aria-hidden />
+            Show screenshots
+          </button>
+        )}
       </div>
     );
   }
 
-  if (!gallery.length) return <ModelStage pieces={pieces} wearer={wearer} />;
+  const offer = drawable && (
+    <div className="flex flex-col items-center gap-1.5 self-center">
+      <button type="button" className="pill" onClick={() => setFigure(true)}>
+        <Box className="size-3.5" aria-hidden />
+        Show 3D preview
+      </button>
+      {incomplete && <p className="text-center text-[0.7rem] text-ink-faint">Some pieces are not in the 3D preview yet.</p>}
+    </div>
+  );
 
-  // A figure missing a piece shows less than the captures do, so they come first.
-  const incomplete = Object.values(pieces).some((display) => display === null);
+  if (gallery.length) {
+    return (
+      <div className="flex w-full flex-col gap-3">
+        <StudioGallery images={gallery} backdrop={backdrop} title={title} />
+        {offer}
+      </div>
+    );
+  }
 
   return (
-    <Tabs defaultValue={incomplete ? "shots" : "3d"} className="items-center">
-      <TabsList aria-label="How to show this look">
-        <TabsTrigger value="3d">3D</TabsTrigger>
-        <TabsTrigger value="shots">Screenshots</TabsTrigger>
-      </TabsList>
-      <TabsContent value="3d" className="w-full">
-        <ModelStage pieces={pieces} wearer={wearer} />
-      </TabsContent>
-      <TabsContent value="shots" className="w-full">
-        <StudioGallery images={gallery} backdrop={backdrop} title={title} />
-      </TabsContent>
-    </Tabs>
+    <div className="flex w-full flex-col gap-3">
+      <div className="gallery__frame">
+        <Image src={backdrop} alt="" fill unoptimized sizes="22rem" className="object-cover" />
+        <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-10 text-center text-xs text-ink-dim">
+          {drawable
+            ? "No screenshot from the game yet. The code works in game."
+            : "No screenshot from the game yet, and these pieces are not in the 3D preview. The code still works in game."}
+        </p>
+      </div>
+      {offer}
+    </div>
   );
 }

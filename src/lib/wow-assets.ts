@@ -66,3 +66,6 @@ const hash = (s: string) => [...s].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0
 
 /** A Narcissus studio scene, the same one for a post every time it is drawn. */
 export const backdropFor = (seed: string) => `/wow/backdrops/${backdrops[hash(seed) % backdrops.length]}.jpg`;
+
+/** The same scene, small, for a card that draws it faintly (`tools/make-card-backdrops.mjs`). */
+export const cardBackdropFor = (seed: string) => `/wow/backdrops/card/${backdrops[hash(seed) % backdrops.length]}.webp`;

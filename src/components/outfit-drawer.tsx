@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 // Opened by the intercepted route, so a copied /wardrobe/<id> link still lands on
-// the full page and Back still closes the drawer with the filters intact.
-export function OutfitDrawer({ title, children }: { title: string; children: React.ReactNode }) {
+// the full page and Back still closes the drawer with the filters intact. It opens before
+// the look has loaded, so its accessible name is generic; the look's own heading follows.
+export function OutfitDrawer({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   return (
     <Sheet defaultOpen onOpenChange={(open) => !open && router.back()}>
@@ -19,7 +20,7 @@ export function OutfitDrawer({ title, children }: { title: string; children: Rea
         }}
       >
         <SheetHeader className="sr-only">
-          <SheetTitle>{title}</SheetTitle>
+          <SheetTitle>Look</SheetTitle>
           <SheetDescription>Pieces, mount and code for this outfit.</SheetDescription>
         </SheetHeader>
         <div className="p-4 pt-10">{children}</div>

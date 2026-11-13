@@ -7,6 +7,7 @@ import { CLASSES, RACE_LABEL, SLOT_NAMES } from "@/lib/domain";
 import {
   QUALITY_NAME,
   backdropFor,
+  cardBackdropFor,
   classArt,
   concept,
   iconSources,
@@ -80,6 +81,11 @@ describe("wow-assets", () => {
     const spread = new Set(Array.from({ length: 200 }, (_, i) => backdropFor(`s${i}`)));
     expect(spread.size).toBeGreaterThan(40);
     expect(backdrops.length).toBe(93);
+  });
+
+  it("has a small copy of every backdrop for cards, the same scene as the full one", () => {
+    for (const name of backdrops) expect(onDisk(`/wow/backdrops/card/${name}.webp`), name).toBe(true);
+    expect(cardBackdropFor("crystal-scholar").replace("/card/", "/").replace(".webp", ".jpg")).toBe(backdropFor("crystal-scholar"));
   });
 });
 

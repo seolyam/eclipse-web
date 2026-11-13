@@ -9,6 +9,9 @@ Local changes, to carry over on every sync:
 - `format/src/config.ts`: the bake's bucket, account id and upload endpoint are removed.
 - `engine/package.json`: `three` follows this site's version; the `copy-public` script is
   replaced by `tools/copy-engine-assets.mjs`.
+- `engine/test/fx.test.ts`: the two "allocates nothing while it runs" tests have a 30 s
+  timeout. They run tens of thousands of frames and timed out at the default 5 s when the
+  site's whole suite ran in parallel.
 
 To sync, copy `engine/src`, `engine/test` and `packages/format/src` from a newer commit,
 reapply the changes above, update the commit here, and run the four checks in CLAUDE.md.

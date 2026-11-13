@@ -9,7 +9,7 @@ import { decodeOutfit } from "@/lib/codec/outfit";
 import type { OutfitPost } from "@/lib/data/types";
 import { ARMOR_LABEL, RACE_LABEL, VISIBLE_SLOTS } from "@/lib/domain";
 import { thumbOf } from "@/lib/screenshots";
-import { backdropFor, classArt, raceArt } from "@/lib/wow-assets";
+import { cardBackdropFor, classArt, raceArt } from "@/lib/wow-assets";
 
 const resolve = (post: OutfitPost) => {
   const decoded = decodeOutfit(post.code);
@@ -41,7 +41,8 @@ export function OutfitCard({ post }: { post: OutfitPost }) {
 
   return (
     <article className="card-stroke corona-rim relative isolate flex flex-col overflow-hidden rounded-lg border border-line bg-surface transition-colors hover:bg-surface-raised">
-      <div aria-hidden className="absolute inset-0 -z-10 bg-cover bg-center opacity-[0.14]" style={{ backgroundImage: `url(${backdropFor(post.id)})` }} />
+      {/* An image rather than a CSS background, so cards below the fold fetch theirs only when scrolled to. */}
+      <Image src={cardBackdropFor(post.id)} alt="" aria-hidden fill unoptimized loading="lazy" sizes="33vw" className="-z-10 object-cover opacity-[0.14]" />
       <Link href={`/wardrobe/${post.id}`} className="group flex flex-1 flex-col gap-3 p-4" aria-label={`Open ${post.title}`}>
         {/* A real capture beats a row of icons; only looks with one show it. */}
         {capture && (
