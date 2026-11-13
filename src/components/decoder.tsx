@@ -213,7 +213,7 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
           id="outfit-description"
           value={description}
           rows={3}
-          placeholder="What inspired it, where the pieces drop, how it looks on a mount"
+          placeholder="What inspired it?"
           onChange={(e) => setDescription(e.target.value)}
           className="max-h-48 resize-none bg-surface"
         />
