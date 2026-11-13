@@ -340,7 +340,8 @@ describe("what the GPU reads", () => {
     const us = ((performance.now() - started) / 2000) * 1000;
     console.log(`particles: ${median.toFixed(2)} bytes and ${us.toFixed(0)} us per frame at ${sim.live} live`);
     expect(median).toBeLessThan(16);
-  });
+    // Tens of thousands of frames: past the default 5 s when every test file runs at once.
+  }, 30_000);
 });
 
 describe("a spline path", () => {
@@ -491,5 +492,6 @@ describe("a ribbon", () => {
     const median = samples[samples.length >> 1]!;
     console.log(`ribbons: ${median.toFixed(2)} bytes per frame at ${r.segments} edges`);
     expect(median).toBeLessThan(16);
-  });
+    // Tens of thousands of frames: past the default 5 s when every test file runs at once.
+  }, 30_000);
 });
