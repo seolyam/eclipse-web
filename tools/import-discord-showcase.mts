@@ -14,7 +14,7 @@
  * and a logged-in, linked Supabase CLI: writes go through it, as the database's owner.
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resolveOutfit } from "@/lib/catalog";
@@ -181,10 +181,12 @@ if (!APPLY) {
 }
 
 // Screenshots first, as the site does: a look only ever names files that exist.
-const root = mkdtempSync(join(tmpdir(), "showcase-files-"));
+// Relative, with forward slashes: the CLI reads an absolute Windows path (C:\...) as a
+// remote address and refuses to copy it.
+const root = "node_modules/.cache/showcase-import";
+rmSync(root, { recursive: true, force: true });
 for (const l of looks) {
-  const folder = join(root, "discord", l.id);
-  mkdirSync(folder, { recursive: true });
+  mkdirSync(`${root}/discord/${l.id}`, { recursive: true });
   const gallery: string[] = [];
   for (const url of l.pictures) {
     const res = await fetch(url);
@@ -194,8 +196,8 @@ for (const l of looks) {
     const path = `discord/${l.id}/${crypto.randomUUID()}.avif`;
     // The thumbnail first, as the site uploads: a gallery names only the full file.
     for (const [file, body] of [[thumbOf(path), compressed.thumb], [path, compressed.full]] as const) {
-      writeFileSync(join(root, file), body);
-      supabase(["storage", "cp", join(root, file), `ss:///${SCREENSHOT_BUCKET}/${file}`, "--linked", "--experimental", "--content-type", "image/avif"]);
+      writeFileSync(`${root}/${file}`, body);
+      supabase(["storage", "cp", `${root}/${file}`, `ss:///${SCREENSHOT_BUCKET}/${file}`, "--linked", "--experimental", "--content-type", "image/avif"]);
     }
     gallery.push(path);
   }
@@ -216,4 +218,5 @@ const inserts = looks.map((l) => `
   insert into public.discord_looks (outfit_id, discord_id, message_id)
     select id, ${sql(l.discordId)}, ${sql(l.messageId)} from look;`);
 query(`begin;${inserts.join("")}\ncommit;\nselect count(*) from public.discord_looks;`);
+rmSync(root, { recursive: true, force: true });
 console.log(`\nImported ${looks.length} looks.`);
