@@ -220,12 +220,14 @@
 /* The gallery: a portrait stage, or a square one for a square capture. */
 .gallery__frame {
   position: relative;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: var(--r-md);
   background: #0d0c0b;
   box-shadow: 0 0 0 1px var(--line-strong), 0 1.5rem 3.5rem -1.5rem rgba(0, 0, 0, 0.8);
 }
+/* A capture of any shape, shown whole: the same picture, blurred and dimmed, fills the frame behind it. */
+.gallery__fill { object-fit: cover; filter: blur(28px) brightness(0.45) saturate(1.2); transform: scale(1.15); }
 .gallery__nav {
   position: absolute;
   top: 50%;
@@ -246,8 +248,8 @@
 .gallery__thumb {
   position: relative;
   flex: none;
-  width: 3rem;
-  height: 3.75rem;
+  width: 4rem;
+  height: 3rem;
   overflow: hidden;
   border-radius: 0.4rem;
   opacity: 0.6;

@@ -10,8 +10,10 @@ import type { Wearer } from "@/lib/viewer/figure";
 // The figure's code and the models it streams load only once a visitor asks for them.
 const ModelStage = dynamic(() => import("@/components/model-stage").then((m) => m.ModelStage), {
   ssr: false,
-  loading: () => <div className="gallery__frame animate-pulse" aria-label="Loading the 3D preview" />,
+  loading: () => <div className="mx-auto aspect-[3/4] w-full max-w-sm animate-pulse rounded-md bg-surface" aria-label="Loading the 3D preview" />,
 });
+
+const toggle = "inline-flex items-center gap-1.5 text-xs text-ink-dim underline-offset-4 transition-colors hover:text-ink hover:underline";
 
 /**
  * A look as the game drew it: its studio screenshots first. The 3D figure is one click away,
@@ -32,10 +34,12 @@ export function LookModel({ pieces, wearer, gallery, backdrop, title }: {
 
   if (figure && drawable) {
     return (
-      <div className="flex w-full flex-col gap-3">
-        <ModelStage pieces={pieces} wearer={wearer} />
+      <div className="flex flex-col gap-3">
+        <div className="mx-auto w-full max-w-sm">
+          <ModelStage pieces={pieces} wearer={wearer} />
+        </div>
         {gallery.length > 0 && (
-          <button type="button" className="pill self-center" onClick={() => setFigure(false)}>
+          <button type="button" className={`${toggle} self-center`} onClick={() => setFigure(false)}>
             <Images className="size-3.5" aria-hidden />
             Show screenshots
           </button>
@@ -44,36 +48,29 @@ export function LookModel({ pieces, wearer, gallery, backdrop, title }: {
     );
   }
 
-  const offer = drawable && (
-    <div className="flex flex-col items-center gap-1.5 self-center">
-      <button type="button" className="pill" onClick={() => setFigure(true)}>
-        <Box className="size-3.5" aria-hidden />
-        Show 3D preview
-      </button>
-      {incomplete && <p className="text-center text-[0.7rem] text-ink-faint">Some pieces are not in the 3D preview yet.</p>}
-    </div>
-  );
-
-  if (gallery.length) {
-    return (
-      <div className="flex w-full flex-col gap-3">
-        <StudioGallery images={gallery} backdrop={backdrop} title={title} />
-        {offer}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex w-full flex-col gap-3">
-      <div className="gallery__frame">
-        <Image src={backdrop} alt="" fill unoptimized sizes="22rem" className="object-cover" />
-        <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-10 text-center text-xs text-ink-dim">
-          {drawable
-            ? "No screenshot from the game yet. The code works in game."
-            : "No screenshot from the game yet, and these pieces are not in the 3D preview. The code still works in game."}
+    <div className="flex flex-col gap-3">
+      {gallery.length ? (
+        <StudioGallery images={gallery} title={title} />
+      ) : (
+        <div className="gallery__frame">
+          <Image src={backdrop} alt="" fill unoptimized sizes="(min-width: 1024px) 40rem, 100vw" className="object-cover opacity-60" />
+          <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12 text-center text-sm text-ink-dim">
+            {drawable
+              ? "No screenshot from the game yet. The code works in game."
+              : "No screenshot from the game yet, and these pieces are not in the 3D preview. The code still works in game."}
+          </p>
+        </div>
+      )}
+      {drawable && (
+        <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
+          <button type="button" className={toggle} onClick={() => setFigure(true)}>
+            <Box className="size-3.5" aria-hidden />
+            Show 3D preview
+          </button>
+          {incomplete && <span className="text-xs text-ink-faint">Some pieces are not in the 3D preview yet.</span>}
         </p>
-      </div>
-      {offer}
+      )}
     </div>
   );
 }
