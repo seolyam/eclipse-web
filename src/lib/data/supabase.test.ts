@@ -271,7 +271,8 @@ describe("remix credit", () => {
   it("shows the original and its author", async () => {
     reply = () => Response.json({ ...row, remix: { id: original, title: "The original", profiles: { display_name: "Ana" } } });
     expect((await repo.getOutfit(row.id))?.remixedFrom).toEqual({ id: original, title: "The original", author: "Ana" });
-    expect(requests[0].searchParams.get("select")).toContain("remix:outfits!remixed_from(");
+    // Through the column itself: `outfits!remixed_from` reaches the remixes, as an array, not the original.
+    expect(requests[0].searchParams.get("select")).toContain("remix:remixed_from(");
   });
 
   it("shows nothing once the original is gone or hidden", async () => {
