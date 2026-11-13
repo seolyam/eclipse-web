@@ -13,7 +13,7 @@ export function Avatar({ account, size = 26 }: { account: Pick<Account, "avatar"
   return (
     <span className="avatar" style={{ width: size, height: size }}>
       {account.avatar && !broken ? (
-        // No optimizer: this is shown to one person, from a host outside our image config.
+        // No optimizer: the provider's host already serves it small, and it sits outside our image config.
         // No referrer: Google refuses some picture requests that carry one.
         <Image
           src={account.avatar}

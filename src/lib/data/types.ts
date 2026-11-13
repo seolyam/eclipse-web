@@ -14,6 +14,8 @@ export interface OutfitPost {
    * have signed in here. A community look like any other, only with no account to link.
    */
   sharedOnDiscord?: boolean;
+  /** The author's Discord picture, public like their name. */
+  authorAvatar?: string | null;
   /** The ECA1: code exactly as published. Everything else is about it. */
   code: string;
   className: ClassName | null;
@@ -137,6 +139,8 @@ export interface LookComment {
   /** Null only if the writer has since cleared their name. */
   author: string | null;
   authorVerified: boolean;
+  /** The writer's Discord picture, public like their name. Null shows their initial. */
+  authorAvatar: string | null;
   body: string;
   createdAt: string;
 }

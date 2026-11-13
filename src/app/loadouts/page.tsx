@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { CopyButton } from "@/components/copy-button";
 import { Decoder, type RemixOf } from "@/components/decoder";
 import { LinkGame, RemoveGameSet, UnlinkGame } from "@/components/game-sync";
-import { DRESSING_TABS, HubTabs, HubTitle } from "@/components/hub";
+import { DRESSING_TABS, HubTabs, HubTitle, LOADOUTS_BLURB } from "@/components/hub";
 import { ItemRing } from "@/components/item-icon";
 import { SignInOptions } from "@/components/sign-in-dialog";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,6 @@ import { screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata("/loadouts");
-
-const BLURB = "Import a code to see what it holds, and keep the loadouts saved in your game backed up here, private to you.";
 
 type Props = { searchParams?: Promise<{ code?: string | string[]; from?: string | string[] }> };
 
@@ -154,7 +152,7 @@ export default async function LoadoutsPage({ searchParams }: Props) {
   const [account, imported] = await Promise.all([repository.getAccount(), linkedCode({ searchParams })]);
   const head = (
     <>
-      <HubTitle title="Loadouts" blurb={BLURB} />
+      <HubTitle title="Loadouts" blurb={LOADOUTS_BLURB} />
       <HubTabs current="/loadouts" tabs={DRESSING_TABS} label="Loadouts views" />
       <Import {...imported} />
     </>

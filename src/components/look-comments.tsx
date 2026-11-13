@@ -1,5 +1,6 @@
 import { BadgeCheck, MessageCircle } from "lucide-react";
 import Link from "next/link";
+import { Avatar } from "@/components/avatar";
 import { CommentActions, CommentsViewer } from "@/components/comment-actions";
 import { CommentForm } from "@/components/comment-form";
 import { CommentScroller } from "@/components/comment-scroller";
@@ -7,48 +8,41 @@ import { ago } from "@/lib/ago";
 import { repository } from "@/lib/data";
 import type { LookComment } from "@/lib/data/types";
 
-/**
- * A name's first letter in a ring. The sign-in provider's picture is shown to its
- * owner only, so a comment never carries it.
- */
-function Initial({ name }: { name: string | null }) {
-  return (
-    <span
-      aria-hidden
-      className="flex size-8 shrink-0 items-center justify-center rounded-full border border-line bg-surface-raised text-xs font-medium text-ink-dim"
-    >
-      {name ? [...name][0].toUpperCase() : "?"}
-    </span>
-  );
+/** A Discord picture at the size it is drawn, from Discord's own resizer. */
+const sized = (url: string | null) => (url ? `${url}?size=64` : null);
+
+/** Who wrote it: their Discord picture, or their initial if they have none. */
+function Face({ name, avatar }: { name: string | null; avatar: string | null }) {
+  return <Avatar account={{ name, avatar: sized(avatar) }} size={32} />;
 }
 
 /** A social app's comment: the name and words in a bubble, when and what to do under it. */
 function Comment({ comment, lookAuthorId, now }: { comment: LookComment; lookAuthorId: string | null; now: number }) {
   const { author, authorId } = comment;
   return (
-    <li id={`comment-${comment.id}`} className="flex scroll-mt-4 gap-2.5">
-      <Initial name={author} />
+    <li id={`comment-${comment.id}`} className="group/comment flex scroll-mt-4 gap-2.5">
+      <Face name={author} avatar={comment.authorAvatar} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="w-fit max-w-full rounded-2xl bg-surface-raised px-3 py-2">
-          <p className="flex flex-wrap items-center gap-x-1.5 text-[0.8rem]">
-            {author ? (
-              <Link href={`/creators/${authorId}`} className="font-medium text-ink underline-offset-2 hover:underline">{author}</Link>
-            ) : (
-              <span className="text-ink-dim">Someone</span>
-            )}
-            {comment.authorVerified && <BadgeCheck className="size-3.5 text-amber" strokeWidth={1.5} aria-label="Verified" />}
-            {authorId === lookAuthorId && (
-              <span className="rounded-full border border-amber/40 px-1.5 text-[0.65rem] leading-4 text-amber">Author</span>
-            )}
-          </p>
-          <p className="text-sm leading-snug break-words whitespace-pre-wrap text-ink-dim">{comment.body}</p>
-        </div>
-        <p className="flex items-center gap-3 px-3">
-          <time dateTime={comment.createdAt} title={new Date(comment.createdAt).toUTCString()} className="text-xs text-ink-faint">
-            {ago(comment.createdAt, now)}
-          </time>
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="w-fit max-w-full min-w-0 rounded-2xl bg-surface-raised px-3 py-2">
+            <p className="flex flex-wrap items-center gap-x-1.5 text-[0.8rem]">
+              {author ? (
+                <Link href={`/creators/${authorId}`} className="font-medium text-ink underline-offset-2 hover:underline">{author}</Link>
+              ) : (
+                <span className="text-ink-dim">Someone</span>
+              )}
+              {comment.authorVerified && <BadgeCheck className="size-3.5 text-amber" strokeWidth={1.5} aria-label="Verified" />}
+              {authorId === lookAuthorId && (
+                <span className="rounded-full border border-amber/40 px-1.5 text-[0.65rem] leading-4 text-amber">Author</span>
+              )}
+            </p>
+            <p className="text-sm leading-snug break-words whitespace-pre-wrap text-ink-dim">{comment.body}</p>
+          </div>
           <CommentActions id={comment.id} outfitId={comment.outfitId} writerId={authorId} lookAuthorId={lookAuthorId} />
-        </p>
+        </div>
+        <time dateTime={comment.createdAt} title={new Date(comment.createdAt).toUTCString()} className="px-3 text-xs text-ink-faint">
+          {ago(comment.createdAt, now)}
+        </time>
       </div>
     </li>
   );
@@ -57,6 +51,7 @@ function Comment({ comment, lookAuthorId, now }: { comment: LookComment; lookAut
 interface Caption {
   body: string;
   author: string | null;
+  avatar: string | null;
   verified: boolean;
   createdAt: string | null;
 }
@@ -65,7 +60,7 @@ interface Caption {
 function CaptionEntry({ caption, authorId, now }: { caption: Caption; authorId: string | null; now: number }) {
   return (
     <div className="flex gap-2.5 border-b border-line py-4">
-      <Initial name={caption.author} />
+      <Face name={caption.author} avatar={caption.avatar} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="text-sm leading-snug break-words whitespace-pre-wrap text-ink-dim">
           {caption.author && authorId && (

@@ -1,5 +1,6 @@
 "use client";
 
+import { Flag, MoreHorizontal, Trash2 } from "lucide-react";
 import { createContext, useContext, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { removeComment, reportComment } from "@/app/actions";
@@ -9,8 +10,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { type Account, COMMENT_REPORT_REASONS, type CommentReportReason } from "@/lib/data/types";
 import { useAccount } from "@/lib/use-account";
 
@@ -25,11 +26,10 @@ export function CommentsViewer({ children }: { children: React.ReactNode }) {
 
 export const useViewer = () => useContext(ViewerContext);
 
-const QUIET = "text-xs text-ink-faint transition-colors hover:text-ink disabled:opacity-50";
-
 /**
- * Remove, for the comment's writer, the look's author and moderators; Report, for
- * anyone else signed in. The database decides either way.
+ * A comment's menu: Remove, for the comment's writer, the look's author and moderators;
+ * Report, for anyone else signed in. The database decides either way. Each opens a
+ * dialog, so a narrow column never has to fit a question and its answers on one line.
  */
 export function CommentActions({ id, outfitId, writerId, lookAuthorId }: {
   id: string;
@@ -38,48 +38,76 @@ export function CommentActions({ id, outfitId, writerId, lookAuthorId }: {
   lookAuthorId: string | null;
 }) {
   const { account } = useViewer();
+  const [open, setOpen] = useState<"remove" | "report" | null>(null);
   if (!account) return null;
   const canRemove = account.moderator || account.id === writerId || account.id === lookAuthorId;
+  const canReport = account.id !== writerId;
+  if (!canRemove && !canReport) return null;
+  const close = (next: boolean) => !next && setOpen(null);
+
   return (
-    <span className="flex items-center gap-3">
-      {account.id !== writerId && <ReportComment id={id} />}
-      {canRemove && <RemoveComment id={id} outfitId={outfitId} />}
-    </span>
+    <>
+      <DropdownMenu modal={false}>
+        {/* Shown on hover or focus where there is a pointer, always on a touch screen. */}
+        <DropdownMenuTrigger
+          aria-label="Comment options"
+          className="grid size-7 shrink-0 place-items-center rounded-full text-ink-faint opacity-0 transition hover:bg-surface-raised hover:text-ink focus-visible:opacity-100 group-hover/comment:opacity-100 data-[state=open]:bg-surface-raised data-[state=open]:text-ink data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
+        >
+          <MoreHorizontal className="size-4" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-36">
+          {canReport && (
+            <DropdownMenuItem onSelect={() => setOpen("report")}>
+              <Flag aria-hidden />Report
+            </DropdownMenuItem>
+          )}
+          {canRemove && (
+            <DropdownMenuItem onSelect={() => setOpen("remove")} className="text-bad focus:text-bad">
+              <Trash2 aria-hidden />Remove
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {canRemove && <RemoveComment id={id} outfitId={outfitId} open={open === "remove"} onOpenChange={close} />}
+      {canReport && <ReportComment id={id} open={open === "report"} onOpenChange={close} />}
+    </>
   );
 }
 
-/** Asks once, in place: a removed comment is gone for everyone. */
-function RemoveComment({ id, outfitId }: { id: string; outfitId: string }) {
-  const [asking, setAsking] = useState(false);
-  const [removing, startRemoving] = useTransition();
+type DialogProps = { open: boolean; onOpenChange: (open: boolean) => void };
 
-  if (!asking) return <button type="button" className={QUIET} onClick={() => setAsking(true)}>Remove</button>;
+/** Asks once: a removed comment is gone for everyone. */
+function RemoveComment({ id, outfitId, open, onOpenChange }: { id: string; outfitId: string } & DialogProps) {
+  const [removing, startRemoving] = useTransition();
 
   function remove() {
     startRemoving(async () => {
       const r = await removeComment(id, outfitId);
       if (!r.ok) {
         toast.error(r.error);
-        setAsking(false);
         return;
       }
+      onOpenChange(false);
       toast.success("Comment removed");
     });
   }
 
   return (
-    <span className="flex items-center gap-2 text-xs">
-      <span className="text-ink-dim">Remove for everyone?</span>
-      <button type="button" className="text-bad hover:underline disabled:opacity-50" disabled={removing} onClick={remove}>
-        {removing ? "Removing" : "Remove"}
-      </button>
-      <button type="button" className={QUIET} disabled={removing} onClick={() => setAsking(false)}>Keep</button>
-    </span>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="gap-5 border-line bg-surface p-6">
+        <DialogHeader>
+          <DialogTitle>Remove this comment?</DialogTitle>
+          <DialogDescription>It is removed for everyone. This cannot be undone.</DialogDescription>
+        </DialogHeader>
+        <button type="button" className="btn btn--primary btn--block" disabled={removing} onClick={remove}>
+          {removing ? "Removing" : "Remove comment"}
+        </button>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function ReportComment({ id }: { id: string }) {
-  const [open, setOpen] = useState(false);
+function ReportComment({ id, open, onOpenChange }: { id: string } & DialogProps) {
   const [reason, setReason] = useState<CommentReportReason | null>(null);
   const [sending, startSending] = useTransition();
 
@@ -91,14 +119,13 @@ function ReportComment({ id }: { id: string }) {
         toast.error(r.error);
         return;
       }
-      setOpen(false);
+      onOpenChange(false);
       toast.success("Thanks. A moderator will take a look.");
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className={QUIET}>Report</DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-5 border-line bg-surface p-6">
         <DialogHeader>
           <DialogTitle>Report this comment?</DialogTitle>
