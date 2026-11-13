@@ -8,8 +8,5 @@ import type { Repository } from "./types";
 /** The real built-in looks until Supabase is configured, so a clone runs with no setup. */
 export const repository: Repository = supabaseConfigured() ? supabaseRepository : builtinRepository;
 
-/** The game's own sets, and the one look saved in Eclipse: the same with or without a database. */
-export const listPremadeSets = builtinRepository.listOutfits;
-
 /** One lookup per request, shared by a page and its metadata. */
 export const getOutfit = cache((id: string) => repository.getOutfit(id));

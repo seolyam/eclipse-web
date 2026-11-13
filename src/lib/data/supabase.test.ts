@@ -453,62 +453,23 @@ describe("the Supabase adapter", () => {
     expect(requests[0].searchParams.get("limit")).toBe(String(LOOKS_PER_PAGE));
   });
 
-  it("lists the game's sets after the published looks", async () => {
-    const sets = await builtinRepository.listOutfits({ sort: "top" });
-    reply = () => Response.json([row], { headers: { "Content-Range": `0-0/1` } });
-    const r = await repo.listOutfits({ sort: "top", itemSets: true });
-    expect(r.total).toBe(sets.total + 1);
-    expect(r.posts).toHaveLength(LOOKS_PER_PAGE);
-    expect(r.posts[0].title).toBe("A real post");
-    expect(r.posts.slice(1).map((p) => p.id)).toEqual(sets.posts.slice(0, LOOKS_PER_PAGE - 1).map((p) => p.id));
-  });
-
-  it("leaves the game's sets out unless they are asked for", async () => {
+  // The game's own sets were taken off the site: it lists what players publish, nothing else.
+  it("lists only the published looks", async () => {
     reply = () => Response.json([row], { headers: { "Content-Range": `0-0/1` } });
     const r = await repo.listOutfits({ sort: "top" });
     expect(r.total).toBe(1);
     expect(r.posts.map((p) => p.title)).toEqual(["A real post"]);
   });
 
-  it("shows the game's sets when asked, even with nothing published", async () => {
-    const sets = await builtinRepository.listOutfits({ sort: "top" });
-    const r = await repo.listOutfits({ sort: "top", itemSets: true });
-    expect(r.total).toBe(sets.total);
-    expect(r.posts.map((p) => p.id)).toEqual(sets.posts.map((p) => p.id));
+  it("lists nothing when nothing is published", async () => {
+    reply = () => Response.json([], { headers: { "Content-Range": `*/0` } });
+    expect(await repo.listOutfits({ sort: "top", armor: "plate" })).toEqual({ posts: [], total: 0 });
   });
 
-  it("keeps paging through the sets where the published looks run out", async () => {
-    const all = (await builtinRepository.listOutfits({ sort: "top", pageSize: 10_000 })).posts.map((p) => p.id);
-    reply = () => Response.json([row], { headers: { "Content-Range": `24-24/25` } });
-    const shared = await repo.listOutfits({ sort: "top", page: 2, itemSets: true });
-    expect(shared.posts.slice(1).map((p) => p.id)).toEqual(all.slice(0, LOOKS_PER_PAGE - 1));
-
-    // Past the last row PostgREST refuses the page, and the refusal holds no count.
-    reply = (_, init) => init?.method === "HEAD"
-      ? new Response(null, { headers: { "Content-Range": `*/25` } })
-      : Response.json({ code: "PGRST103", message: "Requested range not satisfiable" }, { status: 416 });
-    const after = await repo.listOutfits({ sort: "top", page: 3, itemSets: true });
-    expect(after.total).toBe(all.length + 25);
-    expect(after.posts.map((p) => p.id)).toEqual(all.slice(LOOKS_PER_PAGE - 1, LOOKS_PER_PAGE * 2 - 1));
-  });
-
-  it("holds the sets to the filters", async () => {
-    const plate = await repo.listOutfits({ sort: "top", armor: "plate", itemSets: true });
-    expect(plate.posts.length).toBeGreaterThan(0);
-    expect(plate.posts.every((p) => p.armor === "plate")).toBe(true);
-    expect((await repo.listOutfits({ sort: "top", race: "human", itemSets: true })).total).toBe(0);
-  });
-
-  it("keeps the sets out of the Showcase and out of one person's looks", async () => {
-    expect(await repo.listOutfits({ sort: "top", captured: true, itemSets: true })).toEqual({ posts: [], total: 0 });
-    expect(await repo.listOutfits({ sort: "top", authorId: row.id, itemSets: true })).toEqual({ posts: [], total: 0 });
-  });
-
-  it("indexes every set after the published looks, for search and the sitemap", async () => {
+  it("indexes only the published looks, for search, the sitemap and the bot", async () => {
     reply = () => Response.json([row], { headers: { "Content-Range": `0-0/1` } });
     const index = await repo.searchIndex();
-    expect(index[0].title).toBe("A real post");
-    expect(index.slice(1)).toEqual(await builtinRepository.searchIndex());
+    expect(index.map((e) => e.title)).toEqual(["A real post"]);
   });
 
   it("filters the Showcase to posts with a capture", async () => {
@@ -532,11 +493,10 @@ describe("the Supabase adapter", () => {
   });
 
   it("treats a page past the end as empty, not as a crash", async () => {
-    const { total } = await builtinRepository.listOutfits({ sort: "top" });
     reply = (_, init) => init?.method === "HEAD"
-      ? new Response(null, { headers: { "Content-Range": `*/0` } })
+      ? new Response(null, { headers: { "Content-Range": `*/3` } })
       : Response.json({ code: "PGRST103", message: "Requested range not satisfiable" }, { status: 416 });
-    await expect(repo.listOutfits({ sort: "top", page: 99, itemSets: true })).resolves.toEqual({ posts: [], total });
+    await expect(repo.listOutfits({ sort: "top", page: 99 })).resolves.toEqual({ posts: [], total: 3 });
   });
 
   it("does not swallow a failed count behind a refused page", async () => {
@@ -553,11 +513,11 @@ describe("the Supabase adapter", () => {
     expect(requests).toEqual([]);
   });
 
-  it("still opens a real set by its link once the database is on", async () => {
+  it("opens no game set by its old link once the database is on", async () => {
     const { posts } = await builtinRepository.listOutfits({ sort: "top", armor: "plate", pageSize: 1 });
-    const set = await repo.getOutfit(posts[0].id);
     expect(posts[0].id).toMatch(/^set-/);
-    expect(set?.title).toBe(posts[0].title);
+    expect(await repo.getOutfit(posts[0].id)).toBeNull();
+    expect(await repo.getOutfit("crystal-scholar")).toBeNull();
     expect(requests).toEqual([]);
   });
 });

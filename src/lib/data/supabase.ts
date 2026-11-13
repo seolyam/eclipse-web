@@ -4,7 +4,6 @@ import { hashSecret, newLinkCode } from "@/lib/game-sync/secrets";
 import { cleanSetName } from "@/lib/game-sync/wire";
 import { SCREENSHOT_BUCKET, screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { builtinRepository, matchingLooks } from "./builtin";
 import { compressScreenshot, SCREENSHOT_EXTENSION, SCREENSHOT_TYPE } from "./compress";
 import type {
   GameLink, GameSet, OutfitFilters, OutfitList, OutfitPost, ReportReason, Repository, WriteResult,
@@ -143,7 +142,8 @@ const outfitRows = (
   return query;
 };
 
-async function publishedOutfits(f: OutfitFilters): Promise<OutfitList> {
+/** The looks players published, one page at a time. The game's own sets are not listed. */
+async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
   const db = await createServerSupabase();
   let savedBy: string | null = null;
   if (f.saved) {
@@ -171,26 +171,12 @@ async function publishedOutfits(f: OutfitFilters): Promise<OutfitList> {
   return { posts: (data as unknown as OutfitRow[]).map(toPost), total: count ?? 0 };
 }
 
-/** Published looks, then the game's own sets when asked for, as one list to page through. */
-async function listOutfits(f: OutfitFilters): Promise<OutfitList> {
-  if (!f.itemSets) return publishedOutfits(f);
-  const size = f.pageSize ?? LOOKS_PER_PAGE;
-  const from = (Math.max(1, f.page ?? 1) - 1) * size;
-  const published = await publishedOutfits(f);
-  const sets = matchingLooks(f);
-  const start = Math.max(0, from - published.total);
-  return {
-    posts: [...published.posts, ...sets.slice(start, start + size - published.posts.length)],
-    total: published.total + sets.length,
-  };
-}
-
 export const supabaseRepository: Repository = {
   live: true,
   listOutfits,
   async getOutfit(id) {
-    // A set's link keeps working once the database is on: the set is still real.
-    if (!UUID.test(id)) return builtinRepository.getOutfit(id);
+    // Every published look has a uuid. The game's own sets (set-1074) are no longer looks here.
+    if (!UUID.test(id)) return null;
     const db = await createServerSupabase();
     const { data, error } = await db.from("outfits").select(OUTFIT_COLUMNS).eq("id", id).maybeSingle();
     if (error) throw new Error(error.message);
@@ -230,9 +216,8 @@ export const supabaseRepository: Repository = {
     };
   },
   async searchIndex() {
-    const { posts } = await publishedOutfits({ sort: "top", pageSize: SEARCH_INDEX_SIZE });
-    const published = posts.map(({ id, title, author }) => ({ id, title, author }));
-    return [...published, ...(await builtinRepository.searchIndex())];
+    const { posts } = await listOutfits({ sort: "top", pageSize: SEARCH_INDEX_SIZE });
+    return posts.map(({ id, title, author }) => ({ id, title, author }));
   },
   async createOutfit(input) {
     const db = await createServerSupabase();

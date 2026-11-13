@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 /** Real captures once players have posted them, and real looks until then. */
 async function FeaturedLooks() {
   const { posts: captures } = await repository.listOutfits({ sort: "top", captured: true, pageSize: 4 });
-  const looks = captures.length ? [] : (await repository.listOutfits({ sort: "top", pageSize: 4, itemSets: true })).posts;
+  const looks = captures.length ? [] : (await repository.listOutfits({ sort: "top", pageSize: 4 })).posts;
   if (!captures.length && !looks.length) return null;
   const community = captures.length > 0 || looks.some((post) => post.authorId);
   return (
