@@ -22,6 +22,7 @@ interface OutfitRow {
   race: string | null;
   categories: Category[];
   tags: string[];
+  description: string | null;
   upvotes: number;
   created_at: string;
   author_id: string;
@@ -97,7 +98,7 @@ const toGameSet = (r: GameSetRow): GameSet => ({
 // The hint is required: outfit_votes, outfit_reports and outfit_bookmarks also join
 // outfits to profiles, and PostgREST refuses a bare profiles(...) embed as ambiguous.
 const OUTFIT_COLUMNS =
-  "id,title,code,class_name,armor,race,categories,tags,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
+  "id,title,code,class_name,armor,race,categories,tags,description,upvotes,created_at,author_id,gallery,profiles!outfits_author_id_fkey(display_name,verified)," +
   // outfits refers to itself. Embedding through the column itself reaches the original (one
   // row, or null); `outfits!remixed_from` reached the other way, the remixes, as an array.
   "remix:remixed_from(id,title,profiles!outfits_author_id_fkey(display_name))";
@@ -114,6 +115,7 @@ const toPost = (r: OutfitRow): OutfitPost => ({
   race: r.race,
   categories: r.categories,
   tags: r.tags,
+  description: r.description,
   upvotes: r.upvotes,
   createdAt: r.created_at,
   gallery: r.gallery.map(screenshotUrl),
@@ -273,6 +275,7 @@ export const supabaseRepository: Repository = {
         armor: input.armor ?? null,
         race: input.race ?? null,
         tags: input.tags,
+        description: input.description ?? null,
         gallery: input.gallery,
         remixed_from: input.remixedFrom ?? null,
       })

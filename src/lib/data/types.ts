@@ -17,6 +17,8 @@ export interface OutfitPost {
   /** What the look changes, read from its code by the database, never by its author. */
   categories: Category[];
   tags: string[];
+  /** What the author wrote about it, shown as its caption. Only published looks have one. */
+  description?: string | null;
   /** Null where nobody can vote: the site never shows a count it did not record. */
   upvotes: number | null;
   createdAt: string | null;

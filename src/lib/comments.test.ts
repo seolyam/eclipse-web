@@ -34,3 +34,25 @@ describe("a comment's text", () => {
     }
   });
 });
+
+describe("a look's description", () => {
+  const base = { title: "A look", code: "ECA1:c2xvdCAwIDEK" };
+
+  it("is optional: left out or blank, the look has none", async () => {
+    const { submitOutfitSchema } = await import("@/lib/codec/schema");
+    expect(submitOutfitSchema.parse(base).description).toBeUndefined();
+    expect(submitOutfitSchema.parse({ ...base, description: " \n " }).description).toBeUndefined();
+  });
+
+  it("is cleaned as a comment is, and kept to the limit", async () => {
+    const { submitOutfitSchema } = await import("@/lib/codec/schema");
+    expect(submitOutfitSchema.parse({ ...base, description: " Crystal set\r\n\r\n\r\nwith a cape " }).description)
+      .toBe("Crystal set\n\nwith a cape");
+    expect(submitOutfitSchema.safeParse({ ...base, description: "x".repeat(COMMENT_MAX + 1) }).success).toBe(false);
+  });
+
+  it("no longer needs typed tags", async () => {
+    const { submitOutfitSchema } = await import("@/lib/codec/schema");
+    expect(submitOutfitSchema.parse(base).tags).toEqual([]);
+  });
+});

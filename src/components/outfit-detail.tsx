@@ -160,7 +160,13 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
           // Last on a phone, after the look. Beside the picture on a wide screen, and
           // exactly its height: the box fills the row the picture sets, never stretches it.
           <aside className="relative order-last lg:order-none lg:col-start-2 lg:row-start-1 lg:min-h-[26rem]" aria-label="Comments">
-            <LookComments outfitId={post.id} lookAuthorId={post.authorId} />
+            <LookComments
+              outfitId={post.id}
+              lookAuthorId={post.authorId}
+              caption={post.description
+                ? { body: post.description, author: post.author, verified: post.authorVerified, createdAt: post.createdAt }
+                : null}
+            />
           </aside>
         )}
       </div>

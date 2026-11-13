@@ -54,11 +54,46 @@ function Comment({ comment, lookAuthorId, now }: { comment: LookComment; lookAut
   );
 }
 
+interface Caption {
+  body: string;
+  author: string | null;
+  verified: boolean;
+  createdAt: string | null;
+}
+
+/** The author's words at the head of the conversation: no bubble, the name leading the text. */
+function CaptionEntry({ caption, authorId, now }: { caption: Caption; authorId: string; now: number }) {
+  return (
+    <div className="flex gap-2.5 border-b border-line py-4">
+      <Initial name={caption.author} />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="text-sm leading-snug break-words whitespace-pre-wrap text-ink-dim">
+          {caption.author && (
+            <Link href={`/creators/${authorId}`} className="mr-1.5 font-medium text-ink underline-offset-2 hover:underline">
+              {caption.author}
+            </Link>
+          )}
+          {caption.verified && <BadgeCheck className="mr-1.5 inline size-3.5 align-[-2px] text-amber" strokeWidth={1.5} aria-label="Verified" />}
+          {caption.body}
+        </p>
+        {caption.createdAt && (
+          <time dateTime={caption.createdAt} className="text-xs text-ink-faint">{ago(caption.createdAt, now)}</time>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * What people said about a look, beside its picture: its own list scrolling oldest
  * first, and the place to write held at the bottom.
  */
-export async function LookComments({ outfitId, lookAuthorId }: { outfitId: string; lookAuthorId: string }) {
+export async function LookComments({ outfitId, lookAuthorId, caption }: {
+  outfitId: string;
+  lookAuthorId: string;
+  /** The author's description, read first, as a post's caption is on a social app. */
+  caption: Caption | null;
+}) {
   const comments = await repository.listComments(outfitId);
   const now = Date.now();
 
@@ -74,10 +109,13 @@ export async function LookComments({ outfitId, lookAuthorId }: { outfitId: strin
       </h2>
       <CommentsViewer>
         <CommentScroller count={comments.length}>
+          {caption && <CaptionEntry caption={caption} authorId={lookAuthorId} now={now} />}
           {comments.length > 0 ? (
             <ol className="flex flex-col gap-4 py-4">
               {comments.map((c) => <Comment key={c.id} comment={c} lookAuthorId={lookAuthorId} now={now} />)}
             </ol>
+          ) : caption ? (
+            <p className="py-4 text-center text-xs text-ink-faint">No comments yet. Be the first to say what you think.</p>
           ) : (
             <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 py-8 text-center">
               <MessageCircle className="size-6 text-ink-faint" strokeWidth={1.5} aria-hidden />

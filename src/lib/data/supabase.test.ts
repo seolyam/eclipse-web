@@ -236,6 +236,20 @@ describe("publishing", () => {
     expect(await repo.createOutfit(input)).toEqual({ ok: false, error: "Choose a public name first, from the account button." });
   });
 
+  it("stores the description, or none, and reads it back", async () => {
+    user = { id: row.author_id };
+    const sent: Record<string, unknown>[] = [];
+    reply = (_, init) => {
+      sent.push(JSON.parse(String(init?.body)));
+      return Response.json({ ...row, description: "A caption" }, { status: 201 });
+    };
+    const r = await repo.createOutfit({ ...input, description: "A caption" });
+    await repo.createOutfit(input);
+    expect(sent.map((b) => b.description)).toEqual(["A caption", null]);
+    expect(r.ok && r.value.description).toBe("A caption");
+    expect(requests[0].searchParams.get("select")).toContain("description");
+  });
+
   it("explains the hourly limit", async () => {
     user = { id: row.id };
     reply = failWith("EC001", 400);

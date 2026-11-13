@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { encodeOutfit } from "@/lib/codec/outfit";
 import { MAX_SCREENSHOT_BYTES, MAX_SCREENSHOTS, SCREENSHOT_TYPES } from "@/lib/codec/schema";
 import { WORLD_MODES, WORLD_ROWS } from "@/lib/codec/world";
+import { DESCRIPTION_MAX } from "@/lib/comments";
 import { ARMOR_LABEL, ARMOR_TYPES, CLASSES, RACE_LABEL, toCss, type ArmorType, type ClassName } from "@/lib/domain";
 import { screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { shrinkForUpload } from "@/lib/shrink-upload";
@@ -142,7 +143,7 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
   const [className, setClassName] = useState<ClassName | null>(null);
   const [armor, setArmor] = useState<ArmorType | null>(null);
   const [race, setRace] = useState<string | null>(null);
-  const [tags, setTags] = useState("");
+  const [description, setDescription] = useState("");
   const [gallery, setGallery] = useState<string[]>(fromSet?.gallery ?? []);
   const [published, setPublished] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +159,7 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
         className: className ?? undefined,
         armor: armor ?? undefined,
         race: race ?? undefined,
-        tags: tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6),
+        description,
         gallery,
         remixedFrom: credit && remixOf ? remixOf.id : undefined,
       });
@@ -200,8 +201,22 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
         <Choice id="outfit-race" label="Race" value={race} options={Object.keys(RACE_LABEL)} format={(k) => RACE_LABEL[k]} onChange={setRace} />
       </div>
       <div className="flex flex-col gap-1">
-        <label htmlFor="outfit-tags" className="text-xs text-ink-dim">Tags, separated by commas</label>
-        <Input id="outfit-tags" value={tags} onChange={(e) => setTags(e.target.value)} className="bg-surface" />
+        <label htmlFor="outfit-description" className="flex justify-between text-xs text-ink-dim">
+          <span>Description <span className="text-ink-faint">(optional)</span></span>
+          {description.length > DESCRIPTION_MAX - 80 && (
+            <span className={`nums ${description.length > DESCRIPTION_MAX ? "text-bad" : "text-ink-faint"}`}>
+              {DESCRIPTION_MAX - description.length}
+            </span>
+          )}
+        </label>
+        <Textarea
+          id="outfit-description"
+          value={description}
+          rows={3}
+          placeholder="What inspired it, where the pieces drop, how it looks on a mount"
+          onChange={(e) => setDescription(e.target.value)}
+          className="max-h-48 resize-none bg-surface"
+        />
       </div>
       <Screenshots images={gallery} onChange={setGallery} fromSet={fromSet} />
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
