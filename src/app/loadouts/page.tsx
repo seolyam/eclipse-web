@@ -27,11 +27,11 @@ type Props = { searchParams?: Promise<{ code?: string | string[]; from?: string 
 // Above any loadout the Dressing room writes, and far below what a URL can carry.
 const MAX_LINKED_CODE = 8192;
 
-/** Only a look someone published can be credited. A game set has nobody to credit. */
+/** Only a player's look can be credited, published here or shared on Discord. A game set has nobody to credit. */
 async function original(id: unknown): Promise<RemixOf | null> {
   if (typeof id !== "string" || !id) return null;
   const post = await getOutfit(id);
-  return post?.authorId ? { id: post.id, title: post.title, author: post.author } : null;
+  return post && (post.authorId || post.sharedOnDiscord) ? { id: post.id, title: post.title, author: post.author } : null;
 }
 
 /** A ?code= link opens on Import, crediting the published look it came from. */

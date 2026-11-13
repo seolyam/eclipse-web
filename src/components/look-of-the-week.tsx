@@ -18,7 +18,8 @@ export async function LookOfTheWeek() {
               The most upvoted look of the last seven days, with {votes.toLocaleString("en-US")} votes
               {post.author && post.authorId && (
                 <>, by <Link href={`/creators/${post.authorId}`} className="underline underline-offset-2">{post.author}</Link></>
-              )}.
+              )}
+              {post.author && post.sharedOnDiscord && <>, by {post.author}</>}.
             </p>
           </header>
           <Link href={`/wardrobe/${post.id}`} className="btn btn--ghost btn--sm">

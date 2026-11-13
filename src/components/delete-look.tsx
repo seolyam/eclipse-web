@@ -14,8 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { useAccount } from "@/lib/use-account";
 
-/** Shown to the look's author and to moderators. The database decides either way. */
-export function DeleteLook({ id, authorId, triggerClassName = "pill" }: { id: string; authorId: string; triggerClassName?: string }) {
+/**
+ * Shown to the look's author and to moderators. The database decides either way. A look
+ * from the Discord showcase has no author until its player signs in: moderators only.
+ */
+export function DeleteLook({ id, authorId, triggerClassName = "pill" }: { id: string; authorId: string | null; triggerClassName?: string }) {
   const [account] = useAccount();
   const [open, setOpen] = useState(false);
   const [deleting, startDeleting] = useTransition();

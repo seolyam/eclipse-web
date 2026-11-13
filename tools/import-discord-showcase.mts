@@ -1,0 +1,219 @@
+/**
+ * Brings looks shared in the Discord showcase onto the Wardrobe, credited to the player
+ * who shared them. Each becomes theirs when they sign in with Discord
+ * (supabase/migrations/20261113180000_discord_showcase_looks.sql).
+ *
+ *   pnpm dlx tsx@4.23.15 --conditions=react-server tools/import-discord-showcase.mts          # dry run
+ *   pnpm dlx tsx@4.23.15 --conditions=react-server tools/import-discord-showcase.mts --apply  # write
+ *
+ * A look is a message holding an ECA1: code plus its screenshots: the message's own
+ * images, or else the player's own picture that the code answers, reached through the
+ * replies ("code?" -> picture). A code with no picture of its own is left out: the site
+ * shows only what was recorded. Each message is imported once, so a rerun adds only
+ * what is new. Needs DISCORD_BOT_TOKEN in .env.local, with Message Content Intent on,
+ * and a logged-in, linked Supabase CLI: writes go through it, as the database's owner.
+ */
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { resolveOutfit } from "@/lib/catalog";
+import { decodeOutfit } from "@/lib/codec/outfit";
+import { compressScreenshot } from "@/lib/data/compress";
+import { RACE_LABEL } from "@/lib/domain";
+import { SCREENSHOT_BUCKET, thumbOf } from "@/lib/screenshots";
+
+const SHOWCASE = "1554574140634046586";
+const MAX_SCREENSHOTS = 6;
+const APPLY = process.argv.includes("--apply");
+
+interface Attachment { url: string; content_type?: string }
+interface Message {
+  id: string;
+  timestamp: string;
+  content: string;
+  author: { id: string; username: string; global_name: string | null; bot?: boolean };
+  attachments: Attachment[];
+  message_reference?: { message_id?: string };
+}
+
+process.loadEnvFile(".env.local");
+const TOKEN = process.env.DISCORD_BOT_TOKEN;
+if (!TOKEN) throw new Error("DISCORD_BOT_TOKEN is missing from .env.local");
+
+async function discord<T>(path: string): Promise<T> {
+  for (;;) {
+    const r = await fetch(`https://discord.com/api/v10${path}`, { headers: { Authorization: `Bot ${TOKEN}` } });
+    if (r.status === 429) {
+      const wait = ((await r.json()).retry_after ?? 1) * 1000 + 100;
+      await new Promise((done) => setTimeout(done, wait));
+      continue;
+    }
+    if (!r.ok) throw new Error(`Discord ${r.status} on ${path}: ${await r.text()}`);
+    return r.json() as Promise<T>;
+  }
+}
+
+async function history(channel: string): Promise<Message[]> {
+  const all: Message[] = [];
+  for (let before = ""; ;) {
+    const page = await discord<Message[]>(`/channels/${channel}/messages?limit=100${before}`);
+    all.push(...page);
+    if (page.length < 100) break;
+    before = `&before=${page.at(-1)!.id}`;
+  }
+  return all.reverse();
+}
+
+const CODE = /ECA1:[A-Za-z0-9+/=]+/;
+const images = (m: Message) => m.attachments.filter((a) => a.content_type?.startsWith("image/"));
+
+/** What the player wrote, without the code, mentions or custom emoji. */
+function said(m: Message): string {
+  return m.content
+    .replace(/ECA1:\S+/g, "")
+    .replace(/<a?:\w+:\d+>|<[@#][!&]?\d+>/g, "")
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f\r]/g, "")
+    .trim();
+}
+
+const HOUR = 60 * 60 * 1000;
+
+/**
+ * The code's own pictures, or the player's picture the code was asked for: through the
+ * replies, or when someone asked without replying, the player's last picture in the
+ * hour before the code.
+ */
+function pictureFor(code: Message, byId: Map<string, Message>, messages: Message[]): Message | null {
+  if (images(code).length) return code;
+  for (let ref = code.message_reference?.message_id, hops = 0; ref && hops < 4; hops++) {
+    const m = byId.get(ref);
+    if (!m) break;
+    if (m.author.id === code.author.id && images(m).length) return m;
+    ref = m.message_reference?.message_id;
+  }
+  const at = Date.parse(code.timestamp);
+  return messages.findLast((m) =>
+    m.author.id === code.author.id && images(m).length > 0 && Date.parse(m.timestamp) <= at && at - Date.parse(m.timestamp) < HOUR,
+  ) ?? null;
+}
+
+/** "Blood Elf transmog" from the code itself: a Discord post has no title. */
+function titleOf(race: string | null, caption: string): string {
+  if (caption.length >= 3 && caption.length <= 40 && !/[.!?,]/.test(caption)) return caption;
+  return race ? `${RACE_LABEL[race]} transmog` : "Transmog";
+}
+
+/** As the publish action adds them: the Wardrobe's Mounts and Enchants filters, read from the code. */
+function codeTags(outfit: { mount: number; mountFly: number; glow: unknown[] }): string[] {
+  return [...(outfit.mount || outfit.mountFly ? ["mount"] : []), ...(outfit.glow.some(Boolean) ? ["enchant"] : [])];
+}
+
+const sql = (v: string | null) => (v === null ? "null" : `'${v.replace(/'/g, "''")}'`);
+const sqlArray = (vs: string[]) => `array[${vs.map(sql).join(",")}]::text[]`;
+
+function supabase(args: string[]): string {
+  return execFileSync("pnpm", ["exec", "supabase", ...args], { encoding: "utf8", shell: true, stdio: ["ignore", "pipe", "pipe"] });
+}
+
+function query<T>(text: string): T[] {
+  const dir = mkdtempSync(join(tmpdir(), "showcase-sql-"));
+  const file = join(dir, "q.sql");
+  writeFileSync(file, text);
+  const out = supabase(["db", "query", "--linked", "-f", file]);
+  return JSON.parse(out.slice(out.indexOf("{"), out.lastIndexOf("}") + 1)).rows as T[];
+}
+
+const messages = await history(SHOWCASE);
+const byId = new Map(messages.map((m) => [m.id, m]));
+const done = new Set(query<{ message_id: string }>("select message_id from public.discord_looks").map((r) => r.message_id));
+
+interface Look {
+  id: string;
+  messageId: string;
+  discordId: string;
+  name: string;
+  title: string;
+  description: string | null;
+  code: string;
+  race: string | null;
+  tags: string[];
+  createdAt: string;
+  pictures: string[];
+}
+
+const looks: Look[] = [];
+const skipped: string[] = [];
+for (const m of messages) {
+  const code = m.content.replace(/\s+/g, "").match(CODE)?.[0];
+  if (!code || m.author.bot || done.has(m.id)) continue;
+  const who = m.author.global_name ?? m.author.username;
+  const decoded = decodeOutfit(code);
+  if (!decoded.ok) { skipped.push(`${m.timestamp.slice(0, 10)} ${who}: the code does not decode (${decoded.error})`); continue; }
+  const picture = pictureFor(m, byId, messages);
+  if (!picture) { skipped.push(`${m.timestamp.slice(0, 10)} ${who}: no screenshot of their own`); continue; }
+  const caption = [said(picture), picture === m ? "" : said(m)].filter(Boolean).join("\n").slice(0, 500).trim();
+  const race = resolveOutfit(decoded.outfit).raceKey;
+  const title = titleOf(race, caption);
+  looks.push({
+    id: crypto.randomUUID(),
+    messageId: m.id,
+    discordId: m.author.id,
+    name: who.slice(0, 40),
+    title,
+    description: caption && caption !== title ? caption : null,
+    code,
+    race: race && RACE_LABEL[race] ? race : null,
+    tags: codeTags(decoded.outfit),
+    createdAt: picture.timestamp,
+    pictures: images(picture).slice(0, MAX_SCREENSHOTS).map((a) => a.url),
+  });
+}
+
+console.log(`${messages.length} messages, ${done.size} already imported, ${looks.length} to import\n`);
+for (const l of looks) {
+  console.log(`${l.createdAt.slice(0, 10)}  ${l.name.padEnd(18)} ${l.title.padEnd(26)} ${l.pictures.length} shot(s)${l.description ? `  "${l.description.slice(0, 50)}"` : ""}`);
+}
+if (skipped.length) console.log(`\nLeft out:\n  ${skipped.join("\n  ")}`);
+if (!APPLY) {
+  console.log("\nDry run. Add --apply to write.");
+  process.exit(0);
+}
+
+// Screenshots first, as the site does: a look only ever names files that exist.
+const root = mkdtempSync(join(tmpdir(), "showcase-files-"));
+for (const l of looks) {
+  const folder = join(root, "discord", l.id);
+  mkdirSync(folder, { recursive: true });
+  const gallery: string[] = [];
+  for (const url of l.pictures) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Could not download a screenshot of ${l.name}'s look: ${res.status}`);
+    const compressed = await compressScreenshot(Buffer.from(await res.arrayBuffer()));
+    if (!compressed) throw new Error(`A screenshot of ${l.name}'s look is not an image`);
+    const path = `discord/${l.id}/${crypto.randomUUID()}.avif`;
+    // The thumbnail first, as the site uploads: a gallery names only the full file.
+    for (const [file, body] of [[thumbOf(path), compressed.thumb], [path, compressed.full]] as const) {
+      writeFileSync(join(root, file), body);
+      supabase(["storage", "cp", join(root, file), `ss:///${SCREENSHOT_BUCKET}/${file}`, "--linked", "--experimental", "--content-type", "image/avif"]);
+    }
+    gallery.push(path);
+  }
+  l.pictures = gallery;
+  console.log(`  uploaded ${gallery.length} screenshot(s) for ${l.name}: ${l.title}`);
+}
+
+// A player who already has an account gets the look now; the rest at their first sign-in.
+const inserts = looks.map((l) => `
+  with look as (
+    insert into public.outfits (id, author_id, discord_name, title, code, race, tags, description, gallery, created_at)
+    values (${sql(l.id)}::uuid,
+      (select user_id from auth.identities where provider = 'discord' and provider_id = ${sql(l.discordId)} limit 1),
+      ${sql(l.name)}, ${sql(l.title)}, ${sql(l.code)}, ${sql(l.race)}, ${sqlArray(l.tags)}, ${sql(l.description)},
+      ${sqlArray(l.pictures)}, ${sql(l.createdAt)}::timestamptz)
+    returning id
+  )
+  insert into public.discord_looks (outfit_id, discord_id, message_id)
+    select id, ${sql(l.discordId)}, ${sql(l.messageId)} from look;`);
+query(`begin;${inserts.join("")}\ncommit;\nselect count(*) from public.discord_looks;`);
+console.log(`\nImported ${looks.length} looks.`);

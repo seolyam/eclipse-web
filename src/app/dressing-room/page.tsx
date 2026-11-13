@@ -22,7 +22,7 @@ async function lookToOpen(id: unknown): Promise<{ id: string; title: string; pub
   return {
     id: post.id,
     title: post.title,
-    published: post.authorId !== null,
+    published: post.authorId !== null || Boolean(post.sharedOnDiscord),
     rack: startingRack(decoded.outfit, resolveOutfit(decoded.outfit)),
   };
 }

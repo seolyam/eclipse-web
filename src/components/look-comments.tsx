@@ -23,7 +23,7 @@ function Initial({ name }: { name: string | null }) {
 }
 
 /** A social app's comment: the name and words in a bubble, when and what to do under it. */
-function Comment({ comment, lookAuthorId, now }: { comment: LookComment; lookAuthorId: string; now: number }) {
+function Comment({ comment, lookAuthorId, now }: { comment: LookComment; lookAuthorId: string | null; now: number }) {
   const { author, authorId } = comment;
   return (
     <li id={`comment-${comment.id}`} className="flex scroll-mt-4 gap-2.5">
@@ -62,17 +62,19 @@ interface Caption {
 }
 
 /** The author's words at the head of the conversation: no bubble, the name leading the text. */
-function CaptionEntry({ caption, authorId, now }: { caption: Caption; authorId: string; now: number }) {
+function CaptionEntry({ caption, authorId, now }: { caption: Caption; authorId: string | null; now: number }) {
   return (
     <div className="flex gap-2.5 border-b border-line py-4">
       <Initial name={caption.author} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="text-sm leading-snug break-words whitespace-pre-wrap text-ink-dim">
-          {caption.author && (
+          {caption.author && authorId && (
             <Link href={`/creators/${authorId}`} className="mr-1.5 font-medium text-ink underline-offset-2 hover:underline">
               {caption.author}
             </Link>
           )}
+          {/* A look from the Discord showcase: its player has no page here yet. */}
+          {caption.author && !authorId && <span className="mr-1.5 font-medium text-ink">{caption.author}</span>}
           {caption.verified && <BadgeCheck className="mr-1.5 inline size-3.5 align-[-2px] text-amber" strokeWidth={1.5} aria-label="Verified" />}
           {caption.body}
         </p>
@@ -90,7 +92,8 @@ function CaptionEntry({ caption, authorId, now }: { caption: Caption; authorId: 
  */
 export async function LookComments({ outfitId, lookAuthorId, caption }: {
   outfitId: string;
-  lookAuthorId: string;
+  /** Null on a look from the Discord showcase its player has not claimed. */
+  lookAuthorId: string | null;
   /** The author's description, read first, as a post's caption is on a social app. */
   caption: Caption | null;
 }) {

@@ -52,19 +52,21 @@ function Crest({ post, resolved }: { post: OutfitPost; resolved: ResolvedOutfit 
  * wears. Everything else sits quietly underneath.
  */
 export async function OutfitDetail({ post }: { post: OutfitPost }) {
-  // Only a published look has an author, and only those can be bookmarked or reported.
-  const saved = post.authorId ? await repository.isBookmarked(post.id) : false;
+  // A player's look, published here or shared on Discord, as against one of the game's
+  // own sets. Only those can be bookmarked, reported or talked about.
+  const community = Boolean(post.authorId) || Boolean(post.sharedOnDiscord);
+  const saved = community ? await repository.isBookmarked(post.id) : false;
   const decoded = decodeOutfit(post.code);
   const resolved = decoded.ok ? resolveOutfit(decoded.outfit) : null;
   const facts = [post.className, post.race ? RACE_LABEL[post.race] : null, post.armor ? ARMOR_LABEL[post.armor] : null]
     .filter((t): t is string => Boolean(t));
   const tags = [...post.categories, ...post.tags];
-  // Only a published look has an author to talk to, and only a live site stores what is said.
-  const social = repository.live && Boolean(post.authorId);
+  // Only a player's look has someone to talk to, and only a live site stores what is said.
+  const social = repository.live && community;
 
   return (
     <article className="flex flex-col gap-8">
-      {post.authorId && <ModeratorReports id={post.id} />}
+      {community && <ModeratorReports id={post.id} />}
 
       <header className="flex items-center gap-4">
         <Crest post={post} resolved={resolved} />
@@ -76,6 +78,9 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
             <span className="inline-flex items-center gap-1">
               {post.authorId && post.author ? (
                 <>by <Link href={`/creators/${post.authorId}`} className="text-ink underline-offset-2 hover:underline">{post.author}</Link></>
+              ) : post.sharedOnDiscord && post.author ? (
+                // No account to link yet: it becomes theirs when they sign in with Discord.
+                <>by <span className="text-ink">{post.author}</span>, shared on Discord</>
               ) : (post.author ?? "The game's own set")}
               {post.authorVerified && <BadgeCheck className="size-3.5 text-amber" strokeWidth={1.5} aria-label="Verified" />}
             </span>
@@ -128,8 +133,8 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
                   <Shirt className="size-4" strokeWidth={1.5} aria-hidden />Open in Dressing room
                 </Link>
               )}
-              {post.authorId && <ReportLook id={post.id} authorId={post.authorId} />}
-              {post.authorId && (
+              {community && <ReportLook id={post.id} authorId={post.authorId} />}
+              {community && (
                 <DeleteLook id={post.id} authorId={post.authorId} triggerClassName="pill hover:border-bad/50 hover:text-bad" />
               )}
             </span>
@@ -156,7 +161,7 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
           )}
         </div>
 
-        {social && post.authorId && (
+        {social && (
           // Last on a phone, after the look. Beside the picture on a wide screen, and
           // exactly its height: the box fills the row the picture sets, never stretches it.
           <aside className="relative order-last lg:order-none lg:col-start-2 lg:row-start-1 lg:min-h-[26rem]" aria-label="Comments">

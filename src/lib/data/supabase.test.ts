@@ -137,6 +137,19 @@ describe("a post from the database", () => {
     const post = await repo.getOutfit(row.id);
     expect(post?.gallery).toEqual([`https://stub.supabase.co/storage/v1/object/public/showcase/${SHOT}`]);
     expect(post?.authorId).toBe(row.author_id);
+    expect(post?.sharedOnDiscord).toBe(false);
+  });
+
+  it("credits a look from the Discord showcase to its player until they claim it", async () => {
+    reply = () => Response.json({ ...row, author_id: null, profiles: null, discord_name: "Shadow" });
+    const post = await repo.getOutfit(row.id);
+    expect(post).toMatchObject({ author: "Shadow", authorId: null, authorVerified: false, sharedOnDiscord: true });
+  });
+
+  it("names a claimed look by its author's profile, not their old Discord name", async () => {
+    reply = () => Response.json({ ...row, discord_name: "Shadow" });
+    const post = await repo.getOutfit(row.id);
+    expect(post).toMatchObject({ author: "Kira", authorId: row.author_id, sharedOnDiscord: false });
   });
 });
 

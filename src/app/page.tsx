@@ -19,7 +19,7 @@ async function FeaturedLooks() {
   const { posts: captures } = await repository.listOutfits({ sort: "top", captured: true, pageSize: 4 });
   const looks = captures.length ? [] : (await repository.listOutfits({ sort: "top", pageSize: 4 })).posts;
   if (!captures.length && !looks.length) return null;
-  const community = captures.length > 0 || looks.some((post) => post.authorId);
+  const community = captures.length > 0 || looks.some((post) => post.authorId || post.sharedOnDiscord);
   return (
     <section className="section" id="wardrobe" aria-labelledby="featured-heading">
       <div className="wrap">
