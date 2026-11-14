@@ -9,7 +9,7 @@ import { WalletSection } from "@/components/site/wallets";
 import { discordMembers } from "@/lib/discord-invite";
 import { FEATURES } from "@/lib/features";
 import { TALL_MEDIA, TALL_SIZES, WIDE_SIZES, tallArt, wideArt } from "@/lib/hero-art";
-import { DISCORD_URL, dllUrl, downloadUrl } from "@/lib/site";
+import { DISCORD_URL, downloadUrl } from "@/lib/site";
 
 // The official page's sections, word for word: only the links are new.
 
@@ -88,13 +88,9 @@ export function Download() {
               <a className="btn btn--primary" href={downloadUrl} target="_blank" rel="noopener">
                 <Icon id="i-download" /><span>Download Eclipse.zip</span>
               </a>
-              <a className="btn btn--ghost" href={dllUrl} target="_blank" rel="noopener">
-                <Icon id="i-download" /><span>dinput8.dll</span>
-              </a>
             </div>
             <p className="fine">
-              Google Drive &middot; Windows &middot; World of Warcraft 3.3.5a (12340)<br />
-              <code>dinput8.dll</code> is also available on its own from GitHub Releases.
+              Google Drive &middot; Windows &middot; World of Warcraft 3.3.5a (12340)
             </p>
           </div>
           <ol className="steps">

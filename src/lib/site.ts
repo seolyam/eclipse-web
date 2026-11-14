@@ -25,6 +25,8 @@ export const GITHUB_URL = "https://github.com/Kirazul/Eclipse";
 // the GitHub releases, and this always lands on the newest one (see the README).
 export const downloadUrl =
   process.env.NEXT_PUBLIC_DOWNLOAD_URL || "https://drive.google.com/file/d/1UuOb9tl43sohg41_gV2z82WAgIKBLhXF/view?usp=sharing";
+// Not linked yet: Kirazul/Eclipse has no release, so this lands on an empty page.
+// Put the dinput8.dll button back in landing.tsx once the first release is out.
 export const dllUrl = `${GITHUB_URL}/releases/latest`;
 
 export const DISCORD_URL = "https://discord.gg/RvY5VjHgTA";
