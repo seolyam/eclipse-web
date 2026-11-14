@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       embeds: [{
         title: post.title.slice(0, 256),
         url,
-        description: `The most upvoted look of the last seven days, with ${votes.toLocaleString("en-US")} upvotes${by}. Copy its code and wear it with Eclipse.`,
+        description: `The most upvoted of the looks posted in the last seven days, with ${votes.toLocaleString("en-US")} upvotes${by}. Copy its code and wear it with Eclipse.`,
         color: AMBER,
         ...(post.gallery.length ? { image: { url: `${url}/cover` } } : {}),
         footer: { text: "Look of the week" },
