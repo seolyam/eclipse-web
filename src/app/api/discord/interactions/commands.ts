@@ -2,6 +2,7 @@ import "server-only";
 import { repository } from "@/lib/data";
 import type { OutfitPost, SearchEntry } from "@/lib/data/types";
 import { AMBER, NO_MENTIONS, plain } from "@/lib/discord";
+import { HELP } from "@/lib/help";
 import { codeIn } from "@/lib/showcase-post";
 import { siteUrl } from "@/lib/site";
 import { addToWardrobe } from "./add-to-wardrobe";
@@ -83,6 +84,21 @@ async function searchReply(query: string): Promise<Reply> {
   };
 }
 
+/** /help: the guide's list of common fixes, for everyone in the channel to read. */
+function helpReply(): Reply {
+  const url = `${siteUrl}/guide#help`;
+  return {
+    embeds: [{
+      title: "Common fixes",
+      description: HELP.map((h) => `**${h.question}**\n${h.answer}`).join("\n\n"),
+      color: AMBER,
+      footer: { text: "Still stuck? Post in the bug reports channel." },
+    }],
+    components: [{ type: 1, components: [{ type: 2, style: 5, label: "Open the guide", url }] }],
+    allowed_mentions: NO_MENTIONS,
+  };
+}
+
 const option = (data: CommandData, name: string) => {
   const value = data.options?.find((o) => o.name === name)?.value;
   return typeof value === "string" ? value : "";
@@ -106,6 +122,7 @@ export function quickReply(interaction: Interaction): Reply | null {
   }
   if (data.name === "decode") return decodeReply(option(data, "code"), { quiet: false });
   if (data.name === "item") return itemAnswer(option(data, "name"));
+  if (data.name === "help") return helpReply();
   if (data.name === DECODE_MESSAGE) {
     const code = codeIn(target(data)?.content ?? "");
     return code ? decodeReply(code, { quiet: true }) : say("That message holds no Eclipse code.");
