@@ -15,7 +15,7 @@ export async function LookOfTheWeek() {
           <header className="section__head">
             <h2 id="week-heading">Look of the week</h2>
             <p>
-              The most upvoted look of the last seven days, with {votes.toLocaleString("en-US")} votes
+              The most upvoted of the looks posted in the last seven days, with {votes.toLocaleString("en-US")} votes
               {post.author && post.authorId && (
                 <>, by <Link href={`/creators/${post.authorId}`} className="underline underline-offset-2">{post.author}</Link></>
               )}
