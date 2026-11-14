@@ -30,6 +30,16 @@
     ]
   },
   {
+    "name": "item",
+    "type": 1,
+    "description": "Find a piece of armor or a weapon in Eclipse by name",
+    "integration_types": [0, 1],
+    "contexts": [0, 1, 2],
+    "options": [
+      { "name": "name", "type": 3, "required": true, "description": "Start typing its name, then pick it", "max_length": 100, "autocomplete": true }
+    ]
+  },
+  {
     "name": "Decode Eclipse code",
     "type": 3,
     "integration_types": [0, 1],

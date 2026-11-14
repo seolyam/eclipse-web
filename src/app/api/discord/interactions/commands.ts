@@ -6,6 +6,7 @@ import { codeIn } from "@/lib/showcase-post";
 import { siteUrl } from "@/lib/site";
 import { addToWardrobe } from "./add-to-wardrobe";
 import { decodeReply } from "./decode";
+import { itemAnswer, suggestItems } from "./item";
 import { MESSAGE_COMMAND, say, type CommandData, type Interaction, type Reply } from "./reply";
 
 export { EPHEMERAL, type Interaction, type Reply } from "./reply";
@@ -104,6 +105,7 @@ export function quickReply(interaction: Interaction): Reply | null {
     return say("Paste a look's link from the Wardrobe, or its id.");
   }
   if (data.name === "decode") return decodeReply(option(data, "code"), { quiet: false });
+  if (data.name === "item") return itemAnswer(option(data, "name"));
   if (data.name === DECODE_MESSAGE) {
     const code = codeIn(target(data)?.content ?? "");
     return code ? decodeReply(code, { quiet: true }) : say("That message holds no Eclipse code.");
@@ -135,10 +137,12 @@ async function searchList(): Promise<SearchEntry[]> {
 const CHOICES = 25;
 const MAX_CHOICE = 100;
 
-/** /look's suggestions for what is typed so far: Discord shows the name and sends the id. */
+/** Suggestions for what is typed so far: Discord shows the name and sends the id. */
 export async function suggest(data: CommandData): Promise<{ name: string; value: string }[]> {
   const typed = data.options?.find((o) => o.focused)?.value;
-  if (data.name !== "look" || typeof typed !== "string") return [];
+  if (typeof typed !== "string") return [];
+  if (data.name === "item") return suggestItems(typed);
+  if (data.name !== "look") return [];
   const words = typed.toLowerCase().split(/\s+/).filter(Boolean);
   return (await searchList())
     .filter((entry) => {
