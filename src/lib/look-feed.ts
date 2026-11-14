@@ -9,7 +9,7 @@ export async function announceLook(post: OutfitPost) {
   const hook = process.env.DISCORD_FEED_WEBHOOK_URL;
   if (!hook) return;
 
-  const url = `${siteUrl}/wardrobe/${post.id}`;
+  const url = `${siteUrl}/community-gallery/${post.id}`;
   const by = post.author ? ` by ${plain(post.author)}` : "";
   await postWebhook(hook, [{
     // Shown as typed, as the weekly post shows it. Mentions are off, so nothing pings.
@@ -18,6 +18,6 @@ export async function announceLook(post: OutfitPost) {
     description: `A new look${by}. Copy its code and wear it with Eclipse.`,
     color: AMBER,
     ...(post.gallery.length ? { image: { url: `${url}/cover` } } : {}),
-    footer: { text: "New in the Wardrobe" },
+    footer: { text: "New in the Community Gallery" },
   }]);
 }

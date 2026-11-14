@@ -29,7 +29,7 @@ const html = await render();
 describe("a look opened from the Wardrobe", () => {
   it("starts with its hidden slots and race, and links back to it", async () => {
     const opened = await render("shared");
-    expect(opened).toContain('href="/wardrobe/shared"');
+    expect(opened).toContain('href="/community-gallery/shared"');
     // The chest is hidden on purpose, and the code to copy is already there.
     expect(opened).toContain("Hidden");
     expect(opened).toContain('aria-label="Copy code"');

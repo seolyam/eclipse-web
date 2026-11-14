@@ -38,11 +38,11 @@ describe("the sign-in callback", () => {
   });
 
   it("opens the Wardrobe when no page was remembered", async () => {
-    expect(landing(await visit("?code=abc"))).toBe("https://site.test/wardrobe?auth=signed-in");
+    expect(landing(await visit("?code=abc"))).toBe("https://site.test/community-gallery?auth=signed-in");
   });
 
   it("stays on this site", async () => {
-    expect(landing(await visit("?code=abc", "/\\evil.com"))).toBe("https://site.test/wardrobe?auth=signed-in");
+    expect(landing(await visit("?code=abc", "/\\evil.com"))).toBe("https://site.test/community-gallery?auth=signed-in");
   });
 
   it("says so when the code cannot be exchanged", async () => {
@@ -51,7 +51,7 @@ describe("the sign-in callback", () => {
   });
 
   it("says so when the provider sent no code", async () => {
-    expect(landing(await visit(""))).toBe("https://site.test/wardrobe?auth=failed");
+    expect(landing(await visit(""))).toBe("https://site.test/community-gallery?auth=failed");
     expect(exchangeCodeForSession).not.toHaveBeenCalled();
   });
 

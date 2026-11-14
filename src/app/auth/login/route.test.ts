@@ -26,7 +26,7 @@ describe("the sign-in route", () => {
 
   it.each(["", "?provider=github", "?provider=google", "?provider="])("does not start a sign-in for %j", async (query) => {
     const target = await visit(query);
-    expect(target.href).toBe("https://site.test/wardrobe");
+    expect(target.href).toBe("https://site.test/community-gallery");
   });
 
   // The allow list matches redirect_to exactly, so the page cannot travel in it.
@@ -40,6 +40,6 @@ describe("the sign-in route", () => {
 
   it("will not remember a page off this site", async () => {
     const response = await respond("?provider=discord&next=%2F%5Cevil.com");
-    expect(response.headers.get("set-cookie")).toContain("eclipse-auth-next=%2Fwardrobe");
+    expect(response.headers.get("set-cookie")).toContain("eclipse-auth-next=%2Fcommunity-gallery");
   });
 });

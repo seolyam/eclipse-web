@@ -97,7 +97,7 @@ export async function OutfitDetail({ post }: { post: OutfitPost }) {
           {post.remixedFrom && (
             <p className="mt-0.5 text-sm text-ink-faint">
               Based on{" "}
-              <Link href={`/wardrobe/${post.remixedFrom.id}`} className="text-amber underline-offset-2 hover:underline">{post.remixedFrom.title}</Link>
+              <Link href={`/community-gallery/${post.remixedFrom.id}`} className="text-amber underline-offset-2 hover:underline">{post.remixedFrom.title}</Link>
               {post.remixedFrom.author && <> by {post.remixedFrom.author}</>}
             </p>
           )}

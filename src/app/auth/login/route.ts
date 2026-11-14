@@ -8,7 +8,7 @@ const TEN_MINUTES = 600;
 export async function GET(request: NextRequest) {
   const { origin, protocol, searchParams } = request.nextUrl;
   const provider = searchParams.get("provider");
-  if (!supabaseConfigured() || !isOAuthProvider(provider)) return NextResponse.redirect(new URL("/wardrobe", origin));
+  if (!supabaseConfigured() || !isOAuthProvider(provider)) return NextResponse.redirect(new URL("/community-gallery", origin));
   const remembered = {
     httpOnly: true,
     sameSite: "lax",
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     provider,
     options: { redirectTo: `${origin}/auth/callback` },
   });
-  if (error || !data.url) return NextResponse.redirect(new URL("/wardrobe?auth=failed", origin));
+  if (error || !data.url) return NextResponse.redirect(new URL("/community-gallery?auth=failed", origin));
   const response = NextResponse.redirect(data.url);
   // Supabase matches redirectTo against an allow list, so the page goes in a cookie.
   response.cookies.set(AUTH_NEXT_COOKIE, safeNext(searchParams.get("next")), remembered);

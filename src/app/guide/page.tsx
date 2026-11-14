@@ -16,7 +16,7 @@ const STEPS = [
     body: "F2 opens the overlay. You can change the key in its settings.",
   },
   {
-    title: "Wear a look from the Wardrobe",
+    title: "Wear a look from the Community Gallery",
     body: "Copy a code here, open the Loadout page, and press Import. It lights up when your clipboard holds a code, wears the look, and keeps it with your loadouts as Imported.",
   },
   {
@@ -95,7 +95,7 @@ export default function GuidePage() {
           Delete dinput8.dll and the Eclipse folder. The game goes back to how it was.
         </p>
         <p className="mt-3 text-sm">
-          <Link href="/wardrobe" className="text-amber underline underline-offset-2">Browse the Wardrobe</Link>
+          <Link href="/community-gallery" className="text-amber underline underline-offset-2">Browse the Community Gallery</Link>
         </p>
       </section>
     </main>

@@ -17,8 +17,9 @@ import { useAccount } from "@/lib/use-account";
 // The logo is the way home, and each section's pills reach its other views. Support
 // and Discord live in the account menu and on the home page.
 const NAV = [
-  { href: "/wardrobe", label: "Wardrobe", routes: ["/wardrobe", "/mounts"] },
-  { href: "/loadouts", label: "Loadouts", routes: ["/loadouts", "/dressing-room", "/sets"] },
+  { href: "/community-gallery", label: "Community Gallery", routes: ["/community-gallery"] },
+  { href: "/loadouts", label: "Loadouts", routes: ["/loadouts", "/sets"] },
+  { href: "/dressing-room", label: "Dressing room", routes: ["/dressing-room", "/mounts"] },
 ];
 
 function useScrolled() {

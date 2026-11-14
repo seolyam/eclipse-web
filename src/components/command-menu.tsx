@@ -9,8 +9,8 @@ import {
 import type { SearchEntry } from "@/lib/data/types";
 
 const PAGES = [
-  { href: "/wardrobe", label: "Wardrobe", icon: Shirt },
-  { href: "/wardrobe?pictures=true", label: "Looks with pictures", icon: Images },
+  { href: "/community-gallery", label: "Community Gallery", icon: Shirt },
+  { href: "/community-gallery?pictures=true", label: "Looks with pictures", icon: Images },
   { href: "/loadouts", label: "Import a code", icon: Braces },
   { href: "/dressing-room", label: "Dressing room", icon: Shirt },
   { href: "/mounts", label: "Mounts", icon: Rabbit },
@@ -81,7 +81,7 @@ export function CommandMenu() {
         <CommandGroup heading="Outfits">
           {outfits.map((o) => (
             // The id keeps values unique: real sets can share a name.
-            <CommandItem key={o.id} value={`${o.title} ${o.author ?? ""} ${o.id}`} onSelect={() => go(`/wardrobe/${o.id}`)}>
+            <CommandItem key={o.id} value={`${o.title} ${o.author ?? ""} ${o.id}`} onSelect={() => go(`/community-gallery/${o.id}`)}>
               <span className="truncate">{o.title}</span>
               {o.author && <CommandShortcut className="tracking-normal">{o.author}</CommandShortcut>}
             </CommandItem>

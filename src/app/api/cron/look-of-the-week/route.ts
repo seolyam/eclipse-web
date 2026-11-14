@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   if (!hook || !pick) return Response.json({ posted: false });
 
   const { post, votes } = pick;
-  const url = `${siteUrl}/wardrobe/${post.id}`;
+  const url = `${siteUrl}/community-gallery/${post.id}`;
   const by = post.author ? `, by ${plain(post.author)}` : "";
   const res = await fetch(hook, {
     method: "POST",

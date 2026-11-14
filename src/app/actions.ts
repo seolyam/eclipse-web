@@ -64,7 +64,7 @@ function withCodeTags({ code, tags }: { code: string; tags: string[] }): string[
 }
 
 function revalidateHub() {
-  revalidatePath("/wardrobe");
+  revalidatePath("/community-gallery");
   revalidatePath("/");
 }
 
@@ -90,7 +90,7 @@ export async function deleteLook(id: string) {
   const r = await repository.deleteOutfit(id);
   if (r.ok) {
     revalidateHub();
-    revalidatePath(`/wardrobe/${id}`);
+    revalidatePath(`/community-gallery/${id}`);
     after(() => recheckCreator(player));
   }
   return r;
@@ -160,7 +160,7 @@ export async function reportLook(id: string, reason: string) {
 
 export async function bookmarkLook(id: string, saved: boolean) {
   const r = await repository.setBookmark(id, saved);
-  if (r.ok) revalidatePath("/wardrobe");
+  if (r.ok) revalidatePath("/community-gallery");
   return r;
 }
 
@@ -181,14 +181,14 @@ export async function postComment(outfitId: string, body: string) {
   const parsed = commentSchema.safeParse(body);
   if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message };
   const r = await repository.addComment(outfitId, parsed.data);
-  if (r.ok) revalidatePath(`/wardrobe/${outfitId}`);
+  if (r.ok) revalidatePath(`/community-gallery/${outfitId}`);
   return r;
 }
 
 export async function removeComment(id: string, outfitId: string) {
   const r = await repository.deleteComment(id);
   if (r.ok) {
-    revalidatePath(`/wardrobe/${outfitId}`);
+    revalidatePath(`/community-gallery/${outfitId}`);
     revalidatePath("/moderation");
   }
   return r;

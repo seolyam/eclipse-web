@@ -35,9 +35,9 @@ describe("the site stands alone", () => {
     expect(rules.sitemap).toMatch(/\/sitemap\.xml$/);
     expect(String(rules.sitemap)).not.toContain(OLD_HOST);
     const paths = (await sitemap()).map((e) => new URL(e.url).pathname);
-    expect(paths.slice(0, 7)).toEqual(["/", "/wardrobe", "/loadouts", "/dressing-room", "/mounts", "/guide", "/privacy"]);
+    expect(paths.slice(0, 7)).toEqual(["/", "/community-gallery", "/loadouts", "/dressing-room", "/mounts", "/guide", "/privacy"]);
     const looks = paths.slice(7);
     expect(looks.length).toBeGreaterThan(600);
-    expect(looks.every((path) => path.startsWith("/wardrobe/"))).toBe(true);
+    expect(looks.every((path) => path.startsWith("/community-gallery/"))).toBe(true);
   });
 });

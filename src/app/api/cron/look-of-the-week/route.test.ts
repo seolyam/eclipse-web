@@ -90,9 +90,9 @@ describe("the weekly Discord post", () => {
     expect(sent[0].url).toBe(HOOK);
     const embed = (sent[0].body.embeds as Record<string, unknown>[])[0];
     expect(embed.title).toBe("Frost in the Fens");
-    expect(embed.url).toBe(`${siteUrl}/wardrobe/${post.id}`);
+    expect(embed.url).toBe(`${siteUrl}/community-gallery/${post.id}`);
     expect(embed.description).toContain("4 upvotes");
-    expect(embed.image).toEqual({ url: `${siteUrl}/wardrobe/${post.id}/cover` });
+    expect(embed.image).toEqual({ url: `${siteUrl}/community-gallery/${post.id}/cover` });
   });
 
   it("never pings anyone, and shows a name's markdown as plain text", async () => {

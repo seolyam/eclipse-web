@@ -168,14 +168,14 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
         return;
       }
       setPublished(r.id);
-      toast.success("Published to the Wardrobe");
+      toast.success("Published to the Community Gallery");
     });
   }
 
   if (published) {
     return (
       <p className="text-sm text-ink-dim">
-        Published. <Link href={`/wardrobe/${published}`} className="text-amber underline underline-offset-2">Open it in the Wardrobe</Link>
+        Published. <Link href={`/community-gallery/${published}`} className="text-amber underline underline-offset-2">Open it in the Community Gallery</Link>
       </p>
     );
   }
@@ -186,7 +186,7 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
         <label className="flex items-center gap-2 text-sm text-ink-dim">
           <input type="checkbox" checked={credit} onChange={(e) => setCredit(e.target.checked)} />
           <span>
-            Based on <Link href={`/wardrobe/${remixOf.id}`} className="text-amber underline underline-offset-2">{remixOf.title}</Link>
+            Based on <Link href={`/community-gallery/${remixOf.id}`} className="text-amber underline underline-offset-2">{remixOf.title}</Link>
             {remixOf.author && <> by {remixOf.author}</>}
           </span>
         </label>
@@ -222,7 +222,7 @@ function PublishForm({ code, remixOf, fromSet }: { code: string; remixOf: RemixO
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
       <Button type="submit" size="sm" disabled={pending} className="self-start">
         {pending && <Loader2 className="size-4 animate-spin" />}
-        Publish to the Wardrobe
+        Publish to the Community Gallery
       </Button>
     </form>
   );

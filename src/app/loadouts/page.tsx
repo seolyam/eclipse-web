@@ -5,15 +5,16 @@ import { after } from "next/server";
 import { CopyButton } from "@/components/copy-button";
 import { Decoder, type RemixOf } from "@/components/decoder";
 import { LinkGame, RemoveGameSet, UnlinkGame } from "@/components/game-sync";
-import { DRESSING_TABS, HubTabs, HubTitle, LOADOUTS_BLURB } from "@/components/hub";
+import { HubTitle, LOADOUTS_BLURB } from "@/components/hub";
 import { ItemRing } from "@/components/item-icon";
+import { OutfitCard } from "@/components/outfit-card";
 import { SignInOptions } from "@/components/sign-in-dialog";
 import { Button } from "@/components/ui/button";
 import { ago } from "@/lib/ago";
 import { resolveOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
 import { getOutfit, repository } from "@/lib/data";
-import type { GameLink, GameSet } from "@/lib/data/types";
+import type { GameLink, GameSet, OutfitList } from "@/lib/data/types";
 import { VISIBLE_SLOTS } from "@/lib/domain";
 import { screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { pageMetadata } from "@/lib/seo";
@@ -24,6 +25,12 @@ type Props = { searchParams?: Promise<{ code?: string | string[]; from?: string 
 
 // Above any loadout the Dressing room writes, and far below what a URL can carry.
 const MAX_LINKED_CODE = 8192;
+
+// The page's section titles, one size for all of them.
+const HEADING = "text-xl font-semibold tracking-[-0.01em] text-ink";
+
+// One row of your newest published looks; the rest are on your creator page.
+const OWN_LOOKS = 3;
 
 /** Only a player's look can be credited, published here or shared on Discord. A game set has nobody to credit. */
 async function original(id: unknown): Promise<RemixOf | null> {
@@ -45,8 +52,8 @@ function Import({ linked, remixOf }: { linked: string; remixOf: RemixOf | null }
   return (
     <section aria-labelledby="import-heading" className="flex flex-col gap-3">
       <div>
-        <h2 id="import-heading" className="text-sm font-medium text-ink">Import</h2>
-        <p className="text-xs text-ink-dim">
+        <h2 id="import-heading" className={HEADING}>Import</h2>
+        <p className="text-sm text-ink-dim">
           Paste an ECA1: loadout or an ECW1: world code to see what it holds
           {repository.live ? ", edit it, or publish it with your screenshots" : " and edit it"}. Use Share in the game to get one.
         </p>
@@ -89,7 +96,7 @@ function ReadyToPublish({ sets }: { sets: GameSet[] }) {
       <div>
         <h2 id="ready-heading" className="text-sm font-medium text-ink">Ready to publish</h2>
         <p className="text-xs text-ink-dim">
-          Pictures your game sent wait here, private to you, until you publish their look to the Wardrobe.
+          Pictures your game sent wait here, private to you, until you publish their look to the Community Gallery.
         </p>
       </div>
       <ul className="flex flex-col gap-3">
@@ -110,6 +117,30 @@ function ReadyToPublish({ sets }: { sets: GameSet[] }) {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+function PublishedLooks({ accountId, posts, total }: { accountId: string } & OutfitList) {
+  return (
+    <section aria-labelledby="published-heading" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 id="published-heading" className={HEADING}>Your Published Loadouts</h2>
+        {total > OWN_LOOKS && (
+          <Link href={`/creators/${accountId}`} className="text-sm text-amber underline underline-offset-2">
+            See all {total}
+          </Link>
+        )}
+      </div>
+      {posts.length ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {posts.map((post) => <OutfitCard key={post.id} post={post} />)}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-dashed border-line p-6 text-center text-sm text-ink-dim">
+          You haven&apos;t published a look yet. Open one of your loadouts below to publish it.
+        </p>
+      )}
     </section>
   );
 }
@@ -153,7 +184,6 @@ export default async function LoadoutsPage({ searchParams }: Props) {
   const head = (
     <>
       <HubTitle title="Loadouts" blurb={LOADOUTS_BLURB} />
-      <HubTabs current="/loadouts" tabs={DRESSING_TABS} label="Loadouts views" />
       <Import {...imported} />
     </>
   );
@@ -162,7 +192,7 @@ export default async function LoadoutsPage({ searchParams }: Props) {
       <main id="main" className="wrap flex flex-col gap-8 py-10">
         {head}
         <section aria-labelledby="sets-heading" className="flex flex-col gap-3">
-          <h2 id="sets-heading" className="text-xs font-medium text-ink-faint">Your loadouts</h2>
+          <h2 id="sets-heading" className={HEADING}>Your loadouts</h2>
           {repository.live ? (
             <div className="flex max-w-sm flex-col gap-3">
               <p className="text-sm text-ink-dim">{SIGN_IN_NOTE}</p>
@@ -179,17 +209,22 @@ export default async function LoadoutsPage({ searchParams }: Props) {
   // Pictures of a look that changed or went: removed alongside this render, and awaited
   // past the response. Started here, not in an after() callback, which cannot read cookies.
   after(repository.clearOrphanPictures());
-  const [links, sets] = await Promise.all([repository.listGameLinks(), repository.listGameSets()]);
+  const [links, sets, published] = await Promise.all([
+    repository.listGameLinks(),
+    repository.listGameSets(),
+    repository.listOutfits({ sort: "newest", authorId: account.id, pageSize: OWN_LOOKS }),
+  ]);
   const now = Date.now();
   const waiting = sets.filter((set) => set.gallery.length > 0);
 
+  // Pictures waiting to be published lead the page, above its title.
   return (
     <main id="main" className="wrap flex flex-col gap-8 py-10">
-      {head}
       {waiting.length > 0 && <ReadyToPublish sets={waiting} />}
+      {head}
 
       <section aria-labelledby="games-heading" className="flex max-w-xl flex-col gap-3">
-        <h2 id="games-heading" className="text-xs font-medium text-ink-faint">Linked games</h2>
+        <h2 id="games-heading" className={HEADING}>Linked games</h2>
         {links.length > 0 ? (
           <ul>{links.map((link) => <Linked key={link.id} link={link} now={now} />)}</ul>
         ) : (
@@ -202,9 +237,11 @@ export default async function LoadoutsPage({ searchParams }: Props) {
         </div>
       </section>
 
+      <PublishedLooks accountId={account.id} {...published} />
+
       <section aria-labelledby="sets-heading" className="flex flex-col gap-3">
-        <h2 id="sets-heading" className="text-xs font-medium text-ink-faint">
-          {sets.length === 1 ? "1 loadout" : `${sets.length} loadouts`}
+        <h2 id="sets-heading" className={`${HEADING} flex items-baseline gap-2`}>
+          Your loadouts <span className="text-sm font-normal text-ink-faint">{sets.length}</span>
         </h2>
         {sets.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -213,7 +250,7 @@ export default async function LoadoutsPage({ searchParams }: Props) {
         ) : (
           <p className="text-sm text-ink-dim">
             Nothing here yet. Loadouts you save in a linked game appear here, and so do looks you send from the{" "}
-            <Link href="/wardrobe" className="text-amber underline underline-offset-2">Wardrobe</Link>.
+            <Link href="/community-gallery" className="text-amber underline underline-offset-2">Community Gallery</Link>.
           </p>
         )}
       </section>

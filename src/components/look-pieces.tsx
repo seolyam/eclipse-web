@@ -34,7 +34,7 @@ export function LookPieces({ resolved }: { resolved: ResolvedOutfit }) {
                   <p className="truncate text-sm font-medium text-ink-dim">{name}</p>
                 ) : (
                   <Link
-                    href={`/wardrobe?item=${s.item}`}
+                    href={`/community-gallery?item=${s.item}`}
                     className="block truncate text-sm font-medium underline-offset-2 hover:underline"
                     style={{ color: qualityColour(s.quality) }}
                     title={`Every look that wears ${name}`}

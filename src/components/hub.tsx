@@ -16,34 +16,26 @@ export function HubTitle({ title, blurb }: { title: string; blurb: string }) {
 
 type Tab = { href: string; label: string };
 
-const TABS: Tab[] = [
-  { href: "/wardrobe", label: "Wardrobe" },
-  { href: "/mounts", label: "Mounts" },
-];
-
 /** What the Loadouts page is for, shared with its loading outline. */
 export const LOADOUTS_BLURB =
   "Import a code to see what it holds, and keep the loadouts saved in your game backed up here, private to you.";
 
-/** The Dressing room's views: your loadouts with a code to import, and the builder. */
-export const DRESSING_TABS: Tab[] = [
-  { href: "/loadouts", label: "Loadouts" },
+/**
+ * The Dressing room's views: the builder and the mounts, both drawn in 3D. Since
+ * 2026-11-14 they are a section of their own, away from the Community Gallery and
+ * Loadouts, which stay about sharing.
+ */
+const DRESSING_TABS: Tab[] = [
   { href: "/dressing-room", label: "Dressing room" },
+  { href: "/mounts", label: "Mounts" },
 ];
 
-type Query = Awaited<ReturnType<typeof wardrobeCache.parse>>;
-
-/** Everyone's looks, seen signed in, leave out your own, which the page shows on their own. */
-export const listsOthers = (f: Query, viewerId: string | null): boolean =>
-  viewerId !== null && !f.author && !f.saved;
-
 /**
- * The filters the Wardrobe reads from the URL. Given the signed-in account, everyone's
- * looks leave out its own; one person's looks and bookmarks stay whole.
+ * The filters the Community Gallery reads from the URL. Your own looks are listed with
+ * everyone's: the Loadouts page gathers them on their own.
  */
-export async function listFromSearch(searchParams: Promise<SearchParams>, viewerId: string | null = null) {
+export async function listFromSearch(searchParams: Promise<SearchParams>) {
   const f = await wardrobeCache.parse(searchParams);
-  const community = listsOthers(f, viewerId);
   const list = await repository.listOutfits({
     q: f.q,
     className: f.class,
@@ -52,14 +44,13 @@ export async function listFromSearch(searchParams: Promise<SearchParams>, viewer
     category: f.category,
     tag: f.tag,
     authorId: f.author,
-    excludeAuthorId: community ? viewerId : null,
     saved: f.saved,
     item: f.item !== null && f.item > 0 ? f.item : null,
     captured: f.pictures,
     sort: f.sort,
     page: f.page,
   });
-  return { ...list, filters: f, community };
+  return { ...list, filters: f };
 }
 
 export function PublishButton() {
@@ -82,20 +73,18 @@ export function BuiltinNotice() {
 
 const EMPTY = "rounded-lg border border-dashed border-line p-10 text-center text-sm text-ink-dim";
 
-export function NoLooks({ others = false, bookmarks = false }: { others?: boolean; bookmarks?: boolean }) {
+export function NoLooks({ bookmarks = false }: { bookmarks?: boolean }) {
   if (bookmarks) {
     return (
       <p className={EMPTY}>
         No bookmarks match. Use the bookmark button on any look to keep it here, or{" "}
-        <Link href="/wardrobe" className="text-amber underline underline-offset-2">browse the Wardrobe</Link>.
+        <Link href="/community-gallery" className="text-amber underline underline-offset-2">browse the Community Gallery</Link>.
       </p>
     );
   }
   if (!repository.live) {
     return <p className={EMPTY}>Nothing matches. Only armor sets are listed until community publishing opens, so try clearing a filter.</p>;
   }
-  // Your own looks are listed above, so "the first look" would not be true.
-  if (others) return <p className={EMPTY}>No one else&apos;s looks match yet. Clear a filter, or check back as more players publish.</p>;
   return (
     <p className={EMPTY}>
       Nothing here yet. Clear a filter, or{" "}
@@ -131,11 +120,11 @@ export function Pager({ base, filters, total }: { base: string; filters: Filters
   );
 }
 
-/** A section's views as pills: the Wardrobe's by default, or the Dressing room's. */
-export function HubTabs({ current, tabs = TABS, label = "Wardrobe views" }: { current: string; tabs?: Tab[]; label?: string }) {
+/** The Dressing room's views as pills. */
+export function HubTabs({ current }: { current: string }) {
   return (
-    <nav aria-label={label} className="flex flex-wrap gap-1.5">
-      {tabs.map((t) => (
+    <nav aria-label="Dressing room views" className="flex flex-wrap gap-1.5">
+      {DRESSING_TABS.map((t) => (
         <Link key={t.href} href={t.href} className="pill" aria-current={t.href === current ? "page" : undefined}>
           {t.label}
         </Link>

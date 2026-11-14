@@ -15,7 +15,7 @@ export async function alertModerators(id: string, reason: ReportReason) {
   const post = await repository.getOutfit(id);
   if (!post) return;
 
-  const url = `${siteUrl}/wardrobe/${post.id}`;
+  const url = `${siteUrl}/community-gallery/${post.id}`;
   const by = post.author ? ` by ${plain(post.author)}` : "";
   await postWebhook(hook, [{
     // Shown as typed, as the weekly post shows it. Mentions are off, so nothing pings.
@@ -42,7 +42,7 @@ export async function alertCommentReport(id: string, reason: CommentReportReason
   const quote = plain(comment.body.slice(0, 1000)).replace(/^/gm, "> ");
   await postWebhook(hook, [{
     title: `Reported comment on ${post.title}`.slice(0, 256),
-    url: `${siteUrl}/wardrobe/${post.id}#comment-${comment.id}`,
+    url: `${siteUrl}/community-gallery/${post.id}#comment-${comment.id}`,
     description:
       `A comment${by} was reported for **${COMMENT_REPORT_REASONS[reason]}**.\n${quote}\n` +
       `[Review it in moderation](${siteUrl}/moderation)`,

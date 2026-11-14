@@ -8,7 +8,7 @@ export const NAME_MAX = 32;
 
 export const PROVIDER_NAMES: Record<string, string> = { discord: "Discord" };
 
-const WARDROBE = "/wardrobe";
+const WARDROBE = "/community-gallery";
 const THIS_SITE = "https://this.site.invalid";
 
 /**

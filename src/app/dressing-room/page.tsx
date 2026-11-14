@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DressingRoom } from "@/components/dressing-room";
-import { DRESSING_TABS, HubTabs, HubTitle } from "@/components/hub";
+import { HubTabs, HubTitle } from "@/components/hub";
 import { catalogCounts, resolveOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
 import { getOutfit, repository } from "@/lib/data";
@@ -32,11 +32,11 @@ export default async function DressingRoomPage({ searchParams }: Props) {
   return (
     <main id="main" className="wrap flex flex-col gap-5 py-10">
       <HubTitle title="Dressing room" blurb="Choose a piece for each slot, copy the code, then use Import on the Loadout page in the game." />
-      <HubTabs current="/dressing-room" tabs={DRESSING_TABS} label="Loadouts views" />
+      <HubTabs current="/dressing-room" />
       {opened && (
         <p className="text-sm text-ink-dim">
           Started from{" "}
-          <Link href={`/wardrobe/${opened.id}`} className="underline underline-offset-2 hover:text-ink">
+          <Link href={`/community-gallery/${opened.id}`} className="underline underline-offset-2 hover:text-ink">
             {opened.title}
           </Link>
           . Its armor and race are on the rack; mounts, morphs and enchants stay with the original.
