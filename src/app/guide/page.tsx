@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { HELP, helpParts } from "@/lib/help";
 import { pageMetadata } from "@/lib/seo";
+import { DISCORD_URL } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata("/guide");
 
@@ -69,6 +71,24 @@ export default function GuidePage() {
         </p>
       </section>
 
+      <section aria-labelledby="help">
+        <h2 id="help" className="text-xl">If something goes wrong</h2>
+        <dl className="mt-2 flex flex-col gap-4">
+          {HELP.map((h) => (
+            <div key={h.id}>
+              <dt className="text-sm">{h.question}</dt>
+              <dd className="mt-1 max-w-prose text-sm text-ink-dim">
+                {helpParts(h.answer).map((p, i) => (p.code ? <code key={i}>{p.text}</code> : p.text))}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-4 max-w-prose text-sm text-ink-dim">
+          Still stuck?{" "}
+          <a href={DISCORD_URL} target="_blank" rel="noopener" className="text-amber underline underline-offset-2">Ask in the Eclipse Discord</a>
+          , in the bug reports channel.
+        </p>
+      </section>
       <section aria-labelledby="remove">
         <h2 id="remove" className="text-xl">Remove it</h2>
         <p className="mt-1 max-w-prose text-sm text-ink-dim">

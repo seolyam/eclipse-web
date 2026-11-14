@@ -40,6 +40,13 @@
     ]
   },
   {
+    "name": "help",
+    "type": 1,
+    "description": "The fixes for Eclipse's most common problems",
+    "integration_types": [0, 1],
+    "contexts": [0, 1, 2]
+  },
+  {
     "name": "Decode Eclipse code",
     "type": 3,
     "integration_types": [0, 1],

@@ -352,6 +352,22 @@ describe("/item", () => {
   });
 });
 
+describe("/help", () => {
+  it("answers the common problems for everyone, from the guide's own list, with a link to it", async () => {
+    const { HELP } = await import("@/lib/help");
+    const reply = await answered(command("help", {}));
+    expect(reply.flags).toBeUndefined();
+    expect(reply.allowed_mentions).toEqual({ parse: [] });
+    const [embed] = reply.embeds as { description: string }[];
+    for (const h of HELP) {
+      expect(embed.description).toContain(h.question);
+      expect(embed.description).toContain(h.answer);
+    }
+    expect(embed.description.length).toBeLessThanOrEqual(4096);
+    expect(JSON.stringify(reply.components)).toContain(`${siteUrl}/guide#help`);
+  });
+});
+
 describe("a message's right-click menu", () => {
   const message = (content: string) => ({
     id: "1400000000000000001",
