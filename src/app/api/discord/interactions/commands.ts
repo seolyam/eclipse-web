@@ -1,31 +1,25 @@
 import "server-only";
 import { repository } from "@/lib/data";
-import type { OutfitPost } from "@/lib/data/types";
-import { AMBER, NO_MENTIONS, plain, type Embed } from "@/lib/discord";
+import type { OutfitPost, SearchEntry } from "@/lib/data/types";
+import { AMBER, NO_MENTIONS, plain } from "@/lib/discord";
+import { codeIn } from "@/lib/showcase-post";
 import { siteUrl } from "@/lib/site";
+import { addToWardrobe } from "./add-to-wardrobe";
+import { decodeReply } from "./decode";
+import { MESSAGE_COMMAND, say, type CommandData, type Interaction, type Reply } from "./reply";
 
-// The answers to the bot's slash commands (src/lib/discord-commands.json). Each one
-// shows only what the site shows a visitor: public looks, public names.
+export { EPHEMERAL, type Interaction, type Reply } from "./reply";
 
-/** Message flag: only the person who asked sees it. */
-export const EPHEMERAL = 64;
+// The answers to the bot's commands (src/lib/discord-commands.json). Each one shows
+// only what the site shows a visitor: public looks, public names.
 
 /**
  * inlineMs: how long an answer may take and still go straight back, under Discord's
  * three-second limit. retryMs: the wait before editing in a slow answer again, while
- * Discord has not yet made its "thinking" message. Tests shorten both.
+ * Discord has not yet made its "thinking" message. indexMs: how long /look's
+ * suggestions reuse the list of looks. Tests shorten all three.
  */
-export const timing = { inlineMs: 2000, retryMs: 1000 };
-
-export interface Reply {
-  content?: string;
-  embeds?: Embed[];
-  components?: unknown[];
-  flags?: number;
-  allowed_mentions: typeof NO_MENTIONS;
-}
-
-const say = (content: string): Reply => ({ content, flags: EPHEMERAL, allowed_mentions: NO_MENTIONS });
+export const timing = { inlineMs: 2000, retryMs: 1000, indexMs: 60_000 };
 
 /** A look's id from its link or the id itself. Null for anything else. */
 export function lookId(text: string): string | null {
@@ -88,29 +82,72 @@ async function searchReply(query: string): Promise<Reply> {
   };
 }
 
-interface CommandData {
-  name: string;
-  options?: { name: string; value: unknown }[];
-}
-
 const option = (data: CommandData, name: string) => {
   const value = data.options?.find((o) => o.name === name)?.value;
   return typeof value === "string" ? value : "";
 };
 
+/** The right-clicked message, which Discord sends along with the click. */
+const target = (data: CommandData) => (data.target_id ? data.resolved?.messages?.[data.target_id] : undefined);
+
+const DECODE_MESSAGE = "Decode Eclipse code";
+const ADD_TO_WARDROBE = "Add to Wardrobe";
+
+/** A right-click answers the asker alone, so it never fills a channel. */
+export const isQuiet = (data: CommandData) => data.type === MESSAGE_COMMAND;
+
 /** Answers that need no database, sent straight back. Null when the command needs one. */
-export function quickReply(data: CommandData): Reply | null {
+export function quickReply(interaction: Interaction): Reply | null {
+  const data = interaction.data;
+  if (!data) return say("Discord sent no command.");
   if (data.name === "look" && !lookId(option(data, "look"))) {
     return say("Paste a look's link from the Wardrobe, or its id.");
   }
-  if (data.name !== "look" && data.name !== "wardrobe") return say("That command is not part of Eclipse anymore.");
+  if (data.name === "decode") return decodeReply(option(data, "code"), { quiet: false });
+  if (data.name === DECODE_MESSAGE) {
+    const code = codeIn(target(data)?.content ?? "");
+    return code ? decodeReply(code, { quiet: true }) : say("That message holds no Eclipse code.");
+  }
+  if (!["look", "wardrobe", ADD_TO_WARDROBE].includes(data.name)) return say("That command is not part of Eclipse anymore.");
   return null;
 }
 
 /** The full answer, for a command quickReply let through. */
-export async function answer(data: CommandData): Promise<Reply> {
+export async function answer(interaction: Interaction): Promise<Reply> {
+  const data = interaction.data!;
+  if (data.name === ADD_TO_WARDROBE) return addToWardrobe(interaction);
   if (data.name === "wardrobe") return searchReply(option(data, "search"));
   const id = lookId(option(data, "look"));
   const post = id ? await repository.getOutfit(id) : null;
   return post ? lookReply(post) : say("No look in the Wardrobe has that link.");
+}
+
+let index: { at: number; entries: SearchEntry[] } | null = null;
+
+/** The Wardrobe's search list, reused for a minute: suggestions come at every keystroke. */
+async function searchList(): Promise<SearchEntry[]> {
+  if (!index || Date.now() - index.at >= timing.indexMs) {
+    index = { at: Date.now(), entries: await repository.searchIndex() };
+  }
+  return index.entries;
+}
+
+const CHOICES = 25;
+const MAX_CHOICE = 100;
+
+/** /look's suggestions for what is typed so far: Discord shows the name and sends the id. */
+export async function suggest(data: CommandData): Promise<{ name: string; value: string }[]> {
+  const typed = data.options?.find((o) => o.focused)?.value;
+  if (data.name !== "look" || typeof typed !== "string") return [];
+  const words = typed.toLowerCase().split(/\s+/).filter(Boolean);
+  return (await searchList())
+    .filter((entry) => {
+      const text = `${entry.title} ${entry.author ?? ""}`.toLowerCase();
+      return words.every((w) => text.includes(w));
+    })
+    .slice(0, CHOICES)
+    .map((entry) => {
+      const name = `${entry.title}${entry.author ? ` by ${entry.author}` : ""}`;
+      return { name: name.length > MAX_CHOICE ? `${name.slice(0, MAX_CHOICE - 1)}…` : name, value: entry.id };
+    });
 }

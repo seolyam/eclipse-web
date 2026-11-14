@@ -6,6 +6,18 @@ vi.mock("server-only", () => ({}));
 let pick: { post: OutfitPost; votes: number } | null = null;
 vi.mock("@/lib/data", () => ({ repository: { lookOfTheWeek: async () => pick } }));
 
+// The roles' own tests cover Discord; here only who is crowned, and that creators sync.
+const crowned: (string | null)[] = [];
+let synced = 0;
+let rolesFail = false;
+vi.mock("@/lib/discord-roles", () => ({
+  crownLookOfTheWeek: async (look: string | null) => {
+    if (rolesFail) throw new Error("Discord is down");
+    crowned.push(look);
+  },
+  syncCreators: async () => (synced++, 0),
+}));
+
 const { GET } = await import("./route");
 const { siteUrl } = await import("@/lib/site");
 
@@ -34,6 +46,9 @@ const call = (auth?: string) =>
 beforeEach(() => {
   pick = null;
   sent.length = 0;
+  crowned.length = 0;
+  synced = 0;
+  rolesFail = false;
   vi.stubEnv("CRON_SECRET", "cron-secret");
   vi.stubEnv("DISCORD_WEBHOOK_URL", HOOK);
   vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
@@ -99,6 +114,32 @@ describe("the weekly Discord post", () => {
     pick = { post, votes: 4 };
     expect(await (await call("Bearer cron-secret")).json()).toEqual({ posted: false });
     expect(sent).toEqual([]);
+  });
+
+  it("hands the Look of the Week role to the winner, and keeps creators' roles current", async () => {
+    pick = { post, votes: 4 };
+    await call("Bearer cron-secret");
+    expect(crowned).toEqual([post.id]);
+    expect(synced).toBe(1);
+  });
+
+  it("takes the role back in a quiet week, also with no webhook", async () => {
+    vi.stubEnv("DISCORD_WEBHOOK_URL", "");
+    await call("Bearer cron-secret");
+    expect(crowned).toEqual([null]);
+  });
+
+  it("touches no role for a caller without the secret", async () => {
+    await call("Bearer wrong");
+    expect(crowned).toEqual([]);
+    expect(synced).toBe(0);
+  });
+
+  it("still posts when the roles fail", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    rolesFail = true;
+    pick = { post, votes: 4 };
+    expect(await (await call("Bearer cron-secret")).json()).toEqual({ posted: true, id: post.id });
   });
 
   it("reports a refused post as a failure, so the scheduler's log shows it", async () => {

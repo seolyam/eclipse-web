@@ -1,0 +1,71 @@
+import { describe, expect, it, vi } from "vitest";
+import type { ShowcaseMessage } from "./showcase-post";
+
+vi.mock("server-only", () => ({}));
+const { codeIn, pictureFor, said, titleOf } = await import("./showcase-post");
+
+const PLAYER = { id: "354266414397390858", username: "shadow", global_name: "Shadow" };
+const OTHER = { id: "708022303841058907", username: "kira", global_name: null };
+const IMAGE = { url: "https://cdn.discordapp.com/attachments/1/2/shot.png", content_type: "image/png" };
+
+let n = 0;
+const message = (over: Partial<ShowcaseMessage>): ShowcaseMessage => ({
+  id: `14000000000000000${String(++n).padStart(2, "0")}`,
+  timestamp: "2026-11-10T12:00:00.000Z",
+  content: "",
+  author: PLAYER,
+  attachments: [],
+  ...over,
+});
+
+const pick = (code: ShowcaseMessage, history: ShowcaseMessage[]) =>
+  pictureFor(code, new Map([...history, code].map((m) => [m.id, m])), history);
+
+describe("a showcase post's code", () => {
+  it("is found in the message, even when Discord wrapped it", () => {
+    expect(codeIn("Here it is:\nECA1:c2xv\ndCAw ID EK")).toBe("ECA1:c2xvdCAwIDEK");
+    expect(codeIn("no code here")).toBeNull();
+  });
+
+  it("leaves the code, mentions and custom emoji out of what the player said", () => {
+    expect(said(message({ content: "Frost knight <:pog:123456> <@354266414397390858> ECA1:abc" }))).toBe("Frost knight");
+  });
+});
+
+describe("a showcase post's picture", () => {
+  it("is the code's own screenshots first", () => {
+    const code = message({ content: "ECA1:abc", attachments: [IMAGE] });
+    expect(pick(code, [])).toBe(code);
+  });
+
+  it("is the player's picture the code answers, through the replies", () => {
+    const picture = message({ attachments: [IMAGE] });
+    const ask = message({ author: OTHER, content: "code?", message_reference: { message_id: picture.id } });
+    const code = message({ content: "ECA1:abc", message_reference: { message_id: ask.id } });
+    expect(pick(code, [picture, ask])).toBe(picture);
+  });
+
+  it("is the player's last picture in the hour before, never someone else's", () => {
+    const theirs = message({ attachments: [IMAGE], timestamp: "2026-11-10T11:30:00.000Z" });
+    const others = message({ author: OTHER, attachments: [IMAGE], timestamp: "2026-11-10T11:50:00.000Z" });
+    const code = message({ content: "ECA1:abc" });
+    expect(pick(code, [theirs, others])).toBe(theirs);
+  });
+
+  it("is nothing when the player shared no picture of their own", () => {
+    const old = message({ attachments: [IMAGE], timestamp: "2026-11-10T09:00:00.000Z" });
+    const others = message({ author: OTHER, attachments: [IMAGE] });
+    expect(pick(message({ content: "ECA1:abc" }), [old, others])).toBeNull();
+  });
+});
+
+describe("a showcase post's title", () => {
+  it("is a short caption as written", () => {
+    expect(titleOf("bloodelf", "Sunwell guard")).toBe("Sunwell guard");
+  });
+
+  it("is named for the race when the caption is a sentence or missing", () => {
+    expect(titleOf("bloodelf", "Here is my new look, hope you like it!")).toBe("Blood Elf transmog");
+    expect(titleOf(null, "")).toBe("Transmog");
+  });
+});

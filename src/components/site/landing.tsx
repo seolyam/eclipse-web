@@ -1,15 +1,23 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { preload } from "react-dom";
 import { HeroStage } from "@/components/site/hero-stage";
 import { Icon } from "@/components/site/icons";
 import { ShowcasePlayer } from "@/components/site/showcase-player";
 import { SupportLinks } from "@/components/site/support-links";
 import { WalletSection } from "@/components/site/wallets";
+import { discordMembers } from "@/lib/discord-invite";
 import { FEATURES } from "@/lib/features";
 import { TALL_MEDIA, TALL_SIZES, WIDE_SIZES, tallArt, wideArt } from "@/lib/hero-art";
 import { DISCORD_URL, dllUrl, downloadUrl } from "@/lib/site";
 
 // The official page's sections, word for word: only the links are new.
+
+/** Discord's own member count for the invite, or nothing when Discord does not say. */
+async function DiscordMembers() {
+  const count = await discordMembers();
+  return count ? <span className="btn__count">{count.toLocaleString("en-US")} members</span> : null;
+}
 
 export function Hero() {
   // Same srcset and sizes as the <picture>, so each is one download. preload()
@@ -36,6 +44,7 @@ export function Hero() {
         <div className="cta">
           <a className="btn btn--ghost" href={DISCORD_URL} target="_blank" rel="noopener">
             <Icon id="i-discord" /><span>Join the Discord</span>
+            <Suspense fallback={null}><DiscordMembers /></Suspense>
           </a>
         </div>
       </div>

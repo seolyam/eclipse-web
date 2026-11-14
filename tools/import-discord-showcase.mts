@@ -17,25 +17,11 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { resolveOutfit } from "@/lib/catalog";
-import { decodeOutfit } from "@/lib/codec/outfit";
 import { compressScreenshot } from "@/lib/data/compress";
-import { RACE_LABEL } from "@/lib/domain";
 import { SCREENSHOT_BUCKET, thumbOf } from "@/lib/screenshots";
+import { SHOWCASE_CHANNEL, codeIn, showcaseLook, type ShowcaseLook, type ShowcaseMessage } from "@/lib/showcase-post";
 
-const SHOWCASE = "1554574140634046586";
-const MAX_SCREENSHOTS = 6;
 const APPLY = process.argv.includes("--apply");
-
-interface Attachment { url: string; content_type?: string }
-interface Message {
-  id: string;
-  timestamp: string;
-  content: string;
-  author: { id: string; username: string; global_name: string | null; bot?: boolean };
-  attachments: Attachment[];
-  message_reference?: { message_id?: string };
-}
 
 process.loadEnvFile(".env.local");
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -54,59 +40,15 @@ async function discord<T>(path: string): Promise<T> {
   }
 }
 
-async function history(channel: string): Promise<Message[]> {
-  const all: Message[] = [];
+async function history(channel: string): Promise<ShowcaseMessage[]> {
+  const all: ShowcaseMessage[] = [];
   for (let before = ""; ;) {
-    const page = await discord<Message[]>(`/channels/${channel}/messages?limit=100${before}`);
+    const page = await discord<ShowcaseMessage[]>(`/channels/${channel}/messages?limit=100${before}`);
     all.push(...page);
     if (page.length < 100) break;
     before = `&before=${page.at(-1)!.id}`;
   }
   return all.reverse();
-}
-
-const CODE = /ECA1:[A-Za-z0-9+/=]+/;
-const images = (m: Message) => m.attachments.filter((a) => a.content_type?.startsWith("image/"));
-
-/** What the player wrote, without the code, mentions or custom emoji. */
-function said(m: Message): string {
-  return m.content
-    .replace(/ECA1:\S+/g, "")
-    .replace(/<a?:\w+:\d+>|<[@#][!&]?\d+>/g, "")
-    .replace(/[\u0000-\u0009\u000b-\u001f\u007f\r]/g, "")
-    .trim();
-}
-
-const HOUR = 60 * 60 * 1000;
-
-/**
- * The code's own pictures, or the player's picture the code was asked for: through the
- * replies, or when someone asked without replying, the player's last picture in the
- * hour before the code.
- */
-function pictureFor(code: Message, byId: Map<string, Message>, messages: Message[]): Message | null {
-  if (images(code).length) return code;
-  for (let ref = code.message_reference?.message_id, hops = 0; ref && hops < 4; hops++) {
-    const m = byId.get(ref);
-    if (!m) break;
-    if (m.author.id === code.author.id && images(m).length) return m;
-    ref = m.message_reference?.message_id;
-  }
-  const at = Date.parse(code.timestamp);
-  return messages.findLast((m) =>
-    m.author.id === code.author.id && images(m).length > 0 && Date.parse(m.timestamp) <= at && at - Date.parse(m.timestamp) < HOUR,
-  ) ?? null;
-}
-
-/** "Blood Elf transmog" from the code itself: a Discord post has no title. */
-function titleOf(race: string | null, caption: string): string {
-  if (caption.length >= 3 && caption.length <= 40 && !/[.!?,]/.test(caption)) return caption;
-  return race ? `${RACE_LABEL[race]} transmog` : "Transmog";
-}
-
-/** As the publish action adds them: the Wardrobe's Mounts and Enchants filters, read from the code. */
-function codeTags(outfit: { mount: number; mountFly: number; glow: unknown[] }): string[] {
-  return [...(outfit.mount || outfit.mountFly ? ["mount"] : []), ...(outfit.glow.some(Boolean) ? ["enchant"] : [])];
 }
 
 const sql = (v: string | null) => (v === null ? "null" : `'${v.replace(/'/g, "''")}'`);
@@ -124,50 +66,17 @@ function query<T>(text: string): T[] {
   return JSON.parse(out.slice(out.indexOf("{"), out.lastIndexOf("}") + 1)).rows as T[];
 }
 
-const messages = await history(SHOWCASE);
+const messages = await history(SHOWCASE_CHANNEL);
 const byId = new Map(messages.map((m) => [m.id, m]));
 const done = new Set(query<{ message_id: string }>("select message_id from public.discord_looks").map((r) => r.message_id));
 
-interface Look {
-  id: string;
-  messageId: string;
-  discordId: string;
-  name: string;
-  title: string;
-  description: string | null;
-  code: string;
-  race: string | null;
-  tags: string[];
-  createdAt: string;
-  pictures: string[];
-}
-
-const looks: Look[] = [];
+const looks: (ShowcaseLook & { id: string })[] = [];
 const skipped: string[] = [];
 for (const m of messages) {
-  const code = m.content.replace(/\s+/g, "").match(CODE)?.[0];
-  if (!code || m.author.bot || done.has(m.id)) continue;
-  const who = m.author.global_name ?? m.author.username;
-  const decoded = decodeOutfit(code);
-  if (!decoded.ok) { skipped.push(`${m.timestamp.slice(0, 10)} ${who}: the code does not decode (${decoded.error})`); continue; }
-  const picture = pictureFor(m, byId, messages);
-  if (!picture) { skipped.push(`${m.timestamp.slice(0, 10)} ${who}: no screenshot of their own`); continue; }
-  const caption = [said(picture), picture === m ? "" : said(m)].filter(Boolean).join("\n").slice(0, 500).trim();
-  const race = resolveOutfit(decoded.outfit).raceKey;
-  const title = titleOf(race, caption);
-  looks.push({
-    id: crypto.randomUUID(),
-    messageId: m.id,
-    discordId: m.author.id,
-    name: who.slice(0, 40),
-    title,
-    description: caption && caption !== title ? caption : null,
-    code,
-    race: race && RACE_LABEL[race] ? race : null,
-    tags: codeTags(decoded.outfit),
-    createdAt: picture.timestamp,
-    pictures: images(picture).slice(0, MAX_SCREENSHOTS).map((a) => a.url),
-  });
+  if (done.has(m.id) || m.author.bot || !codeIn(m.content)) continue;
+  const made = showcaseLook(m, byId, messages);
+  if (made.ok) looks.push({ id: crypto.randomUUID(), ...made.look });
+  else skipped.push(`${m.timestamp.slice(0, 10)} ${m.author.global_name ?? m.author.username}: ${made.reason}`);
 }
 
 console.log(`${messages.length} messages, ${done.size} already imported, ${looks.length} to import\n`);

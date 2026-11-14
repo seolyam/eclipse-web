@@ -1,24 +1,19 @@
 import { after } from "next/server";
-import { answer, quickReply, timing, type Reply } from "./commands";
+import { EPHEMERAL, answer, isQuiet, quickReply, suggest, timing, type Interaction, type Reply } from "./commands";
 import { verifyDiscord } from "./verify";
 
-// Discord's Interactions Endpoint URL for the Eclipse app. Discord POSTs each slash
-// command here, signed with the app's key, and waits three seconds for an answer. An
-// answer ready in time goes straight back. A slower one answers "thinking" at once,
-// then edits that message.
+// Discord's Interactions Endpoint URL for the Eclipse app. Discord POSTs each command,
+// right-click and keystroke of an autocomplete here, signed with the app's key, and waits
+// three seconds for an answer. An answer ready in time goes straight back. A slower one
+// answers "thinking" at once, then edits that message.
 
 const PING = 1;
 const COMMAND = 2;
+const AUTOCOMPLETE = 4;
 const PONG = 1;
 const MESSAGE = 4;
 const DEFERRED = 5;
-
-interface Interaction {
-  type: number;
-  application_id: string;
-  token: string;
-  data?: { name: string; options?: { name: string; value: unknown }[] };
-}
+const CHOICES = 8;
 
 const EDIT_TRIES = 4;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -61,14 +56,20 @@ export async function POST(request: Request) {
 
   const interaction = JSON.parse(body) as Interaction;
   if (interaction.type === PING) return Response.json({ type: PONG });
+
+  // Suggestions cannot wait for a "thinking" message: none in time is better than late.
+  if (interaction.type === AUTOCOMPLETE && interaction.data) {
+    const none = sleep(timing.inlineMs).then(() => []);
+    const choices = await Promise.race([suggest(interaction.data).catch(() => []), none]);
+    return Response.json({ type: CHOICES, data: { choices } });
+  }
   if (interaction.type !== COMMAND || !interaction.data) return new Response(null, { status: 400 });
 
-  const data = interaction.data;
-  const quick = quickReply(data);
+  const quick = quickReply(interaction);
   if (quick) return Response.json({ type: MESSAGE, data: quick });
 
   // A failure becomes the FAILED answer, so the work never rejects unhandled.
-  const work = answer(data).catch((error) => {
+  const work = answer(interaction).catch((error) => {
     console.error("A Discord command failed:", error);
     return FAILED;
   });
@@ -76,5 +77,6 @@ export async function POST(request: Request) {
   if (inTime) return Response.json({ type: MESSAGE, data: inTime });
 
   after(async () => finish(interaction, await work));
-  return Response.json({ type: DEFERRED });
+  // Whether the answer is private is fixed now: an edit cannot change it.
+  return Response.json(isQuiet(interaction.data) ? { type: DEFERRED, data: { flags: EPHEMERAL } } : { type: DEFERRED });
 }

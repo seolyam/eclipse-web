@@ -13,6 +13,7 @@ import {
   COMMENT_REPORT_REASONS, REPORT_REASONS, type CommentReportReason, type ReportReason,
 } from "@/lib/data/types";
 import { commentSchema } from "@/lib/comments";
+import { creatorOf, grantCreatorOfLook, recheckCreator } from "@/lib/discord-roles";
 import { announceLook } from "@/lib/look-feed";
 import { alertCommentReport, alertModerators } from "@/lib/moderation-alert";
 import { UPLOAD_PATH } from "@/lib/screenshots";
@@ -49,6 +50,7 @@ export async function publishOutfit(
   revalidateHub();
   const post = r.value;
   after(() => announceLook(post));
+  after(() => grantCreatorOfLook(post.id));
   return { ok: true, id: post.id };
 }
 
@@ -83,10 +85,13 @@ export async function removeScreenshot(path: string) {
 }
 
 export async function deleteLook(id: string) {
+  // Read before the look goes: afterwards nothing says whose it was.
+  const player = await creatorOf(id).catch(() => null);
   const r = await repository.deleteOutfit(id);
   if (r.ok) {
     revalidateHub();
     revalidatePath(`/wardrobe/${id}`);
+    after(() => recheckCreator(player));
   }
   return r;
 }
