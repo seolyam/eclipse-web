@@ -8,6 +8,9 @@ import {
   SHOT_HEADER,
   formatShotAnswer,
   parseShotRequest,
+  VERSION_HEADER,
+  isNewerBuild,
+  parseVersionRequest,
 } from "./wire";
 
 const b64 = (text: string) => Buffer.from(text, "utf8").toString("base64");
@@ -171,5 +174,41 @@ describe("a picture from the game", () => {
   it("answers with one word, and a count when the picture is filed", () => {
     expect(formatShotAnswer({ status: "ok", count: 2 })).toBe("ok 2");
     expect(formatShotAnswer({ status: "set-full" })).toBe("set-full");
+  });
+});
+
+describe("the version check", () => {
+  it("reads the build a game sends", () => {
+    expect(parseVersionRequest(`${VERSION_HEADER}
+build 1.0.0
+`)).toBe("1.0.0");
+    expect(parseVersionRequest(`${VERSION_HEADER}
+build 1.2.3-beta
+`)).toBe("1.2.3-beta");
+  });
+
+  it("refuses anything else", () => {
+    expect(parseVersionRequest("build 1.0.0")).toBeNull();
+    expect(parseVersionRequest(`${VERSION_HEADER}
+`)).toBeNull();
+    expect(parseVersionRequest(`${VERSION_HEADER}
+build <script>`)).toBeNull();
+    expect(parseVersionRequest(`${VERSION_HEADER}
+build ${"1".repeat(40)}`)).toBeNull();
+  });
+
+  it("compares versions by number, part by part, with or without a v", () => {
+    expect(isNewerBuild("1.1.0", "1.0.0")).toBe(true);
+    expect(isNewerBuild("1.0.1", "1.0.0")).toBe(true);
+    expect(isNewerBuild("v2", "1.9.9")).toBe(true);
+    expect(isNewerBuild("1.10", "1.9")).toBe(true);
+    expect(isNewerBuild("1.0.0", "1.0.0")).toBe(false);
+    expect(isNewerBuild("1.0", "1.0.0")).toBe(false);
+    expect(isNewerBuild("1.0.0", "1.1.0")).toBe(false);
+  });
+
+  it("never calls a build out of date when either side is not a version", () => {
+    expect(isNewerBuild("1.1.0", "dev")).toBe(false);
+    expect(isNewerBuild("latest", "1.0.0")).toBe(false);
   });
 });

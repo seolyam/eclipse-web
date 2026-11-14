@@ -39,6 +39,13 @@ const SECTIONS = [
     ],
   },
   {
+    id: "updates",
+    title: "Update checks",
+    points: [
+      "Once each launch, the game overlay asks this site whether a newer Eclipse is out, linked or not. It sends only its version number.",
+    ],
+  },
+  {
     id: "public",
     title: "What is public",
     points: [

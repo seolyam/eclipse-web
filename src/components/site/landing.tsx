@@ -9,7 +9,8 @@ import { WalletSection } from "@/components/site/wallets";
 import { discordMembers } from "@/lib/discord-invite";
 import { FEATURES } from "@/lib/features";
 import { TALL_MEDIA, TALL_SIZES, WIDE_SIZES, tallArt, wideArt } from "@/lib/hero-art";
-import { DISCORD_URL, downloadUrl } from "@/lib/site";
+import { latestRelease } from "@/lib/releases";
+import { DISCORD_URL, dllUrl, downloadUrl } from "@/lib/site";
 
 // The official page's sections, word for word: only the links are new.
 
@@ -17,6 +18,16 @@ import { DISCORD_URL, downloadUrl } from "@/lib/site";
 async function DiscordMembers() {
   const count = await discordMembers();
   return count ? <span className="btn__count">{count.toLocaleString("en-US")} members</span> : null;
+}
+
+/** The DLL on its own, offered only once Kirazul/Eclipse has a release to land on. */
+async function DllButton() {
+  if (!(await latestRelease())) return null;
+  return (
+    <a className="btn btn--ghost" href={dllUrl} target="_blank" rel="noopener">
+      <Icon id="i-download" /><span>dinput8.dll</span>
+    </a>
+  );
 }
 
 export function Hero() {
@@ -88,6 +99,7 @@ export function Download() {
               <a className="btn btn--primary" href={downloadUrl} target="_blank" rel="noopener">
                 <Icon id="i-download" /><span>Download Eclipse.zip</span>
               </a>
+              <Suspense fallback={null}><DllButton /></Suspense>
             </div>
             <p className="fine">
               Google Drive &middot; Windows &middot; World of Warcraft 3.3.5a (12340)

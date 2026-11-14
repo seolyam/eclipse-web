@@ -23,6 +23,15 @@
 //   answer    ok <pictures on the set> | unlinked | missing | set-full | account-full
 //             | busy | too-large | unreadable | bad-request | unavailable
 //
+// Whether a newer overlay is out, asked once a launch (POST /api/game/version, no
+// token). The game sends its own build; the site holds the comparison, so a change to
+// it needs no new DLL:
+//
+//   request   eclipse-version 1
+//             build <the overlay's BuildText()>
+//
+//   answer    update <newest release> | current | bad-request
+//
 // The migration's limits are repeated here so one bad set is refused alone. Left to
 // the database's checks, it would fail the batch and every set in it, on every retry.
 
@@ -184,4 +193,44 @@ export function parseShotRequest(body: string): { name: string; image: Buffer } 
 
 export function formatShotAnswer(answer: { status: ShotStatus; count?: number }): string {
   return answer.status === "ok" ? `ok ${answer.count ?? 0}` : answer.status;
+}
+
+export const VERSION_HEADER = "eclipse-version 1";
+
+/** A version as it is shown and sent: no spaces, nothing the game must escape. */
+export const VERSION_TEXT = /^[0-9A-Za-z.+-]{1,32}$/;
+
+/** The build a version check names, or null for anything that is not one. */
+export function parseVersionRequest(body: string): string | null {
+  const [header, ...rest] = lines(body);
+  if (header !== VERSION_HEADER) return null;
+  for (const line of rest) {
+    const [verb, value, extra] = line.split(" ");
+    if (verb === "build" && value && extra === undefined && VERSION_TEXT.test(value)) return value;
+  }
+  return null;
+}
+
+/** The leading numbers of a version: "v1.10.2-beta" is [1, 10, 2]. Empty for "dev". */
+function versionNumbers(version: string): number[] {
+  const numbers: number[] = [];
+  for (const part of version.replace(/^v/i, "").split(".")) {
+    const n = /^\d+/.exec(part);
+    if (!n) break;
+    numbers.push(Number(n[0]));
+    if (n[0] !== part) break;
+  }
+  return numbers;
+}
+
+/** Is `latest` a later version than `build`? Never, when either is not a version. */
+export function isNewerBuild(latest: string, build: string): boolean {
+  const a = versionNumbers(latest);
+  const b = versionNumbers(build);
+  if (!a.length || !b.length) return false;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d) return d > 0;
+  }
+  return false;
 }
