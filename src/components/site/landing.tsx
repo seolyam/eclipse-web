@@ -1,9 +1,9 @@
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { preload } from "react-dom";
 import { HeroStage } from "@/components/site/hero-stage";
 import { Icon } from "@/components/site/icons";
-import { ShowcasePlayer } from "@/components/site/showcase-player";
 import { SupportLinks } from "@/components/site/support-links";
 import { WalletSection } from "@/components/site/wallets";
 import { discordMembers } from "@/lib/discord-invite";
@@ -12,7 +12,12 @@ import { TALL_MEDIA, TALL_SIZES, WIDE_SIZES, tallArt, wideArt } from "@/lib/hero
 import { latestRelease } from "@/lib/releases";
 import { DISCORD_URL, dllUrl, downloadUrl } from "@/lib/site";
 
-// The official page's sections, word for word: only the links are new.
+// The official page's sections, word for word: only the links are new. The hero is
+// the exception: Kira took the showcase video out on 2026-11-14 and asked for the
+// text in the middle of the screen.
+
+/** The hero's quick answer to "what does it change", from the feature grid's titles. */
+const HERO_CHIPS = ["Wardrobe", "Customization", "Mounts", "Creature morph", "Enchants", "Spell visuals", "Titles", "World"];
 
 /** Discord's own member count for the invite, or nothing when Discord does not say. */
 async function DiscordMembers() {
@@ -41,26 +46,30 @@ export function Hero() {
     <section className="hero" id="top">
       <HeroStage />
       <div className="wrap hero__text">
+        <p className="hero__eyebrow">A free overlay for the 3.3.5a client</p>
         <h1>
           A wardrobe for <span className="flow-text">World of Warcraft</span>
         </h1>
         <p>
-          <span className="flow-text flow-text--strong">Eclipse</span> is a free overlay for the 3.3.5a client. Every
-          appearance, mount, spell and title in the game, on your own character.
+          Every appearance, mount, spell and title in the game, on your own character. Share a look as a code, or
+          find one in the <Link href="/community-gallery">Community Gallery</Link>.
         </p>
         <div className="cta">
-          <a className="btn btn--primary" href="#download">Download</a>
-          <a className="btn btn--ghost" href="#features">Explore features</a>
+          <a className="btn btn--primary" href="#download"><Icon id="i-download" /><span>Download Eclipse</span></a>
+          <Link className="btn btn--ghost" href="/community-gallery">Browse the Community Gallery</Link>
         </div>
-        <div className="cta">
-          <a className="btn btn--ghost" href={DISCORD_URL} target="_blank" rel="noopener">
-            <Icon id="i-discord" /><span>Join the Discord</span>
-            <Suspense fallback={null}><DiscordMembers /></Suspense>
-          </a>
-        </div>
+        <a className="hero__community" href={DISCORD_URL} target="_blank" rel="noopener">
+          <Icon id="i-discord" /><span>Join the Discord</span>
+          <Suspense fallback={null}><DiscordMembers /></Suspense>
+        </a>
       </div>
-      <div className="wrap hero__stage" id="showcase">
-        <ShowcasePlayer />
+      <div className="wrap hero__foot">
+        <ul className="hero__chips" aria-label="What Eclipse changes">
+          {HERO_CHIPS.map((name) => <li key={name}>{name}</li>)}
+        </ul>
+        <a className="hero__more" href="#features">
+          <span>See everything it does</span><ChevronDown aria-hidden="true" />
+        </a>
       </div>
     </section>
   );

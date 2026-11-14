@@ -5,7 +5,7 @@ import { DISCORD_URL } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata("/privacy");
 
-const UPDATED = "November 2, 2026";
+const UPDATED = "November 14, 2026";
 
 const SECTIONS = [
   {
@@ -14,7 +14,6 @@ const SECTIONS = [
     points: [
       "You do not need an account. The site has no ads, no analytics and no tracking cookies.",
       "Our hosting provider handles each request, and that includes your IP address and browser details.",
-      "The home page shows a video from YouTube. Its preview image loads from YouTube when the section appears, so YouTube sees that request. The player itself uses YouTube's privacy-enhanced mode.",
       "The site remembers that you have seen the support message, in your browser only, until you close the tab.",
     ],
   },

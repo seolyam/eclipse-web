@@ -30,5 +30,4 @@ export const dllUrl = `${GITHUB_URL}/releases/latest`;
 
 export const DISCORD_URL = "https://discord.gg/RvY5VjHgTA";
 export const KOFI_URL = "https://ko-fi.com/eclipsewow";
-export const SHOWCASE_VIDEO_ID = "HH3bjMZshRQ";
 export const NARCISSUS_URL = "https://www.curseforge.com/wow/addons/narcissus";
