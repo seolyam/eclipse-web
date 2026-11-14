@@ -129,24 +129,24 @@ describe("Discord's signature", () => {
 
 describe("/look", () => {
   it("reads a look's id from its link or takes the id itself", () => {
-    expect(lookId(`${siteUrl}/wardrobe/${post.id}`)).toBe(post.id);
-    expect(lookId(`https://eclipsewow.vercel.app/wardrobe/${post.id}?from=discord`)).toBe(post.id);
+    expect(lookId(`${siteUrl}/community-gallery/${post.id}`)).toBe(post.id);
+    expect(lookId(`https://eclipsewow.vercel.app/community-gallery/${post.id}?from=discord`)).toBe(post.id);
     expect(lookId(` ${post.id} `)).toBe(post.id);
     expect(lookId("https://example.com/not a look")).toBeNull();
   });
 
   it("shows the look with its picture, code and a link, and pings nobody", async () => {
-    const reply = await answered(command("look", { look: `${siteUrl}/wardrobe/${post.id}` }));
+    const reply = await answered(command("look", { look: `${siteUrl}/community-gallery/${post.id}` }));
     expect(reply.allowed_mentions).toEqual({ parse: [] });
     expect(reply.flags).toBeUndefined();
     const [embed] = reply.embeds as Record<string, unknown>[];
     expect(embed.title).toBe(post.title);
-    expect(embed.url).toBe(`${siteUrl}/wardrobe/${post.id}`);
+    expect(embed.url).toBe(`${siteUrl}/community-gallery/${post.id}`);
     expect(embed.description).toContain("by Kira\\_\\*the\\*\\_Bold");
     expect(embed.description).toContain("9 upvotes");
     expect(embed.description).toContain(post.code);
-    expect(embed.image).toEqual({ url: `${siteUrl}/wardrobe/${post.id}/cover` });
-    expect(JSON.stringify(reply.components)).toContain(`${siteUrl}/wardrobe/${post.id}`);
+    expect(embed.image).toEqual({ url: `${siteUrl}/community-gallery/${post.id}/cover` });
+    expect(JSON.stringify(reply.components)).toContain(`${siteUrl}/community-gallery/${post.id}`);
   });
 
   it("says so, without the database, when the text is not a look's link", async () => {
@@ -166,7 +166,7 @@ describe("/look", () => {
   });
 });
 
-describe("/wardrobe", () => {
+describe("/community-gallery", () => {
   const entry = (n: number, title: string, author: string | null = "Kira"): SearchEntry => ({
     id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`, title, author,
   });
@@ -184,8 +184,8 @@ describe("/wardrobe", () => {
     index = Array.from({ length: 8 }, (_, i) => entry(i + 1, `Frost ${i + 1}`));
     const reply = await answered(command("wardrobe", { search: "frost" }));
     const [embed] = reply.embeds as Record<string, string>[];
-    expect(embed.description.match(/\/wardrobe\/0000/g)).toHaveLength(5);
-    expect(embed.description).toContain(`${siteUrl}/wardrobe?q=frost`);
+    expect(embed.description.match(/\/community-gallery\/0000/g)).toHaveLength(5);
+    expect(embed.description).toContain(`${siteUrl}/community-gallery?q=frost`);
     expect(embed.description).toContain("See all 8");
   });
 

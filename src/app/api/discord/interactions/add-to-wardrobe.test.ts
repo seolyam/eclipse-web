@@ -94,7 +94,7 @@ describe("Add to Wardrobe", () => {
     expect(granted).toEqual([PLAYER]);
     expect(announced).toEqual([look.id]);
     expect(reply.flags).toBe(64);
-    expect(reply.content).toContain(`${siteUrl}/wardrobe/${look.id}`);
+    expect(reply.content).toContain(`${siteUrl}/community-gallery/${look.id}`);
   });
 
   it("lets a moderator add someone else's post", async () => {
@@ -113,7 +113,7 @@ describe("Add to Wardrobe", () => {
   it("links the look a post already became, writing nothing", async () => {
     alreadyLook = "11111111-1111-4111-8111-111111111111";
     const reply = await addToWardrobe(click(post()));
-    expect(reply.content).toContain(`/wardrobe/${alreadyLook}`);
+    expect(reply.content).toContain(`/community-gallery/${alreadyLook}`);
     expect(stored).toEqual([]);
   });
 
@@ -139,7 +139,7 @@ describe("Add to Wardrobe", () => {
     racedTo = "22222222-2222-4222-8222-222222222222";
     const reply = await addToWardrobe(click(post()));
     expect(removed.sort()).toEqual([...stored].sort());
-    expect(reply.content).toContain(`/wardrobe/${racedTo}`);
+    expect(reply.content).toContain(`/community-gallery/${racedTo}`);
     expect(announced).toEqual([]);
   });
 

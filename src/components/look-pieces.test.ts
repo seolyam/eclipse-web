@@ -32,7 +32,7 @@ describe("a look's pieces", () => {
   });
 
   it("links each worn piece to every look that wears it", () => {
-    expect(render([piece(0)])).toContain('href="/wardrobe?item=40000"');
+    expect(render([piece(0)])).toContain('href="/community-gallery?item=40000"');
   });
 
   it("leaves itself out when the code wears nothing", () => {

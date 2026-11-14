@@ -8,6 +8,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: `${siteUrl}/` },
     ...Object.keys(PAGES).map((path) => ({ url: `${siteUrl}${path}` })),
-    ...looks.map(({ id }) => ({ url: `${siteUrl}/wardrobe/${id}` })),
+    ...looks.map(({ id }) => ({ url: `${siteUrl}/community-gallery/${id}` })),
   ];
 }

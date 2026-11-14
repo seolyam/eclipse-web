@@ -6,7 +6,7 @@ vi.mock("server-only", () => ({}));
 const { announceLook } = await import("./look-feed");
 const { siteUrl } = await import("@/lib/site");
 
-const HOOK = "https://discord.test/api/webhooks/3/wardrobe";
+const HOOK = "https://discord.test/api/webhooks/3/community-gallery";
 const post: OutfitPost = {
   id: "11111111-1111-4111-8111-111111111111",
   title: "@everyone *free gold*",
@@ -48,9 +48,9 @@ describe("the Wardrobe feed in Discord", () => {
     expect(sent[0].body.allowed_mentions).toEqual({ parse: [] });
     const [embed] = sent[0].body.embeds as Record<string, unknown>[];
     expect(embed.title).toBe("@everyone *free gold*");
-    expect(embed.url).toBe(`${siteUrl}/wardrobe/${post.id}`);
+    expect(embed.url).toBe(`${siteUrl}/community-gallery/${post.id}`);
     expect(embed.description).toContain("Kira\\_");
-    expect(embed.image).toEqual({ url: `${siteUrl}/wardrobe/${post.id}/cover` });
+    expect(embed.image).toEqual({ url: `${siteUrl}/community-gallery/${post.id}/cover` });
   });
 
   it("leaves the picture out when the look has no screenshot", async () => {

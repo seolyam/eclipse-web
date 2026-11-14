@@ -29,7 +29,7 @@ function moderates(permissions: string | undefined): boolean {
   }
 }
 
-const already = (look: string) => say(`This post is already in the Wardrobe: ${siteUrl}/wardrobe/${look}`);
+const already = (look: string) => say(`This post is already in the Community Gallery: ${siteUrl}/community-gallery/${look}`);
 
 export async function addToWardrobe(interaction: Interaction): Promise<Reply> {
   if (!adminConfigured() || !botConfigured()) return say("Adding looks from Discord is not switched on yet.");
@@ -37,7 +37,7 @@ export async function addToWardrobe(interaction: Interaction): Promise<Reply> {
   const target = data?.target_id ? data.resolved?.messages?.[data.target_id] : undefined;
   if (!target) return say("Discord did not send the post. Try again.");
   if ((interaction.channel_id ?? target.channel_id) !== SHOWCASE_CHANNEL) {
-    return say(`Only posts in <#${SHOWCASE_CHANNEL}> can be added to the Wardrobe.`);
+    return say(`Only posts in <#${SHOWCASE_CHANNEL}> can be added to the Community Gallery.`);
   }
   if (interaction.member?.user.id !== target.author.id && !moderates(interaction.member?.permissions)) {
     return say("Only the player who posted this, or a moderator, can add it.");
@@ -82,9 +82,9 @@ export async function addToWardrobe(interaction: Interaction): Promise<Reply> {
     throw error;
   }
 
-  revalidatePath("/wardrobe");
+  revalidatePath("/community-gallery");
   revalidatePath("/");
   const post = await repository.getOutfit(id);
   await Promise.allSettled([grantCreator(look.discordId), post ? announceLook(post) : null]);
-  return say(`Added to the Wardrobe: ${siteUrl}/wardrobe/${id}`);
+  return say(`Added to the Community Gallery: ${siteUrl}/community-gallery/${id}`);
 }

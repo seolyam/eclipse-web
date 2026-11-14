@@ -15,7 +15,7 @@ const weekRole = () => process.env.DISCORD_WEEK_ROLE_ID ?? "";
 
 const ready = (role: string) => Boolean(role && guild() && botConfigured() && adminConfigured());
 
-const CREATOR_REASON = "Has a look on the Eclipse Wardrobe";
+const CREATOR_REASON = "Has a look on the Eclipse Community Gallery";
 
 /** For a player whose look was just added. */
 export async function grantCreator(discordId: string) {
@@ -38,7 +38,7 @@ export async function creatorOf(look: string): Promise<string | null> {
 export async function recheckCreator(discordId: string | null) {
   if (!discordId || !ready(creatorRole())) return;
   if (!(await discordHasLooks(discordId))) {
-    await setRole(guild(), discordId, creatorRole(), false, "No longer has a look on the Eclipse Wardrobe");
+    await setRole(guild(), discordId, creatorRole(), false, "No longer has a look on the Eclipse Community Gallery");
   }
 }
 

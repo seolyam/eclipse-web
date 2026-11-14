@@ -10,8 +10,8 @@ export interface Feature {
   needsPosts?: boolean;
 }
 
-const category = (name: string) => `/wardrobe?category=${encodeURIComponent(name)}`;
-const tag = (name: string) => `/wardrobe?tag=${encodeURIComponent(name)}`;
+const category = (name: string) => `/community-gallery?category=${encodeURIComponent(name)}`;
+const tag = (name: string) => `/community-gallery?tag=${encodeURIComponent(name)}`;
 
 export const FEATURES: Feature[] = [
   { title: "Wardrobe", body: "Every item appearance and set in the game, previewed on your character before you wear it.", href: category("Armor") },

@@ -25,15 +25,15 @@ async function FeaturedLooks() {
       <div className="wrap">
         <div className="section__row">
           <header className="section__head">
-            <h2 id="featured-heading">From the Wardrobe</h2>
+            <h2 id="featured-heading">From the Community Gallery</h2>
             <p>
               {community
                 ? "Looks the community has dressed, every one a code away from your character."
                 : "Real item sets from the game, every one a code away from your character."}
             </p>
           </header>
-          <Link href={captures.length ? "/wardrobe?pictures=true" : "/wardrobe"} className="btn btn--ghost btn--sm">
-            <span>Open the Wardrobe</span><Icon id="i-arrow" />
+          <Link href={captures.length ? "/community-gallery?pictures=true" : "/community-gallery"} className="btn btn--ghost btn--sm">
+            <span>Open the Community Gallery</span><Icon id="i-arrow" />
           </Link>
         </div>
         <div className="featured">

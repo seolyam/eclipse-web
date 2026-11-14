@@ -26,7 +26,7 @@ export default async function ModerationPage() {
         <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-surface">
           {reported.map((r) => (
             <li key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 p-3">
-              <Link href={`/wardrobe/${r.id}`} className="flex-1 text-ink underline-offset-2 hover:underline">
+              <Link href={`/community-gallery/${r.id}`} className="flex-1 text-ink underline-offset-2 hover:underline">
                 {r.title}
               </Link>
               <span className="nums text-xs text-ink-dim">
@@ -50,7 +50,7 @@ export default async function ModerationPage() {
               <p className="flex flex-wrap items-baseline gap-x-2 text-sm text-ink-dim">
                 <span className="text-ink">{c.author ?? "Someone"}</span>
                 on
-                <Link href={`/wardrobe/${c.outfitId}#comment-${c.id}`} className="text-ink underline-offset-2 hover:underline">
+                <Link href={`/community-gallery/${c.outfitId}#comment-${c.id}`} className="text-ink underline-offset-2 hover:underline">
                   {c.title}
                 </Link>
                 <span className="nums ml-auto text-xs">{c.reports} {c.reports === 1 ? "report" : "reports"}</span>

@@ -22,7 +22,7 @@ export async function LookOfTheWeek() {
               {post.author && post.sharedOnDiscord && <>, by {post.author}</>}.
             </p>
           </header>
-          <Link href={`/wardrobe/${post.id}`} className="btn btn--ghost btn--sm">
+          <Link href={`/community-gallery/${post.id}`} className="btn btn--ghost btn--sm">
             <span>Open the look</span><Icon id="i-arrow" />
           </Link>
         </div>

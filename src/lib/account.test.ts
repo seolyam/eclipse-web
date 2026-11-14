@@ -19,8 +19,8 @@ describe("a public name", () => {
 describe("the page to return to", () => {
   it.each([
     ["/inspector", "/inspector"],
-    ["/wardrobe/set-1074", "/wardrobe/set-1074"],
-    ["/wardrobe?armor=cloth", "/wardrobe?armor=cloth"],
+    ["/community-gallery/set-1074", "/community-gallery/set-1074"],
+    ["/community-gallery?armor=cloth", "/community-gallery?armor=cloth"],
   ])("keeps %s", (value, expected) => {
     expect(safeNext(value)).toBe(expected);
   });
@@ -29,7 +29,7 @@ describe("the page to return to", () => {
   it.each(["https://evil.com", "//evil.com", "/\\evil.com", "\\\\evil.com", "/\t/evil.com", "wardrobe", "", null, undefined])(
     "sends %j to the Wardrobe",
     (value) => {
-      expect(safeNext(value)).toBe("/wardrobe");
+      expect(safeNext(value)).toBe("/community-gallery");
     },
   );
 });

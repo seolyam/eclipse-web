@@ -48,6 +48,6 @@ describe("the look of the week", () => {
     expect(html).toContain("Frost in the Fens");
     expect(html).toContain("with 7 votes");
     expect(html).toContain(`href="/creators/${post.authorId}"`);
-    expect(html).toContain(`href="/wardrobe/${post.id}"`);
+    expect(html).toContain(`href="/community-gallery/${post.id}"`);
   });
 });

@@ -25,14 +25,14 @@ describe("what search results show for each page", () => {
 
 describe("a page's metadata", () => {
   it("points filtered and paged addresses at the page itself", () => {
-    expect(pageMetadata("/wardrobe").alternates?.canonical).toBe("/wardrobe");
+    expect(pageMetadata("/community-gallery").alternates?.canonical).toBe("/community-gallery");
   });
 
   it("previews as that page when its link is shared, not as the home page", () => {
-    const { openGraph } = pageMetadata("/wardrobe");
-    expect(openGraph?.url).toBe("/wardrobe");
-    expect(openGraph?.title).toBe(`${PAGES["/wardrobe"].title}${SUFFIX}`);
-    expect(openGraph?.description).toBe(PAGES["/wardrobe"].description);
+    const { openGraph } = pageMetadata("/community-gallery");
+    expect(openGraph?.url).toBe("/community-gallery");
+    expect(openGraph?.title).toBe(`${PAGES["/community-gallery"].title}${SUFFIX}`);
+    expect(openGraph?.description).toBe(PAGES["/community-gallery"].description);
   });
 
   it("keeps the shared preview image", () => {

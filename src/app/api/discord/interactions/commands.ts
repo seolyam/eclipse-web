@@ -23,10 +23,10 @@ export { EPHEMERAL, type Interaction, type Reply } from "./reply";
  */
 export const timing = { inlineMs: 2000, retryMs: 1000, indexMs: 60_000 };
 
-/** A look's id from its link or the id itself. Null for anything else. */
+/** A look's id from its link, old /wardrobe links too, or the id itself. Null for anything else. */
 export function lookId(text: string): string | null {
   const t = text.trim();
-  const fromLink = /\/wardrobe\/([\w-]{1,64})(?:[/?#]|$)/.exec(t);
+  const fromLink = /\/(?:community-gallery|wardrobe)\/([\w-]{1,64})(?:[/?#]|$)/.exec(t);
   if (fromLink) return fromLink[1];
   return /^[\w-]{1,64}$/.test(t) ? t : null;
 }
@@ -35,14 +35,14 @@ export function lookId(text: string): string | null {
 const MAX_CODE = 1000;
 
 function lookReply(post: OutfitPost): Reply {
-  const url = `${siteUrl}/wardrobe/${post.id}`;
+  const url = `${siteUrl}/community-gallery/${post.id}`;
   const facts = [
     post.author ? `by ${plain(post.author)}` : null,
     post.upvotes != null ? `${post.upvotes.toLocaleString("en-US")} upvotes` : null,
   ].filter(Boolean);
   const code = post.code.length <= MAX_CODE
     ? `\`\`\`\n${post.code}\n\`\`\``
-    : "Copy its code from the Wardrobe.";
+    : "Copy its code from the Community Gallery.";
   return {
     embeds: [{
       title: post.title.slice(0, 256),
@@ -52,7 +52,7 @@ function lookReply(post: OutfitPost): Reply {
       ...(post.gallery.length ? { image: { url: `${url}/cover` } } : {}),
       footer: { text: "Wear it with Eclipse" },
     }],
-    components: [{ type: 1, components: [{ type: 2, style: 5, label: "Open in the Wardrobe", url }] }],
+    components: [{ type: 1, components: [{ type: 2, style: 5, label: "Open in the Community Gallery", url }] }],
     allowed_mentions: NO_MENTIONS,
   };
 }
@@ -69,10 +69,10 @@ async function searchReply(query: string): Promise<Reply> {
   if (!matches.length) return say(`No looks match “${query.slice(0, 100)}”.`);
   const lines = matches.slice(0, RESULTS).map((entry) => {
     const by = entry.author ? ` by ${plain(entry.author)}` : "";
-    return `[${plain(entry.title)}](${siteUrl}/wardrobe/${entry.id})${by}`;
+    return `[${plain(entry.title)}](${siteUrl}/community-gallery/${entry.id})${by}`;
   });
   const more = matches.length > RESULTS
-    ? `\n[See all ${matches.length.toLocaleString("en-US")} in the Wardrobe](${siteUrl}/wardrobe?q=${encodeURIComponent(query)})`
+    ? `\n[See all ${matches.length.toLocaleString("en-US")} in the Community Gallery](${siteUrl}/community-gallery?q=${encodeURIComponent(query)})`
     : "";
   return {
     embeds: [{
@@ -118,7 +118,7 @@ export function quickReply(interaction: Interaction): Reply | null {
   const data = interaction.data;
   if (!data) return say("Discord sent no command.");
   if (data.name === "look" && !lookId(option(data, "look"))) {
-    return say("Paste a look's link from the Wardrobe, or its id.");
+    return say("Paste a look's link from the Community Gallery, or its id.");
   }
   if (data.name === "decode") return decodeReply(option(data, "code"), { quiet: false });
   if (data.name === "item") return itemAnswer(option(data, "name"));
@@ -138,7 +138,7 @@ export async function answer(interaction: Interaction): Promise<Reply> {
   if (data.name === "wardrobe") return searchReply(option(data, "search"));
   const id = lookId(option(data, "look"));
   const post = id ? await repository.getOutfit(id) : null;
-  return post ? lookReply(post) : say("No look in the Wardrobe has that link.");
+  return post ? lookReply(post) : say("No look in the Community Gallery has that link.");
 }
 
 let index: { at: number; entries: SearchEntry[] } | null = null;

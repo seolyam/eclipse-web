@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Account, GameLink, GameSet } from "@/lib/data/types";
+import type { Account, GameLink, GameSet, OutfitPost } from "@/lib/data/types";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
@@ -20,6 +20,7 @@ vi.mock("@/app/actions", () => ({
   removeSetPicture: vi.fn(),
   unlinkGame: vi.fn(),
   uploadScreenshot: vi.fn(),
+  upvoteOutfit: vi.fn(),
 }));
 
 // The signed-in page cannot be reached with a test session while email login is off,
@@ -29,8 +30,10 @@ const data = vi.hoisted(() => ({
   links: [] as GameLink[],
   sets: [] as GameSet[],
   set: null as GameSet | null,
+  published: { posts: [] as OutfitPost[], total: 0 },
   live: true,
   clear: vi.fn(async () => {}),
+  listOutfits: vi.fn(),
 }));
 
 vi.mock("@/lib/data", () => ({
@@ -42,6 +45,10 @@ vi.mock("@/lib/data", () => ({
     listGameLinks: async () => data.links,
     listGameSets: async () => data.sets,
     getGameSet: async () => data.set,
+    listOutfits: async (filters: unknown) => {
+      data.listOutfits(filters);
+      return data.published;
+    },
     clearOrphanPictures: data.clear,
   },
 }));
@@ -63,13 +70,30 @@ const SET: GameSet = {
   gallery: [],
 };
 const PICTURE = "00000000-0000-0000-0000-000000000001/00000000-0000-0000-0000-0000000000aa.avif";
+const LOOK: OutfitPost = {
+  id: "33333333-3333-4333-8333-333333333333",
+  title: "Frost knight",
+  author: "seolyam",
+  authorId: "me",
+  authorVerified: false,
+  code: CODE,
+  className: null,
+  armor: null,
+  race: null,
+  categories: ["Armor"],
+  tags: [],
+  upvotes: 3,
+  createdAt: "2026-11-10T00:00:00.000Z",
+  gallery: [],
+};
 
 const html = async (page: Promise<ReactElement>) => renderToStaticMarkup(await page);
 
 beforeEach(() => {
-  Object.assign(data, { account: ME, links: [], sets: [], set: null, live: true });
+  Object.assign(data, { account: ME, links: [], sets: [], set: null, live: true, published: { posts: [], total: 0 } });
   later.mockReset();
   data.clear.mockClear();
+  data.listOutfits.mockClear();
 });
 
 describe("Loadouts", () => {
@@ -94,10 +118,10 @@ describe("Loadouts", () => {
     expect(page.indexOf("import-heading")).toBeLessThan(page.indexOf("Raid night"));
   });
 
-  it("switches between Loadouts and the Dressing room with pills", async () => {
+  it("leaves the Dressing room's pills to the Dressing room, its own section now", async () => {
     const page = await html(SetsPage({}));
-    expect(page).toMatch(/<a [^>]*aria-current="page"[^>]*>Loadouts<\/a>/);
-    expect(page).toContain('href="/dressing-room"');
+    expect(page).not.toContain('aria-label="Dressing room views"');
+    expect(page).not.toContain('href="/dressing-room"');
   });
 
   it("opens Import on a linked code", async () => {
@@ -116,7 +140,7 @@ describe("Loadouts", () => {
     const page = await html(SetsPage({}));
     expect(page).toContain("Link a game");
     expect(page).toContain("Nothing here yet");
-    expect(page).toContain("0 loadouts");
+    expect(page).toMatch(/Your loadouts <span[^>]*>0<\/span>/);
   });
 
   it("lists a set with its pieces, a way in and a way to remove it", async () => {
@@ -124,7 +148,7 @@ describe("Loadouts", () => {
     const page = await html(SetsPage({}));
     expect(page).toContain("Raid night");
     expect(page).toContain(`href="/sets/${SET.id}"`);
-    expect(page).toContain("1 loadout");
+    expect(page).toMatch(/Your loadouts <span[^>]*>1<\/span>/);
     expect(page).toContain("Remove Raid night");
     expect(page).toContain("<img");
   });
@@ -140,17 +164,48 @@ describe("Loadouts", () => {
     const SENT = { ...SET, id: "22222222-2222-4222-8222-222222222222", name: "Nightmare", gallery: [PICTURE] };
     data.sets = [SET, SENT];
     const page = await html(SetsPage({}));
-    const ready = page.slice(page.indexOf("Ready to publish"), page.indexOf("Linked games"));
+    const ready = page.slice(page.indexOf("Ready to publish"), page.indexOf("<h1"));
     expect(ready).toContain("Nightmare");
     expect(ready).not.toContain("Raid night");
     expect(ready).toContain(PICTURE.replace(".avif", "-thumb.avif"));
     expect(ready).toMatch(new RegExp(`href="/sets/${SENT.id}"[^>]*>Publish<`));
   });
 
+  it("leads with what the game sent, above the page's title", async () => {
+    data.sets = [{ ...SET, gallery: [PICTURE] }];
+    const page = await html(SetsPage({}));
+    expect(page.indexOf("Ready to publish")).toBeGreaterThan(-1);
+    expect(page.indexOf("Ready to publish")).toBeLessThan(page.indexOf("<h1"));
+  });
+
+  it("shows your published looks between your linked games and your loadouts", async () => {
+    data.sets = [SET];
+    data.published = { posts: [LOOK], total: 1 };
+    const page = await html(SetsPage({}));
+    const games = page.indexOf('id="games-heading"');
+    const published = page.indexOf('id="published-heading"');
+    expect(games).toBeGreaterThan(-1);
+    expect(published).toBeGreaterThan(games);
+    expect(page.indexOf('id="sets-heading"')).toBeGreaterThan(published);
+    expect(page.slice(published, page.indexOf('id="sets-heading"'))).toContain("Frost knight");
+    expect(data.listOutfits).toHaveBeenCalledWith(expect.objectContaining({ authorId: ME.id, sort: "newest", pageSize: 3 }));
+  });
+
+  it("links to all your looks once there are more than fit in a row", async () => {
+    data.published = { posts: [LOOK], total: 1 };
+    expect(await html(SetsPage({}))).not.toContain("See all");
+    data.published = { posts: [LOOK, { ...LOOK, id: "a" }, { ...LOOK, id: "b" }], total: 7 };
+    expect(await html(SetsPage({}))).toMatch(new RegExp(`href="/creators/${ME.id}"[^>]*>See all 7<`));
+  });
+
+  it("says how to publish when you have published nothing", async () => {
+    expect(await html(SetsPage({}))).toContain("You haven&#x27;t published a look yet.");
+  });
+
   it("shows the game's picture on its set's card", async () => {
     data.sets = [{ ...SET, gallery: [PICTURE] }];
     const page = await html(SetsPage({}));
-    const card = page.slice(page.indexOf("1 loadout<"));
+    const card = page.slice(page.indexOf('id="sets-heading"'));
     expect(card).toContain(PICTURE.replace(".avif", "-thumb.avif"));
   });
 

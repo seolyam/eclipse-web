@@ -65,11 +65,11 @@ describe("the moderators' Discord alert", () => {
     expect(sent[0].body.allowed_mentions).toEqual({ parse: [] });
     const [embed] = sent[0].body.embeds as Record<string, unknown>[];
     expect(embed.title).toBe("Reported: @everyone *free gold*");
-    expect(embed.url).toBe(`${siteUrl}/wardrobe/${post.id}`);
+    expect(embed.url).toBe(`${siteUrl}/community-gallery/${post.id}`);
     expect(embed.description).toContain("Spam or advertising");
     expect(embed.description).toContain(`${siteUrl}/moderation`);
     expect(embed.description).toContain("Kira");
-    expect(embed.thumbnail).toEqual({ url: `${siteUrl}/wardrobe/${post.id}/cover` });
+    expect(embed.thumbnail).toEqual({ url: `${siteUrl}/community-gallery/${post.id}/cover` });
   });
 
   it("never says who sent the report", async () => {
@@ -104,7 +104,7 @@ describe("the moderators' alert for a comment", () => {
     expect(sent[0].body.allowed_mentions).toEqual({ parse: [] });
     const [embed] = sent[0].body.embeds as Record<string, unknown>[];
     expect(embed.title).toBe("Reported comment on @everyone *free gold*");
-    expect(embed.url).toBe(`${siteUrl}/wardrobe/${post.id}#comment-${said.id}`);
+    expect(embed.url).toBe(`${siteUrl}/community-gallery/${post.id}#comment-${said.id}`);
     expect(embed.description).toContain("Offensive or abusive");
     expect(embed.description).toContain(String.raw`Spammer\_1`);
     expect(embed.description).toContain(String.raw`buy \*\*gold\*\*`);

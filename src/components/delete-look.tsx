@@ -35,7 +35,7 @@ export function DeleteLook({ id, authorId, triggerClassName = "pill" }: { id: st
       }
       setOpen(false);
       toast.success("Look deleted");
-      router.push("/wardrobe");
+      router.push("/community-gallery");
     });
   }
 

@@ -3,8 +3,8 @@ import { OPEN_GRAPH, SITE_DESCRIPTION, siteUrl } from "@/lib/site";
 
 /** What search results and link previews say about each page. The sitemap lists these too. */
 export const PAGES = {
-  "/wardrobe": {
-    title: "Wardrobe: WoW 3.3.5a looks to copy",
+  "/community-gallery": {
+    title: "Community Gallery: WoW 3.3.5a looks to copy",
     description:
       "World of Warcraft 3.3.5a loadouts published by the Eclipse community. Filter by class, race and armor, copy a code, and import it with the free overlay.",
   },
@@ -38,7 +38,7 @@ export type PagePath = keyof typeof PAGES;
 
 /**
  * The canonical is the bare path, so a filtered or paged address such as
- * /wardrobe?class=Mage counts towards the page instead of competing with it.
+ * /community-gallery?class=Mage counts towards the page instead of competing with it.
  */
 export function pageMetadata(path: PagePath): Metadata {
   const { title, description } = PAGES[path];

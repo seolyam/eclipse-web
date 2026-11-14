@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = names.length
     ? `${names.length} pieces, including ${names.slice(0, 3).join(", ")}. Copy the code and wear it with Eclipse.`
     : "An Eclipse look. Copy the code and wear it in game.";
-  const url = `/wardrobe/${post.id}`;
+  const url = `/community-gallery/${post.id}`;
   // A look with a screenshot shows it in the preview; one without keeps the site's image.
   const images = post.gallery.length ? [{ url: `${url}/cover`, width: 1200, height: 630, alt: post.title }] : undefined;
   return {

@@ -47,7 +47,7 @@ export function OutfitCard({ post }: { post: OutfitPost }) {
 
   return (
     <article className="corona-rim relative isolate flex flex-col overflow-hidden rounded-[8px] border border-line bg-surface transition-colors duration-[120ms] hover:bg-surface-raised">
-      <Link href={`/wardrobe/${post.id}`} className="group flex flex-1 flex-col" aria-label={`Open ${post.title}`}>
+      <Link href={`/community-gallery/${post.id}`} className="group flex flex-1 flex-col" aria-label={`Open ${post.title}`}>
         {/* Every card has the same picture frame, so a row of cards lines up with or without a capture. */}
         <div className="relative aspect-[16/10] overflow-hidden border-b border-line bg-void">
           {capture ? (
@@ -109,7 +109,7 @@ export function OutfitPoster({ post }: { post: OutfitPost }) {
   const line = [post.race ? RACE_LABEL[post.race] : null, post.className].filter(Boolean).join(" ");
   return (
     <article className="relative">
-      <Link href={`/wardrobe/${post.id}`} className="poster" aria-label={`Open ${post.title}`}>
+      <Link href={`/community-gallery/${post.id}`} className="poster" aria-label={`Open ${post.title}`}>
         <Image src={thumbOf(post.gallery[0])} alt="" fill unoptimized sizes="(max-width: 1100px) 72vw, 22vw" className="poster__art" />
         <div className="poster__body">
           <div className="poster__rings">
