@@ -19,9 +19,16 @@ vi.mock("@/lib/data", () => ({
   },
 }));
 
+// Its own tests cover it; here it only answers, slowly while slowMs is set.
+vi.mock("./add-to-wardrobe", () => ({
+  addToWardrobe: async () => (await wait(slowMs), { content: "Added", flags: 64, allowed_mentions: { parse: [] } }),
+}));
+
 const { POST } = await import("./route");
 const { lookId, timing } = await import("./commands");
 const { siteUrl } = await import("@/lib/site");
+const { emptyOutfit, encodeOutfit } = await import("@/lib/codec/outfit");
+const { SLOT_NAMES } = await import("@/lib/domain");
 
 const post: OutfitPost = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -80,6 +87,7 @@ beforeEach(() => {
   editReplies = [];
   timing.inlineMs = 50;
   timing.retryMs = 1;
+  timing.indexMs = 0;
   vi.stubEnv("DISCORD_PUBLIC_KEY", publicHex);
   vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
     edits.push({ url, method: init.method, body: JSON.parse(String(init.body)) });
@@ -219,5 +227,102 @@ describe("a slow answer", () => {
     await send(command("look", { look: post.id }));
     await Promise.all(pending);
     expect(edits.length).toBeLessThanOrEqual(4);
+  });
+});
+
+const lookEntry = (n: number, title: string, author: string | null = "Kira"): SearchEntry => ({
+  id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`, title, author,
+});
+
+describe("/look's suggestions as you type", () => {
+  const typing = (value: string) => ({
+    type: 4,
+    application_id: "app-1",
+    token: "tok-1",
+    data: { name: "look", type: 1, options: [{ name: "look", type: 3, value, focused: true }] },
+  });
+
+  it("offers the looks whose title or creator matches, each by its id", async () => {
+    index = [lookEntry(1, "Frost in the Fens"), lookEntry(2, "Sunlit Robes"), lookEntry(3, "Ember", "Frostbite")];
+    const res = await send(typing("fro"));
+    expect(await res.json()).toEqual({
+      type: 8,
+      data: {
+        choices: [
+          { name: "Frost in the Fens by Kira", value: lookEntry(1, "").id },
+          { name: "Ember by Frostbite", value: lookEntry(3, "").id },
+        ],
+      },
+    });
+  });
+
+  it("keeps each choice inside Discord's limits", async () => {
+    index = Array.from({ length: 40 }, (_, i) => lookEntry(i + 1, "x".repeat(150)));
+    const { data } = await (await send(typing(""))).json();
+    expect(data.choices).toHaveLength(25);
+    expect(data.choices.every((c: { name: string }) => c.name.length <= 100)).toBe(true);
+  });
+
+  it("offers nothing rather than keep Discord waiting", async () => {
+    index = [lookEntry(1, "Frost in the Fens")];
+    slowMs = 120;
+    expect(await (await send(typing("fro"))).json()).toEqual({ type: 8, data: { choices: [] } });
+  });
+});
+
+describe("/decode", () => {
+  const code = encodeOutfit({ ...emptyOutfit(), slots: { [SLOT_NAMES.indexOf("Main Hand")]: 420 } });
+
+  it("lists what a code wears by name, for everyone to see, with a link to wear it", async () => {
+    const reply = await answered(command("decode", { code }));
+    expect(reply.flags).toBeUndefined();
+    expect(reply.allowed_mentions).toEqual({ parse: [] });
+    const [embed] = reply.embeds as Record<string, string>[];
+    expect(embed.description).toContain("Main Hand");
+    expect(embed.description).toContain("Simple Spear");
+    expect(JSON.stringify(reply.components)).toContain(`${siteUrl}/loadouts?code=`);
+  });
+
+  it("says what is wrong when the text is not a code", async () => {
+    const reply = await answered(command("decode", { code: "hello" }));
+    expect(reply.flags).toBe(64);
+    expect(reply.content).toMatch(/not an eclipse loadout code/i);
+  });
+});
+
+describe("a message's right-click menu", () => {
+  const message = (content: string) => ({
+    id: "1400000000000000001",
+    channel_id: "1554574140634046586",
+    timestamp: "2026-11-10T12:00:00.000Z",
+    content,
+    author: { id: "354266414397390858", username: "shadow", global_name: "Shadow" },
+    attachments: [],
+  });
+  const rightClick = (name: string, content: string) => ({
+    type: 2,
+    application_id: "app-1",
+    token: "tok-1",
+    data: { name, type: 3, target_id: "1400000000000000001", resolved: { messages: { "1400000000000000001": message(content) } } },
+  });
+  const code = encodeOutfit({ ...emptyOutfit(), slots: { [SLOT_NAMES.indexOf("Main Hand")]: 420 } });
+
+  it("decodes the code in a message, for the asker alone", async () => {
+    const reply = await answered(rightClick("Decode Eclipse code", `check this out ${code} :)`));
+    expect(reply.flags).toBe(64);
+    expect(JSON.stringify(reply.embeds)).toContain("Simple Spear");
+  });
+
+  it("says so when the message holds no code", async () => {
+    const reply = await answered(rightClick("Decode Eclipse code", "no code here"));
+    expect(reply.content).toMatch(/no eclipse code/i);
+  });
+
+  it("keeps a slow answer private while it thinks", async () => {
+    slowMs = 120;
+    const res = await send(rightClick("Add to Wardrobe", code));
+    expect(await res.json()).toEqual({ type: 5, data: { flags: 64 } });
+    await Promise.all(pending);
+    expect(edits[0].body.content).toBe("Added");
   });
 });

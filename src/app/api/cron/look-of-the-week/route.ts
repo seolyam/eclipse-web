@@ -1,10 +1,22 @@
 import { repository } from "@/lib/data";
 import { AMBER, plain } from "@/lib/discord";
+import { crownLookOfTheWeek, syncCreators } from "@/lib/discord-roles";
 import { siteUrl } from "@/lib/site";
 
 // Called by Vercel's scheduler (vercel.json crons) every Monday. It posts the look of
-// the week to the community Discord through DISCORD_WEBHOOK_URL. A quiet week posts
-// nothing: the site only shows what was recorded.
+// the week to the community Discord through DISCORD_WEBHOOK_URL, moves the Look of the
+// Week role to its player, and hands Wardrobe Creator to everyone with a look. A quiet
+// week posts nothing and takes the role back: the site only shows what was recorded.
+
+/** Roles never stop the weekly post. */
+async function roles(winner: string | null) {
+  try {
+    await crownLookOfTheWeek(winner);
+    await syncCreators();
+  } catch (error) {
+    console.error("The weekly Discord roles failed:", error);
+  }
+}
 
 export async function GET(request: Request) {
   // Vercel sends this header when CRON_SECRET is set. With no secret, nothing passes.
@@ -13,7 +25,8 @@ export async function GET(request: Request) {
     return new Response(null, { status: 401 });
   }
   const hook = process.env.DISCORD_WEBHOOK_URL;
-  const pick = hook ? await repository.lookOfTheWeek() : null;
+  const pick = await repository.lookOfTheWeek();
+  await roles(pick?.post.id ?? null);
   if (!hook || !pick) return Response.json({ posted: false });
 
   const { post, votes } = pick;

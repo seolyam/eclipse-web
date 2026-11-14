@@ -131,6 +131,8 @@
 .btn--primary:hover { background: #fff; }
 .btn--ghost { border-color: var(--line-strong); color: var(--ink); }
 .btn--ghost:hover { background: rgba(250, 249, 245, 0.06); border-color: rgba(250, 249, 245, 0.26); }
+.btn__count { padding-left: 0.6rem; border-left: 1px solid var(--line-strong); color: var(--ink-dim); font-weight: 400; }
+@media (max-width: 359px) { .btn__count { display: none; } }
 .linklike { padding: 0; border: 0; background: none; cursor: pointer; }
 
 /* ==========================================================================
