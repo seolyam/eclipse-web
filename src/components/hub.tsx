@@ -82,7 +82,15 @@ export function BuiltinNotice() {
 
 const EMPTY = "rounded-lg border border-dashed border-line p-10 text-center text-sm text-ink-dim";
 
-export function NoLooks({ others = false }: { others?: boolean }) {
+export function NoLooks({ others = false, bookmarks = false }: { others?: boolean; bookmarks?: boolean }) {
+  if (bookmarks) {
+    return (
+      <p className={EMPTY}>
+        No bookmarks match. Use the bookmark button on any look to keep it here, or{" "}
+        <Link href="/wardrobe" className="text-amber underline underline-offset-2">browse the Wardrobe</Link>.
+      </p>
+    );
+  }
   if (!repository.live) {
     return <p className={EMPTY}>Nothing matches. Only armor sets are listed until community publishing opens, so try clearing a filter.</p>;
   }
