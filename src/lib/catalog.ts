@@ -83,6 +83,48 @@ export function searchItems(query: string, slot: number, limit = 24): ItemHit[] 
   return hits;
 }
 
+export interface WearableItem extends ItemHit {
+  invType: number;
+  /** The visible slot it goes in; a one-hander counts as Main Hand. */
+  slot: number;
+}
+
+// Integer keys come out in order, so a type two slots share lands on the first.
+const slotOfType = new Map<number, number>();
+for (const [slot, types] of Object.entries(SLOT_INV_TYPES)) {
+  for (const t of types) if (!slotOfType.has(t)) slotOfType.set(t, Number(slot));
+}
+
+function wearable([id, name, invType, , icon]: ItemRow): WearableItem | null {
+  const slot = slotOfType.get(invType);
+  if (slot === undefined) return null;
+  // Some exported names carry a trailing space.
+  return { id, name: name.trim(), invType, slot, icon: icon || null, quality: qualityById[String(id)] ?? null, display: displayOf(id) };
+}
+
+/** A piece a visible slot can wear, by its id. Null for anything else. */
+export function wearableItem(id: number): WearableItem | null {
+  const row = itemById.get(id);
+  return row ? wearable(row) : null;
+}
+
+/** Wearable pieces whose name holds every typed word; names that start with the first word come first. */
+export function findWearable(query: string, limit: number): WearableItem[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const leading: WearableItem[] = [];
+  const others: WearableItem[] = [];
+  for (const row of itemsJson as ItemRow[]) {
+    const name = row[1].toLowerCase().trim();
+    if (!words.every((w) => name.includes(w))) continue;
+    const item = wearable(row);
+    if (!item) continue;
+    (name.startsWith(words[0]) ? leading : others).push(item);
+    if (leading.length >= limit) break;
+  }
+  return [...leading, ...others].slice(0, limit);
+}
+
 export interface ResolvedSlot {
   slot: number;
   label: string;

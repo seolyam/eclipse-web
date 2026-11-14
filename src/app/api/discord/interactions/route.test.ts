@@ -290,6 +290,68 @@ describe("/decode", () => {
   });
 });
 
+describe("/item", () => {
+  const typing = (value: string) => ({
+    type: 4,
+    application_id: "app-1",
+    token: "tok-1",
+    data: { name: "item", type: 1, options: [{ name: "name", type: 3, value, focused: true }] },
+  });
+
+  it("suggests pieces by name as you type, each with its slot and id, and sends the id", async () => {
+    const { data } = await (await send(typing("dreadnaught chest"))).json();
+    expect(data.choices).toContainEqual({ name: "Dreadnaught Chestguard · Chest · 1522416", value: "1522416" });
+    expect(data.choices.every((c: { name: string }) => /dreadnaught/i.test(c.name) && /chest/i.test(c.name))).toBe(true);
+  });
+
+  it("keeps the suggestions inside Discord's limits, and offers nothing before anything is typed", async () => {
+    const { data } = await (await send(typing("a"))).json();
+    expect(data.choices).toHaveLength(25);
+    expect(data.choices.every((c: { name: string }) => c.name.length <= 100)).toBe(true);
+    expect((await (await send(typing("  "))).json()).data.choices).toEqual([]);
+  });
+
+  it("shows a picked piece for everyone: its slot, its quality, its icon and the id Eclipse's search finds it by", async () => {
+    const reply = await answered(command("item", { name: "51008920" }));
+    expect(reply.flags).toBeUndefined();
+    expect(reply.allowed_mentions).toEqual({ parse: [] });
+    const [embed] = reply.embeds as { title: string; description: string; thumbnail: { url: string } }[];
+    expect(embed.title).toBe("Ascension Arrestor's Amice");
+    expect(embed.description).toContain("Shoulders");
+    expect(embed.description).toContain("Epic");
+    expect(embed.description).toContain("51008920");
+    expect(embed.thumbnail.url).toBe(`${siteUrl}/icons/inv_shoulder_cloth_earthendungeon_c_01.webp`);
+  });
+
+  it("draws a piece with no icon by its slot's own art, and leaves out a quality nobody recorded", async () => {
+    const [embed] = (await answered(command("item", { name: "1522416" }))).embeds as { description: string; thumbnail: { url: string } }[];
+    expect(embed.thumbnail.url).toBe(`${siteUrl}/wow/slots/chest.jpg`);
+    expect(embed.description).not.toMatch(/quality/i);
+  });
+
+  it("finds a typed name without a pick when one piece has it", async () => {
+    const [embed] = (await answered(command("item", { name: "simple spear" }))).embeds as { title: string; description: string }[];
+    expect(embed.title).toBe("Simple Spear");
+    expect(embed.description).toContain("Two-Hand");
+    expect(embed.description).toContain("420");
+  });
+
+  it("lists the pieces a typed name fits, each with its id", async () => {
+    const [embed] = (await answered(command("item", { name: "dreadnaught" }))).embeds as { description: string }[];
+    expect(embed.description).toContain("Dreadnaught Chestguard");
+    expect(embed.description).toContain("1522416");
+    expect(embed.description).toContain("Dreadnaught Belt");
+  });
+
+  it("says so when no piece has that name or id", async () => {
+    for (const name of ["zzqx no such thing", "999999999"]) {
+      const reply = await answered(command("item", { name }));
+      expect(reply.flags).toBe(64);
+      expect(reply.content).toMatch(/no piece/i);
+    }
+  });
+});
+
 describe("a message's right-click menu", () => {
   const message = (content: string) => ({
     id: "1400000000000000001",
