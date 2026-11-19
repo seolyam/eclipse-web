@@ -11,7 +11,12 @@ export const PAGES = {
   "/loadouts": {
     title: "Loadouts: import Eclipse codes",
     description:
-      "Paste an Eclipse loadout or world code to see what it holds, edit it, or publish it with your screenshots, and back up the loadouts saved in your game.",
+      "Paste an Eclipse loadout or world code to see what it holds and edit it, and back up the loadouts saved in your game.",
+  },
+  "/publish": {
+    title: "Publish a look to the Community Gallery",
+    description:
+      "Share a World of Warcraft 3.3.5a look you made with Eclipse: paste its code, add your screenshots, and publish it to the Community Gallery.",
   },
   "/dressing-room": {
     title: "Dressing room: build a WoW 3.3.5a look",

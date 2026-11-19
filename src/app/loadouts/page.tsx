@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { after } from "next/server";
 import { CopyButton } from "@/components/copy-button";
-import { Decoder, type RemixOf } from "@/components/decoder";
+import { Decoder } from "@/components/decoder";
+import { pictures, Thumb } from "@/components/game-pictures";
 import { GameSetMenu, LinkGame, UnlinkGame } from "@/components/game-sync";
 import { HubTitle, LOADOUTS_BLURB } from "@/components/hub";
 import { ItemRing } from "@/components/item-icon";
@@ -13,15 +13,14 @@ import { Button } from "@/components/ui/button";
 import { ago } from "@/lib/ago";
 import { resolveOutfit } from "@/lib/catalog";
 import { decodeOutfit } from "@/lib/codec/outfit";
-import { getOutfit, repository } from "@/lib/data";
+import { repository } from "@/lib/data";
 import type { GameLink, GameSet, OutfitList } from "@/lib/data/types";
 import { VISIBLE_SLOTS } from "@/lib/domain";
-import { screenshotUrl, thumbOf } from "@/lib/screenshots";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata("/loadouts");
 
-type Props = { searchParams?: Promise<{ code?: string | string[]; from?: string | string[] }> };
+type Props = { searchParams?: Promise<{ code?: string | string[] }> };
 
 // Above any loadout the Dressing room writes, and far below what a URL can carry.
 const MAX_LINKED_CODE = 8192;
@@ -32,33 +31,23 @@ const HEADING = "text-xl font-semibold tracking-[-0.01em] text-ink";
 // One row of your newest published looks; the rest are on your creator page.
 const OWN_LOOKS = 3;
 
-/** Only a player's look can be credited, published here or shared on Discord. A game set has nobody to credit. */
-async function original(id: unknown): Promise<RemixOf | null> {
-  if (typeof id !== "string" || !id) return null;
-  const post = await getOutfit(id);
-  return post && (post.authorId || post.sharedOnDiscord) ? { id: post.id, title: post.title, author: post.author } : null;
-}
-
-/** A ?code= link opens on Import, crediting the published look it came from. */
+/** A ?code= link opens on Import. */
 async function linkedCode({ searchParams }: Props) {
-  const { code, from } = (await searchParams) ?? {};
-  const linked = typeof code === "string" && code.length <= MAX_LINKED_CODE ? code : "";
-  const remixOf = linked && repository.live ? await original(from) : null;
-  return { linked, remixOf };
+  const { code } = (await searchParams) ?? {};
+  return typeof code === "string" && code.length <= MAX_LINKED_CODE ? code : "";
 }
 
-/** What the Inspector was on its own page: paste a code, see it, edit it, publish it. */
-function Import({ linked, remixOf }: { linked: string; remixOf: RemixOf | null }) {
+/** Paste a code, see it and edit it. Publishing has its own page, /publish. */
+function Import({ linked }: { linked: string }) {
   return (
     <section aria-labelledby="import-heading" className="flex flex-col gap-3">
       <div>
         <h2 id="import-heading" className={HEADING}>Import</h2>
         <p className="text-sm text-ink-dim">
-          Paste an ECA1: loadout or an ECW1: world code to see what it holds
-          {repository.live ? ", edit it, or publish it with your screenshots" : " and edit it"}. Use Share in the game to get one.
+          Paste an ECA1: loadout or an ECW1: world code to see what it holds and edit it. Use Share in the game to get one.
         </p>
       </div>
-      <Decoder initial={linked} canPublish={repository.live} remixOf={remixOf} />
+      <Decoder initial={linked} />
     </section>
   );
 }
@@ -77,46 +66,17 @@ function Linked({ link, now }: { link: GameLink; now: number }) {
   );
 }
 
-const pictures = (n: number) => (n === 1 ? "1 picture" : `${n} pictures`);
-
-/** A game picture's small copy, which the site stores beside every picture. */
-function Thumb({ path, alt, className }: { path: string; alt: string; className: string }) {
-  return (
-    <span className={`relative block overflow-hidden rounded-md border border-line ${className}`}>
-      <Image src={thumbOf(screenshotUrl(path))} alt={alt} fill unoptimized sizes="12rem" className="object-cover" />
-    </span>
-  );
-}
-
 // A game's pictures wait on their set until it is published, so a set holding any is
-// one the player sent from the studio and has not finished: it leads the page.
-function ReadyToPublish({ sets }: { sets: GameSet[] }) {
+// one the player sent from the studio and has not finished: the page points to /publish.
+function ReadyToPublish({ count }: { count: number }) {
   return (
-    <section aria-labelledby="ready-heading" className="flex flex-col gap-3 rounded-lg border border-amber/40 bg-amber/5 p-4">
-      <div>
-        <h2 id="ready-heading" className="text-sm font-medium text-ink">Ready to publish</h2>
-        <p className="text-xs text-ink-dim">
-          Pictures your game sent wait here, private to you, until you publish their look to the Community Gallery.
-        </p>
-      </div>
-      <ul className="flex flex-col gap-3">
-        {sets.map((set) => (
-          <li key={set.id} className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-1.5">
-              {set.gallery.slice(0, 3).map((path, i) => (
-                <Thumb key={path} path={path} alt={`${set.name}, picture ${i + 1}`} className="aspect-video w-24" />
-              ))}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm text-ink">{set.name}</p>
-              <p className="text-xs text-ink-faint">{pictures(set.gallery.length)} from your game</p>
-            </div>
-            <Button asChild size="sm">
-              <Link href={`/sets/${set.id}`}>Publish</Link>
-            </Button>
-          </li>
-        ))}
-      </ul>
+    <section aria-label="Ready to publish" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber/40 bg-amber/5 p-4">
+      <p className="text-sm text-ink">
+        Your game sent pictures of {count === 1 ? "1 look" : `${count} looks`}, ready to publish to the Community Gallery.
+      </p>
+      <Button asChild size="sm">
+        <Link href="/publish">Publish</Link>
+      </Button>
     </section>
   );
 }
@@ -138,7 +98,8 @@ function PublishedLooks({ accountId, posts, total }: { accountId: string } & Out
         </div>
       ) : (
         <p className="rounded-lg border border-dashed border-line p-6 text-center text-sm text-ink-dim">
-          You haven&apos;t published a look yet. Open one of your loadouts below to publish it.
+          You haven&apos;t published a look yet.{" "}
+          <Link href="/publish" className="text-amber underline underline-offset-2">Publish one</Link> from a code or from your loadouts below.
         </p>
       )}
     </section>
@@ -180,11 +141,11 @@ function SetCard({ set, now }: { set: GameSet; now: number }) {
 const SIGN_IN_NOTE = "Sign in to see the loadouts saved in your game.";
 
 export default async function LoadoutsPage({ searchParams }: Props) {
-  const [account, imported] = await Promise.all([repository.getAccount(), linkedCode({ searchParams })]);
+  const [account, linked] = await Promise.all([repository.getAccount(), linkedCode({ searchParams })]);
   const head = (
     <>
       <HubTitle title="Loadouts" blurb={LOADOUTS_BLURB} />
-      <Import {...imported} />
+      <Import linked={linked} />
     </>
   );
   if (!account) {
@@ -220,7 +181,7 @@ export default async function LoadoutsPage({ searchParams }: Props) {
   // Pictures waiting to be published lead the page, above its title.
   return (
     <main id="main" className="wrap flex flex-col gap-8 py-10">
-      {waiting.length > 0 && <ReadyToPublish sets={waiting} />}
+      {waiting.length > 0 && <ReadyToPublish count={waiting.length} />}
       {head}
 
       <section aria-labelledby="games-heading" className="flex max-w-xl flex-col gap-3">

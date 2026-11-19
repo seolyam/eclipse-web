@@ -161,15 +161,18 @@ describe("Loadouts", () => {
     expect(await html(SetsPage({}))).not.toContain("from your game");
   });
 
-  it("puts what the game sent up top, with the picture and a way to publish it", async () => {
+  it("says what the game sent up top, and sends you to the publish page for it", async () => {
     const SENT = { ...SET, id: "22222222-2222-4222-8222-222222222222", name: "Nightmare", gallery: [PICTURE] };
     data.sets = [SET, SENT];
     const page = await html(SetsPage({}));
     const ready = page.slice(page.indexOf("Ready to publish"), page.indexOf("<h1"));
-    expect(ready).toContain("Nightmare");
-    expect(ready).not.toContain("Raid night");
-    expect(ready).toContain(PICTURE.replace(".avif", "-thumb.avif"));
-    expect(ready).toMatch(new RegExp(`href="/sets/${SENT.id}"[^>]*>Publish<`));
+    expect(ready).toContain("pictures of 1 look");
+    expect(ready).toMatch(/href="\/publish"[^>]*>Publish</);
+  });
+
+  it("leaves publishing a code to the publish page", async () => {
+    const page = await html(SetsPage({ searchParams: Promise.resolve({ code: CODE }) }));
+    expect(page).not.toContain("publish it with your screenshots");
   });
 
   it("leads with what the game sent, above the page's title", async () => {
