@@ -56,7 +56,7 @@ export async function listFromSearch(searchParams: Promise<SearchParams>) {
 export function PublishButton() {
   if (!repository.live) return null;
   return (
-    <Link href="/loadouts" className="btn btn--ghost btn--sm">
+    <Link href="/publish" className="btn btn--ghost btn--sm">
       <span>Publish a look</span>
     </Link>
   );
@@ -88,7 +88,7 @@ export function NoLooks({ bookmarks = false }: { bookmarks?: boolean }) {
   return (
     <p className={EMPTY}>
       Nothing here yet. Clear a filter, or{" "}
-      <Link href="/loadouts" className="text-amber underline underline-offset-2">publish the first look</Link>.
+      <Link href="/publish" className="text-amber underline underline-offset-2">publish the first look</Link>.
     </p>
   );
 }
